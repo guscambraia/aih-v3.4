@@ -1270,121 +1270,17 @@ document.getElementById('btnCancelarMovimentacao').addEventListener('click', asy
     }
 });
 
-// Busca rápida por AIH
-window.buscarPorAIH = async () => {
-    const numeroAIH = document.getElementById('buscaRapidaAIH').value.trim();
-
-    if (!numeroAIH) {
-        alert('Por favor, digite o número da AIH');
-        return;
-    }
-
-    try {
-        const aih = await api(`/aih/${numeroAIH}`);
-        state.aihAtual = aih;
-
-        if (aih.status === 1 || aih.status === 4) {
-            const continuar = await mostrarModal(
-                'AIH Finalizada',
-                'Esta AIH está finalizada. É uma reassinatura/reapresentação?'
-            );
-
-            if (!continuar) {
-                document.getElementById('buscaRapidaAIH').value = '';
-                return;
-            }
-        }
-
-        mostrarInfoAIH(aih);
-    } catch (err) {
-        if (err.message.includes('não encontrada')) {
-            alert(`AIH ${numeroAIH} não encontrada no sistema.`);
-        } else {
-            alert('Erro ao buscar AIH: ' + err.message);
-        }
-        document.getElementById('buscaRapidaAIH').value = '';
+// Busca rápida por AIH (compatibilidade)
+window.buscarPorAIH = () => {
+    if (window.Search) {
+        Search.buscarPorAIH();
     }
 };
 
-// Busca rápida por atendimento
-window.buscarPorAtendimento = async () => {
-    const numeroAtendimento = document.getElementById('buscaRapidaAtendimento').value.trim();
-
-    if (!numeroAtendimento) {
-        alert('Por favor, digite o número do atendimento');
-        return;
-    }
-
-    try {
-        const response = await api('/pesquisar', {
-            method: 'POST',
-            body: JSON.stringify({ 
-                filtros: { numero_atendimento: numeroAtendimento }
-            })
-        });
-
-        const container = document.getElementById('resultadosPesquisa');
-
-        if (response.resultados.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 2rem; background: #fef3c7; border-radius: 8px; margin-top: 2rem;">
-                    <h3 style="color: #92400e;">❌ Nenhum resultado encontrado</h3>
-                    <p style="color: #78350f;">O número de atendimento "${numeroAtendimento}" não foi encontrado em nenhuma AIH.</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Se encontrou apenas uma AIH, abrir diretamente
-        if (response.resultados.length === 1) {
-            const aih = await api(`/aih/${response.resultados[0].numero_aih}`);
-            state.aihAtual = aih;
-            mostrarInfoAIH(aih);
-            return;
-        }
-
-        // Se encontrou múltiplas AIHs, mostrar lista
-        container.innerHTML = `
-            <div style="background: #d1fae5; padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
-                <h3 style="color: #065f46; margin-bottom: 1rem;">
-                    ✅ Encontrado em ${response.resultados.length} AIH(s)
-                </h3>
-                <p style="color: #047857; margin-bottom: 1.5rem;">
-                    O atendimento "${numeroAtendimento}" foi encontrado nas seguintes AIHs:
-                </p>
-
-                <div style="display: grid; gap: 1rem;">
-                    ${response.resultados.map(r => `
-                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
-                                    display: flex; justify-content: space-between; align-items: center; 
-                                    transition: all 0.3s; cursor: pointer; border: 2px solid transparent;"
-                             onmouseover="this.style.borderColor='#10b981'; this.style.transform='translateY(-2px)'"
-                             onmouseout="this.style.borderColor='transparent'; this.style.transform='translateY(0)'"
-                             onclick="abrirAIH('${r.numero_aih}')">
-                            <div>
-                                <h4 style="color: #1e293b; margin-bottom: 0.5rem;">AIH ${r.numero_aih}</h4>
-                                <div style="display: flex; gap: 2rem; color: #64748b; font-size: 0.875rem;">
-                                    <span>📅 ${r.competencia}</span>
-                                    <span>💰 R$ ${r.valor_atual.toFixed(2)}</span>
-                                    <span>📆 ${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span>
-                                    ${r.total_glosas > 0 ? `<span>⚠️ ${r.total_glosas} glosa(s)</span>` : ''}
-                                </div>
-                            </div>
-                            <div style="text-align: center;">
-                                <span class="status-badge status-${r.status}">${getStatusDescricao(r.status)}</span>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-
-        // Limpar campo de busca
-        document.getElementById('buscaRapidaAtendimento').value = '';
-
-    } catch (err) {
-        alert('Erro ao buscar por atendimento: ' + err.message);
-        document.getElementById('buscaRapidaAtendimento').value = '';
+// Busca rápida por atendimento (compatibilidade)
+window.buscarPorAtendimento = () => {
+    if (window.Search) {
+        Search.buscarPorAtendimento();
     }
 };
 
@@ -1701,8 +1597,12 @@ document.getElementById('btnRelatorios').addEventListener('click', () => {
 });
 
 window.gerarRelatorio = async (tipo) => {
+    if (window.Reports) {
+        return Reports.gerarRelatorio(tipo);
+    }
+    
+    // Fallback para compatibilidade
     try {
-        // Capturar filtros de período
         const dataInicio = document.getElementById('relatorioDataInicio')?.value || '';
         const dataFim = document.getElementById('relatorioDataFim')?.value || '';
         const competencia = document.getElementById('relatorioCompetencia')?.value || '';
@@ -1713,7 +1613,6 @@ window.gerarRelatorio = async (tipo) => {
             competencia: competencia
         };
 
-        // Usar POST para enviar filtros
         const response = await api(`/relatorios/${tipo}`, {
             method: 'POST',
             body: JSON.stringify(filtros)
@@ -2401,9 +2300,16 @@ const garantirCampoAtendimento = () => {
     }
 };
 
-// Inicializar módulos
-if (window.Login) Login.init();
-if (window.Dashboard) Dashboard.init();
-if (window.AIHManagement) AIHManagement.init();
-if (window.Movements) Movements.init();
-if (window.Glosas) Glosas.init();
+// Inicializar módulos quando DOM estiver carregado
+document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar todos os módulos
+    if (window.Login) Login.init();
+    if (window.Dashboard) Dashboard.init();
+    if (window.AIHManagement) AIHManagement.init();
+    if (window.Movements) Movements.init();
+    if (window.Glosas) Glosas.init();
+    if (window.Search) Search.init();
+    if (window.Reports) Reports.init();
+    
+    console.log('✅ Todos os módulos inicializados');
+});
