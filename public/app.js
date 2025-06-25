@@ -47,25 +47,41 @@ const voltarTelaPrincipal = () => {
 };
 
 const voltarTelaAnterior = () => {
-    if (state.telaAnterior) {
-        mostrarTela(state.telaAnterior);
+    try {
+        if (state.telaAnterior) {
+            mostrarTela(state.telaAnterior);
 
-        // Se voltando para tela de movimentação, recarregar dados para atualizar glosas
-        if (state.telaAnterior === 'telaMovimentacao') {
-            // Usar setTimeout para garantir que a tela foi renderizada
-            setTimeout(() => {
-                carregarDadosMovimentacao();
-            }, 100);
+            // Se voltando para tela de movimentação, recarregar dados para atualizar glosas
+            if (state.telaAnterior === 'telaMovimentacao') {
+                // Usar setTimeout para garantir que a tela foi renderizada
+                setTimeout(() => {
+                    carregarDadosMovimentacao();
+                }, 100);
+            }
+            // Se voltando para tela de informações AIH, recarregar AIH atualizada
+            else if (state.telaAnterior === 'telaInfoAIH' && state.aihAtual) {
+                api(`/aih/${state.aihAtual.numero_aih}`)
+                    .then(aih => {
+                        state.aihAtual = aih;
+                        mostrarInfoAIH(aih);
+                    })
+                    .catch(err => {
+                        console.error('Erro ao recarregar AIH:', err);
+                        // Se der erro, pelo menos mostrar a tela anterior
+                        mostrarTela(state.telaAnterior);
+                    });
+            }
+        } else {
+            // Se não há tela anterior, voltar ao dashboard
+            console.log('Nenhuma tela anterior definida, voltando ao dashboard');
+            mostrarTela('telaPrincipal');
+            carregarDashboard();
         }
-        // Se voltando para tela de informações AIH, recarregar AIH atualizada
-        else if (state.telaAnterior === 'telaInfoAIH' && state.aihAtual) {
-            api(`/aih/${state.aihAtual.numero_aih}`)
-                .then(aih => {
-                    state.aihAtual = aih;
-                    mostrarInfoAIH(aih);
-                })
-                .catch(err => console.error('Erro ao recarregar AIH:', err));
-        }
+    } catch (error) {
+        console.error('Erro ao voltar para tela anterior:', error);
+        // Fallback: sempre tentar voltar ao dashboard
+        mostrarTela('telaPrincipal');
+        carregarDashboard();
     }
 };
 
@@ -75,19 +91,18 @@ const mostrarModal = (titulo, mensagem) => {
         const modalTitulo = document.getElementById('modalTitulo');
         const modalMensagem = document.getElementById('modalMensagem');
         const modal = document.getElementById('modal');
+        const btnSim = document.getElementById('modalBtnSim');
+        const btnNao = document.getElementById('modalBtnNao');
 
-        if (!modalTitulo || !modalMensagem || !modal) {
-            console.error('Elementos do modal não encontrados');
-            resolve(false);
+        if (!modalTitulo || !modalMensagem || !modal || !btnSim || !btnNao) {
+            console.error('Elementos do modal não encontrados. Usando confirm nativo.');
+            resolve(confirm(`${titulo}\n\n${mensagem}`));
             return;
         }
 
         modalTitulo.textContent = titulo;
         modalMensagem.textContent = mensagem;
         modal.classList.add('ativo');
-
-        const btnSim = document.getElementById('modalBtnSim');
-        const btnNao = document.getElementById('modalBtnNao');
 
         const fecharModal = (resultado) => {
             modal.classList.remove('ativo');
@@ -1223,24 +1238,36 @@ document.getElementById('formMovimentacao').addEventListener('submit', async (e)
 
 // Botão cancelar movimentação
 document.getElementById('btnCancelarMovimentacao').addEventListener('click', async () => {
-    const confirmarCancelamento = await mostrarModal(
-        'Cancelar Movimentação',
-        'Tem certeza que deseja cancelar esta movimentação? Todas as alterações serão perdidas.'
-    );
+    try {
+        const confirmarCancelamento = await mostrarModal(
+            'Cancelar Movimentação',
+            'Tem certeza que deseja cancelar esta movimentação? Todas as alterações serão perdidas.'
+        );
 
-    if (confirmarCancelamento) {
-        // Verificar se há tela anterior válida, senão voltar ao dashboard
-        if (state.telaAnterior && state.telaAnterior !== 'telaMovimentacao') {
-            voltarTelaAnterior();
+        if (confirmarCancelamento) {
+            // Sempre voltar para a tela de informações da AIH se ela estiver disponível
+            if (state.aihAtual) {
+                mostrarInfoAIH(state.aihAtual);
+            } else if (state.telaAnterior && state.telaAnterior !== 'telaMovimentacao') {
+                voltarTelaAnterior();
+            } else {
+                // Último recurso: voltar ao dashboard
+                mostrarTela('telaPrincipal');
+                carregarDashboard();
+                
+                // Limpar estado apenas se voltando ao dashboard
+                state.telaAnterior = null;
+                state.aihAtual = null;
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao cancelar movimentação:', error);
+        // Fallback em caso de erro
+        if (state.aihAtual) {
+            mostrarInfoAIH(state.aihAtual);
         } else {
-            // Se não há tela anterior ou se a tela anterior é a própria movimentação,
-            // voltar ao dashboard
             mostrarTela('telaPrincipal');
             carregarDashboard();
-            
-            // Limpar estado
-            state.telaAnterior = null;
-            state.aihAtual = null;
         }
     }
 });
