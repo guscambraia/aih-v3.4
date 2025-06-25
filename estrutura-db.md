@@ -1,3 +1,4 @@
+
 # Estrutura do Banco de Dados - Sistema AIH
 
 ## Tabelas
@@ -19,10 +20,11 @@ CREATE TABLE aihs (
     numero_aih TEXT UNIQUE NOT NULL,
     valor_inicial REAL NOT NULL,
     valor_atual REAL NOT NULL,
-    status INTEGER NOT NULL DEFAULT 2, -- 1,2,3,4
+    status INTEGER NOT NULL DEFAULT 3, -- 1,2,3,4 (padrão: 3 - Ativa em discussão)
     competencia TEXT NOT NULL, -- formato: MM/YYYY
     criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
     usuario_cadastro_id INTEGER,
+    observacoes TEXT, -- Campo para observações gerais
     FOREIGN KEY (usuario_cadastro_id) REFERENCES usuarios(id)
 );
 ```
@@ -52,6 +54,7 @@ CREATE TABLE movimentacoes (
     prof_fisioterapia TEXT,
     prof_bucomaxilo TEXT,
     status_aih INTEGER NOT NULL,
+    observacoes TEXT, -- Campo para observações da movimentação
     FOREIGN KEY (aih_id) REFERENCES aihs(id),
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
@@ -64,10 +67,14 @@ CREATE TABLE glosas (
     aih_id INTEGER NOT NULL,
     linha TEXT NOT NULL,
     tipo TEXT NOT NULL,
-    profissional TEXT NOT NULL,
+    profissional TEXT,
+    quantidade INTEGER DEFAULT 1, -- Quantidade de itens glosados
     ativa BOOLEAN DEFAULT 1,
     criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (aih_id) REFERENCES aihs(id)
+    usuario_id INTEGER, -- Quem criou a glosa
+    observacoes TEXT, -- Observações sobre a glosa
+    FOREIGN KEY (aih_id) REFERENCES aihs(id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
 ```
 
@@ -75,24 +82,79 @@ CREATE TABLE glosas (
 ```sql
 CREATE TABLE profissionais (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT NOT NULL,
+    nome TEXT UNIQUE NOT NULL,
     especialidade TEXT NOT NULL
+);
+```
+
+### 7. tipos_glosa
+```sql
+CREATE TABLE tipos_glosa (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    descricao TEXT UNIQUE NOT NULL
+);
+```
+
+### 8. logs_acesso
+```sql
+CREATE TABLE logs_acesso (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER,
+    acao TEXT NOT NULL,
+    data_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
+    detalhes TEXT, -- JSON com detalhes da ação
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
 ```
 
 ## Status da AIH
 
-1. **Finalizada com aprovação direta** - Aprovada por ambas auditorias
-2. **Ativa com aprovação indireta** - Glosa pela auditoria do SUS
-3. **Ativa em discussão** - Glosa em discussão entre auditorias
+1. **Finalizada com aprovação direta** - Aprovada por ambas auditorias sem discussão
+2. **Ativa com aprovação indireta** - Glosa pela auditoria do SUS, mas liberada
+3. **Ativa em discussão** - Glosa em discussão entre auditorias (PADRÃO)
 4. **Finalizada após discussão** - Aprovada após resolver glosas
+
+## Tipos de Movimentação
+
+- **entrada_sus**: AIH entra na auditoria do SUS (primeira movimentação sempre)
+- **saida_hospital**: AIH retorna para o hospital após auditoria
 
 ## Índices para Performance
 
 ```sql
 CREATE INDEX idx_aih_numero ON aihs(numero_aih);
 CREATE INDEX idx_aih_status ON aihs(status);
+CREATE INDEX idx_aih_competencia ON aihs(competencia);
 CREATE INDEX idx_movimentacoes_aih ON movimentacoes(aih_id);
+CREATE INDEX idx_movimentacoes_data ON movimentacoes(data_movimentacao);
 CREATE INDEX idx_atendimentos_aih ON atendimentos(aih_id);
 CREATE INDEX idx_glosas_aih ON glosas(aih_id);
+CREATE INDEX idx_glosas_ativa ON glosas(ativa);
+CREATE INDEX idx_logs_usuario ON logs_acesso(usuario_id);
+CREATE INDEX idx_logs_data ON logs_acesso(data_hora);
+```
+
+## Triggers e Validações
+
+### Trigger para atualizar valor_atual na AIH
+```sql
+CREATE TRIGGER update_aih_valor_atual 
+AFTER INSERT ON movimentacoes
+BEGIN
+    UPDATE aihs 
+    SET valor_atual = NEW.valor_conta,
+        status = NEW.status_aih
+    WHERE id = NEW.aih_id;
+END;
+```
+
+### Trigger para log de ações
+```sql
+CREATE TRIGGER log_aih_changes 
+AFTER UPDATE ON aihs
+BEGIN
+    INSERT INTO logs_acesso (usuario_id, acao, detalhes)
+    VALUES (NULL, 'AIH_UPDATED', 
+            json_object('aih_id', NEW.id, 'old_status', OLD.status, 'new_status', NEW.status));
+END;
 ```
