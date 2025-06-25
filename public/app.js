@@ -237,67 +237,6 @@ window.excluirUsuario = async (id, nome) => {
     }
 };
 
-// Adicionar novo usuário
-document.getElementById('formNovoUsuario').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    try {
-        const dados = {
-            nome: document.getElementById('novoUsuarioNome').value,
-            matricula: document.getElementById('novoUsuarioMatricula').value,
-            senha: document.getElementById('novoUsuarioSenha').value
-        };
-
-        await api('/admin/usuarios', {
-            method: 'POST',
-            body: JSON.stringify(dados)
-        });
-
-        alert('Usuário cadastrado com sucesso!');
-        document.getElementById('formNovoUsuario').reset();
-        carregarUsuarios();
-    } catch (err) {
-        alert('Erro ao cadastrar usuário: ' + err.message);
-    }
-});
-
-// Alterar senha do administrador
-document.getElementById('formAlterarSenhaAdmin').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const novaSenha = document.getElementById('novaSenhaAdmin').value;
-    const confirmarSenha = document.getElementById('confirmarSenhaAdmin').value;
-
-    if (novaSenha !== confirmarSenha) {
-        alert('As senhas não coincidem!');
-        return;
-    }
-
-    if (novaSenha.length < 4) {
-        alert('A senha deve ter pelo menos 4 caracteres!');
-        return;
-    }
-
-    const confirmar = await mostrarModal(
-        'Alterar Senha',
-        'Tem certeza que deseja alterar a senha do administrador?'
-    );
-
-    if (!confirmar) return;
-
-    try {
-        await api('/admin/alterar-senha', {
-            method: 'POST',
-            body: JSON.stringify({ novaSenha })
-        });
-
-        alert('Senha do administrador alterada com sucesso!');
-        document.getElementById('formAlterarSenhaAdmin').reset();
-    } catch (err) {
-        alert('Erro ao alterar senha: ' + err.message);
-    }
-});
-
 // Logout
 document.getElementById('btnSair').addEventListener('click', () => {
     state.token = null;
@@ -845,8 +784,7 @@ const carregarDadosMovimentacao = async () => {
                         <p style="color: #6b7280; margin-top: 0.5rem; font-size: 0.875rem;">
                             Competência: ${state.aihAtual.competencia} | Valor: R$ ${state.aihAtual.valor_atual.toFixed(2)}
                         </p>
-                    </div>
-                `;
+                    </div>                    `;
             }
         }
 
@@ -1600,7 +1538,7 @@ window.gerarRelatorio = async (tipo) => {
     if (window.Reports) {
         return Reports.gerarRelatorio(tipo);
     }
-    
+
     // Fallback para compatibilidade
     try {
         const dataInicio = document.getElementById('relatorioDataInicio')?.value || '';
@@ -2161,30 +2099,6 @@ window.exportarRelatorio = async (tipo) => {
     }
 };
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', () => {
-    // Verificar se tem token
-    if (state.token) {
-        // Pequeno delay para garantir que o DOM está pronto
-        setTimeout(() => {
-            mostrarTela('telaPrincipal');
-            carregarDashboard();
-            carregarProfissionaisSelects();
-        }, 100);
-    } else {
-        mostrarTela('telaLogin');
-    }
-
-    // Preencher competência padrão nos formulários
-    const camposCompetencia = ['cadastroCompetencia', 'movCompetencia', 'pesquisaCompetencia'];
-    camposCompetencia.forEach(id => {
-        const campo = document.getElementById(id);
-        if (campo && !campo.value) {
-            campo.value = getCompetenciaAtual();
-        }
-    });
-});
-
 const getTipoDescricao = (tipo) => {
     switch (tipo) {
         case 'entrada_sus':
@@ -2310,6 +2224,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.Glosas) Glosas.init();
     if (window.Search) Search.init();
     if (window.Reports) Reports.init();
-    
+
     console.log('✅ Todos os módulos inicializados');
 });
