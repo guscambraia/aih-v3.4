@@ -1472,6 +1472,206 @@ tr:last-child {
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
+/* Busca Rápida - Novos estilos */
+.busca-rapida {
+    background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
+    border: 2px solid #0288d1;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(2, 136, 209, 0.15);
+}
+
+.busca-rapida h3 {
+    color: #01579b;
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.busca-rapida-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.busca-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e3f2fd;
+    transition: all 0.3s ease;
+}
+
+.busca-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.busca-card label {
+    font-weight: 600;
+    color: #01579b;
+    margin-bottom: 0.75rem;
+    display: block;
+    font-size: 1rem;
+}
+
+.busca-input {
+    width: 100%;
+    padding: 0.875rem;
+    border: 2px solid #b3e5fc;
+    border-radius: 8px;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+}
+
+.busca-input:focus {
+    border-color: #0288d1;
+    box-shadow: 0 0 0 3px rgba(2, 136, 209, 0.1);
+}
+
+.btn-busca {
+    width: 100%;
+    background: linear-gradient(135deg, #0288d1 0%, #0277bd 100%);
+    color: white;
+    border: none;
+    padding: 0.875rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0;
+}
+
+.btn-busca:hover {
+    background: linear-gradient(135deg, #0277bd 0%, #01579b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(2, 136, 209, 0.3);
+}
+
+/* Pesquisa Avançada */
+.pesquisa-avancada {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.pesquisa-avancada h3 {
+    color: var(--gray-700);
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 0.5rem;
+}
+
+.filtros-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.filtro-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.filtro-item label {
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: normal;
+    margin: 0;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.checkbox-label:hover {
+    background: var(--gray-50);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.periodo-inputs, .valor-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.periodo-separador, .valor-separador {
+    color: var(--gray-500);
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.botoes-pesquisa {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.btn-limpar {
+    background: linear-gradient(135deg, var(--gray-500) 0%, var(--gray-600) 100%);
+    color: white;
+    border: none;
+    padding: 0.875rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0;
+}
+
+.btn-limpar:hover {
+    background: linear-gradient(135deg, var(--gray-600) 0%, var(--gray-700) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+}
+
+.btn-pesquisar {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    border: none;
+    padding: 0.875rem 2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0;
+}
+
+.btn-pesquisar:hover {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, #064e8a 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(3, 105, 161, 0.3);
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
     .dashboard {
@@ -1498,6 +1698,23 @@ tr:last-child {
 
     .status-numero {
         margin: 0 auto;
+    }
+
+    .busca-rapida-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .botoes-pesquisa {
+        flex-direction: column;
+    }
+
+    .periodo-inputs, .valor-inputs {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .periodo-separador, .valor-separador {
+        display: none;
     }
 }
 /* Utilitários */

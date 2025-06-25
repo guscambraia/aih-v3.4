@@ -1229,11 +1229,156 @@ document.getElementById('btnCancelarMovimentacao').addEventListener('click', asy
     );
 
     if (confirmarCancelamento) {
-        voltarTelaAnterior();
+        // Verificar se há tela anterior válida, senão voltar ao dashboard
+        if (state.telaAnterior && state.telaAnterior !== 'telaMovimentacao') {
+            voltarTelaAnterior();
+        } else {
+            // Se não há tela anterior ou se a tela anterior é a própria movimentação,
+            // voltar ao dashboard
+            mostrarTela('telaPrincipal');
+            carregarDashboard();
+            
+            // Limpar estado
+            state.telaAnterior = null;
+            state.aihAtual = null;
+        }
     }
 });
 
-// Pesquisa avançada
+// Busca rápida por AIH
+window.buscarPorAIH = async () => {
+    const numeroAIH = document.getElementById('buscaRapidaAIH').value.trim();
+    
+    if (!numeroAIH) {
+        alert('Por favor, digite o número da AIH');
+        return;
+    }
+
+    try {
+        const aih = await api(`/aih/${numeroAIH}`);
+        state.aihAtual = aih;
+
+        if (aih.status === 1 || aih.status === 4) {
+            const continuar = await mostrarModal(
+                'AIH Finalizada',
+                'Esta AIH está finalizada. É uma reassinatura/reapresentação?'
+            );
+
+            if (!continuar) {
+                document.getElementById('buscaRapidaAIH').value = '';
+                return;
+            }
+        }
+
+        mostrarInfoAIH(aih);
+    } catch (err) {
+        if (err.message.includes('não encontrada')) {
+            alert(`AIH ${numeroAIH} não encontrada no sistema.`);
+        } else {
+            alert('Erro ao buscar AIH: ' + err.message);
+        }
+        document.getElementById('buscaRapidaAIH').value = '';
+    }
+};
+
+// Busca rápida por atendimento
+window.buscarPorAtendimento = async () => {
+    const numeroAtendimento = document.getElementById('buscaRapidaAtendimento').value.trim();
+    
+    if (!numeroAtendimento) {
+        alert('Por favor, digite o número do atendimento');
+        return;
+    }
+
+    try {
+        const response = await api('/pesquisar', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                filtros: { numero_atendimento: numeroAtendimento }
+            })
+        });
+
+        const container = document.getElementById('resultadosPesquisa');
+
+        if (response.resultados.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 2rem; background: #fef3c7; border-radius: 8px; margin-top: 2rem;">
+                    <h3 style="color: #92400e;">❌ Nenhum resultado encontrado</h3>
+                    <p style="color: #78350f;">O número de atendimento "${numeroAtendimento}" não foi encontrado em nenhuma AIH.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Se encontrou apenas uma AIH, abrir diretamente
+        if (response.resultados.length === 1) {
+            const aih = await api(`/aih/${response.resultados[0].numero_aih}`);
+            state.aihAtual = aih;
+            mostrarInfoAIH(aih);
+            return;
+        }
+
+        // Se encontrou múltiplas AIHs, mostrar lista
+        container.innerHTML = `
+            <div style="background: #d1fae5; padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
+                <h3 style="color: #065f46; margin-bottom: 1rem;">
+                    ✅ Encontrado em ${response.resultados.length} AIH(s)
+                </h3>
+                <p style="color: #047857; margin-bottom: 1.5rem;">
+                    O atendimento "${numeroAtendimento}" foi encontrado nas seguintes AIHs:
+                </p>
+                
+                <div style="display: grid; gap: 1rem;">
+                    ${response.resultados.map(r => `
+                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+                                    display: flex; justify-content: space-between; align-items: center; 
+                                    transition: all 0.3s; cursor: pointer; border: 2px solid transparent;"
+                             onmouseover="this.style.borderColor='#10b981'; this.style.transform='translateY(-2px)'"
+                             onmouseout="this.style.borderColor='transparent'; this.style.transform='translateY(0)'"
+                             onclick="abrirAIH('${r.numero_aih}')">
+                            <div>
+                                <h4 style="color: #1e293b; margin-bottom: 0.5rem;">AIH ${r.numero_aih}</h4>
+                                <div style="display: flex; gap: 2rem; color: #64748b; font-size: 0.875rem;">
+                                    <span>📅 ${r.competencia}</span>
+                                    <span>💰 R$ ${r.valor_atual.toFixed(2)}</span>
+                                    <span>📆 ${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span>
+                                    ${r.total_glosas > 0 ? `<span>⚠️ ${r.total_glosas} glosa(s)</span>` : ''}
+                                </div>
+                            </div>
+                            <div style="text-align: center;">
+                                <span class="status-badge status-${r.status}">${getStatusDescricao(r.status)}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        // Limpar campo de busca
+        document.getElementById('buscaRapidaAtendimento').value = '';
+
+    } catch (err) {
+        alert('Erro ao buscar por atendimento: ' + err.message);
+        document.getElementById('buscaRapidaAtendimento').value = '';
+    }
+};
+
+// Limpar filtros de pesquisa
+window.limparFiltros = () => {
+    document.getElementById('formPesquisa').reset();
+    document.getElementById('resultadosPesquisa').innerHTML = '';
+    
+    // Limpar também os checkboxes
+    document.querySelectorAll('#formPesquisa input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+    });
+    
+    // Limpar busca rápida
+    document.getElementById('buscaRapidaAIH').value = '';
+    document.getElementById('buscaRapidaAtendimento').value = '';
+};
+
+// Pesquisa avançada - com suporte a busca por atendimento
 document.getElementById('formPesquisa').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -1242,6 +1387,7 @@ document.getElementById('formPesquisa').addEventListener('submit', async (e) => 
 
     const filtros = {
         numero_aih: document.getElementById('pesquisaNumeroAIH').value,
+        numero_atendimento: document.getElementById('pesquisaNumeroAtendimento').value,
         status,
         competencia: document.getElementById('pesquisaCompetencia').value,
         data_inicio: document.getElementById('pesquisaDataInicio').value,
@@ -1267,17 +1413,27 @@ document.getElementById('formPesquisa').addEventListener('submit', async (e) => 
         const container = document.getElementById('resultadosPesquisa');
 
         if (response.resultados.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: #64748b; margin-top: 2rem;">Nenhum resultado encontrado</p>';
+            container.innerHTML = `
+                <div style="text-align: center; padding: 2rem; background: #fef3c7; border-radius: 8px; margin-top: 2rem;">
+                    <h3 style="color: #92400e;">❌ Nenhum resultado encontrado</h3>
+                    <p style="color: #78350f;">Nenhuma AIH foi encontrada com os filtros especificados.</p>
+                    <button onclick="limparFiltros()" style="margin-top: 1rem; background: #f59e0b; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                        Limpar Filtros
+                    </button>
+                </div>
+            `;
             return;
         }
 
         container.innerHTML = `
-            <h3 style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
-                <span>📊 Resultados Encontrados</span>
-                <span style="background: #6366f1; color: white; padding: 0.5rem 1rem; border-radius: 9999px;">
-                    ${response.resultados.length} AIHs
-                </span>
-            </h3>
+            <div style="background: #d1fae5; padding: 1.5rem; border-radius: 8px; margin: 2rem 0;">
+                <h3 style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; color: #065f46;">
+                    <span>📊 Resultados da Pesquisa</span>
+                    <span style="background: #10b981; color: white; padding: 0.5rem 1rem; border-radius: 9999px; font-size: 0.875rem;">
+                        ${response.resultados.length} AIH(s) encontrada(s)
+                    </span>
+                </h3>
+            </div>
 
             <div style="display: grid; gap: 1rem; margin-bottom: 2rem;">
                 ${response.resultados.map(r => `
@@ -1303,7 +1459,7 @@ document.getElementById('formPesquisa').addEventListener('submit', async (e) => 
                 `).join('')}
             </div>
 
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 2rem;">
                 <button onclick="exportarResultados('csv')" class="btn-success">
                     📄 Exportar CSV
                 </button>
@@ -1315,6 +1471,9 @@ document.getElementById('formPesquisa').addEventListener('submit', async (e) => 
                 </button>
                 <button onclick="window.print()" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);">
                     🖨️ Imprimir
+                </button>
+                <button onclick="limparFiltros()" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                    🗑️ Limpar e Nova Pesquisa
                 </button>
             </div>
         `;

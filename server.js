@@ -590,6 +590,14 @@ app.post('/api/pesquisar', verificarToken, async (req, res) => {
             sql += ' AND a.numero_aih LIKE ?';
             params.push(`%${filtros.numero_aih}%`);
         }
+
+        if (filtros.numero_atendimento) {
+            sql += ` AND a.id IN (
+                SELECT DISTINCT aih_id FROM atendimentos 
+                WHERE numero_atendimento LIKE ?
+            )`;
+            params.push(`%${filtros.numero_atendimento}%`);
+        }
         
         if (filtros.profissional) {
             sql += ` AND a.id IN (

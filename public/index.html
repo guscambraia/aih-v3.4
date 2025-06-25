@@ -287,57 +287,88 @@
         <div id="telaPesquisa" class="tela">
             <header>
                 <button class="btn-voltar" onclick="voltarTelaPrincipal()">← Voltar</button>
-                <h2>Pesquisar AIH</h2>
+                <h2>🔍 Pesquisar AIH</h2>
             </header>
             <div class="container">
-                <form id="formPesquisa">
-                    <div class="filtros-grid">
-                        <div>
-                            <label>Número AIH:</label>
-                            <input type="text" id="pesquisaNumeroAIH" placeholder="Buscar por número">
+                <!-- Busca Rápida -->
+                <div class="busca-rapida">
+                    <h3>🚀 Busca Rápida</h3>
+                    <div class="busca-rapida-grid">
+                        <div class="busca-card">
+                            <label>🏥 Número da AIH:</label>
+                            <input type="text" id="buscaRapidaAIH" placeholder="Digite o número da AIH" class="busca-input">
+                            <button type="button" onclick="buscarPorAIH()" class="btn-busca">Buscar AIH</button>
                         </div>
+                        <div class="busca-card">
+                            <label>📋 Número de Atendimento:</label>
+                            <input type="text" id="buscaRapidaAtendimento" placeholder="Digite o número do atendimento" class="busca-input">
+                            <button type="button" onclick="buscarPorAtendimento()" class="btn-busca">Buscar por Atendimento</button>
+                        </div>
+                    </div>
+                </div>
 
-                        <div>
-                            <label>Status:</label>
-                            <div class="checkbox-group">
-                                <label><input type="checkbox" value="1"> Finalizada com aprovação direta</label>
-                                <label><input type="checkbox" value="2"> Ativa com aprovação indireta</label>
-                                <label><input type="checkbox" value="3"> Ativa em discussão</label>
-                                <label><input type="checkbox" value="4"> Finalizada após discussão</label>
+                <!-- Pesquisa Avançada -->
+                <div class="pesquisa-avancada">
+                    <h3>🔎 Pesquisa Avançada</h3>
+                    <form id="formPesquisa">
+                        <div class="filtros-grid">
+                            <div class="filtro-item">
+                                <label>🏥 Número AIH:</label>
+                                <input type="text" id="pesquisaNumeroAIH" placeholder="Buscar por número">
+                            </div>
+
+                            <div class="filtro-item">
+                                <label>📋 Número de Atendimento:</label>
+                                <input type="text" id="pesquisaNumeroAtendimento" placeholder="Buscar por atendimento">
+                            </div>
+
+                            <div class="filtro-item">
+                                <label>📊 Status:</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-label"><input type="checkbox" value="1"> <span class="status-badge status-1">Finalizada com aprovação direta</span></label>
+                                    <label class="checkbox-label"><input type="checkbox" value="2"> <span class="status-badge status-2">Ativa com aprovação indireta</span></label>
+                                    <label class="checkbox-label"><input type="checkbox" value="3"> <span class="status-badge status-3">Ativa em discussão</span></label>
+                                    <label class="checkbox-label"><input type="checkbox" value="4"> <span class="status-badge status-4">Finalizada após discussão</span></label>
+                                </div>
+                            </div>
+
+                            <div class="filtro-item">
+                                <label>📅 Período:</label>
+                                <div class="periodo-inputs">
+                                    <input type="date" id="pesquisaDataInicio" placeholder="Data início">
+                                    <span class="periodo-separador">até</span>
+                                    <input type="date" id="pesquisaDataFim" placeholder="Data fim">
+                                </div>
+                            </div>
+
+                            <div class="filtro-item">
+                                <label>📆 Competência:</label>
+                                <input type="text" id="pesquisaCompetencia" pattern="\d{2}/\d{4}" placeholder="MM/AAAA">
+                            </div>
+
+                            <div class="filtro-item">
+                                <label>💰 Faixa de Valores:</label>
+                                <div class="valor-inputs">
+                                    <input type="number" id="pesquisaValorMin" step="0.01" placeholder="Valor mínimo">
+                                    <span class="valor-separador">até</span>
+                                    <input type="number" id="pesquisaValorMax" step="0.01" placeholder="Valor máximo">
+                                </div>
+                            </div>
+
+                            <div class="filtro-item">
+                                <label>👨‍⚕️ Profissional:</label>
+                                <select id="pesquisaProfissional">
+                                    <option value="">Todos os profissionais</option>
+                                </select>
                             </div>
                         </div>
 
-                        <div>
-                            <label>Período:</label>
-                            <input type="date" id="pesquisaDataInicio">
-                            <input type="date" id="pesquisaDataFim">
+                        <div class="botoes-pesquisa">
+                            <button type="button" onclick="limparFiltros()" class="btn-limpar">🗑️ Limpar Filtros</button>
+                            <button type="submit" class="btn-pesquisar">🔍 Pesquisar</button>
                         </div>
-
-                        <div>
-                            <label>Competência:</label>
-                            <input type="text" id="pesquisaCompetencia" pattern="\d{2}/\d{4}" placeholder="MM/AAAA">
-                        </div>
-
-                        <div>
-                            <label>Valor Mínimo:</label>
-                            <input type="number" id="pesquisaValorMin" step="0.01" placeholder="R$ 0,00">
-                        </div>
-
-                        <div>
-                            <label>Valor Máximo:</label>
-                            <input type="number" id="pesquisaValorMax" step="0.01" placeholder="R$ 0,00">
-                        </div>
-
-                        <div>
-                            <label>Profissional:</label>
-                            <select id="pesquisaProfissional">
-                                <option value="">Todos os profissionais</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <button type="submit">Pesquisar</button>
-                </form>
+                    </form>
+                </div>
 
                 <div id="resultadosPesquisa"></div>
             </div>
