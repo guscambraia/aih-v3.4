@@ -825,9 +825,7 @@ document.getElementById('cadastroCompetencia').value = getCompetenciaAtual();
 
 // Nova movimentação
 document.getElementById('btnNovaMovimentacao').addEventListener('click', () => {
-    state.telaAnterior = 'telaInfoAIH';
-    mostrarTela('telaMovimentacao');
-    carregarDadosMovimentacao();
+    Navigation.irParaMovimentacao();
 });
 
 // Carregue dados necessários para movimentação
@@ -1254,7 +1252,7 @@ document.getElementById('btnCancelarMovimentacao').addEventListener('click', asy
                 // Último recurso: voltar ao dashboard
                 mostrarTela('telaPrincipal');
                 carregarDashboard();
-                
+
                 // Limpar estado apenas se voltando ao dashboard
                 state.telaAnterior = null;
                 state.aihAtual = null;
@@ -1275,7 +1273,7 @@ document.getElementById('btnCancelarMovimentacao').addEventListener('click', asy
 // Busca rápida por AIH
 window.buscarPorAIH = async () => {
     const numeroAIH = document.getElementById('buscaRapidaAIH').value.trim();
-    
+
     if (!numeroAIH) {
         alert('Por favor, digite o número da AIH');
         return;
@@ -1311,7 +1309,7 @@ window.buscarPorAIH = async () => {
 // Busca rápida por atendimento
 window.buscarPorAtendimento = async () => {
     const numeroAtendimento = document.getElementById('buscaRapidaAtendimento').value.trim();
-    
+
     if (!numeroAtendimento) {
         alert('Por favor, digite o número do atendimento');
         return;
@@ -1354,7 +1352,7 @@ window.buscarPorAtendimento = async () => {
                 <p style="color: #047857; margin-bottom: 1.5rem;">
                     O atendimento "${numeroAtendimento}" foi encontrado nas seguintes AIHs:
                 </p>
-                
+
                 <div style="display: grid; gap: 1rem;">
                     ${response.resultados.map(r => `
                         <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
@@ -1394,12 +1392,12 @@ window.buscarPorAtendimento = async () => {
 window.limparFiltros = () => {
     document.getElementById('formPesquisa').reset();
     document.getElementById('resultadosPesquisa').innerHTML = '';
-    
+
     // Limpar também os checkboxes
     document.querySelectorAll('#formPesquisa input[type="checkbox"]').forEach(cb => {
         cb.checked = false;
     });
-    
+
     // Limpar busca rápida
     document.getElementById('buscaRapidaAIH').value = '';
     document.getElementById('buscaRapidaAtendimento').value = '';
@@ -2402,3 +2400,10 @@ const garantirCampoAtendimento = () => {
         container.appendChild(input);
     }
 };
+
+// Inicializar módulos
+if (window.Login) Login.init();
+if (window.Dashboard) Dashboard.init();
+if (window.AIHManagement) AIHManagement.init();
+if (window.Movements) Movements.init();
+if (window.Glosas) Glosas.init();
