@@ -143,27 +143,31 @@ const Movements = {
     },
 
     preencherProfissionaisSugeridos() {
-        if (!AppState.aihAtual || !AppState.aihAtual.movimentacoes || AppState.aihAtual.movimentacoes.length === 0) {
-            return;
-        }
-
-        // Pegar a última movimentação
-        const ultimaMovimentacao = AppState.aihAtual.movimentacoes[0];
-
-        // Sugerir os mesmos profissionais da última movimentação
-        const campos = [
-            { campo: 'movProfMedicina', valor: ultimaMovimentacao.prof_medicina },
-            { campo: 'movProfEnfermagem', valor: ultimaMovimentacao.prof_enfermagem },
-            { campo: 'movProfFisioterapia', valor: ultimaMovimentacao.prof_fisioterapia },
-            { campo: 'movProfBucomaxilo', valor: ultimaMovimentacao.prof_bucomaxilo }
-        ];
-
-        campos.forEach(({ campo, valor }) => {
-            const select = document.getElementById(campo);
-            if (select && valor) {
-                select.value = valor;
+        try {
+            if (!AppState.aihAtual || !AppState.aihAtual.movimentacoes || AppState.aihAtual.movimentacoes.length === 0) {
+                return;
             }
-        });
+
+            // Pegar a última movimentação
+            const ultimaMovimentacao = AppState.aihAtual.movimentacoes[0];
+
+            // Sugerir os mesmos profissionais da última movimentação
+            const campos = [
+                { campo: 'movProfMedicina', valor: ultimaMovimentacao.prof_medicina },
+                { campo: 'movProfEnfermagem', valor: ultimaMovimentacao.prof_enfermagem },
+                { campo: 'movProfFisioterapia', valor: ultimaMovimentacao.prof_fisioterapia },
+                { campo: 'movProfBucomaxilo', valor: ultimaMovimentacao.prof_bucomaxilo }
+            ];
+
+            campos.forEach(({ campo, valor }) => {
+                const select = document.getElementById(campo);
+                if (select && valor) {
+                    select.value = valor;
+                }
+            });
+        } catch (err) {
+            Logger.error('Movements', 'Erro ao preencher profissionais sugeridos', err);
+        }
     },
 
     async carregarGlosas() {

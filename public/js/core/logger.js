@@ -140,50 +140,22 @@ const Logger = {
         return this.logs.filter(log => log.category === category);
     },
 
-    // Limpar logs
+    // Limpar logs antigos (manter apenas os últimos 1000)
+    clearOldLogs() {
+        if (this.logs.length > 1000) {
+            this.logs = this.logs.slice(-1000);
+        }
+    },
+
+    // Obter logs recentes
+    getRecentLogs(limit = 50) {
+        return this.logs.slice(-limit);
+    },
+
+    // Limpar todos os logs
     clearLogs() {
         this.logs = [];
-        this.info('Logger', 'Logs limpos');
-    },
-
-    // Exportar logs
-    exportLogs() {
-        const logsText = this.logs.map(log => {
-            let line = `[${log.timestamp}] ${log.level} [${log.category}] ${log.message}`;
-            if (log.data) {
-                line += `\nDados: ${log.data}`;
-            }
-            return line;
-        }).join('\n\n');
-
-        const blob = new Blob([logsText], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `logs-${new Date().toISOString().split('T')[0]}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    },
-
-    // Estatísticas dos logs
-    getStats() {
-        const levels = {};
-        const categories = {};
-
-        this.logs.forEach(log => {
-            levels[log.level] = (levels[log.level] || 0) + 1;
-            categories[log.category] = (categories[log.category] || 0) + 1;
-        });
-
-        return {
-            total: this.logs.length,
-            levels,
-            categories,
-            oldestLog: this.logs[this.logs.length - 1]?.timestamp,
-            newestLog: this.logs[0]?.timestamp
-        };
+        console.log('%c[Logger] Logs limpos', 'color: #10b981');
     }
 };
 
