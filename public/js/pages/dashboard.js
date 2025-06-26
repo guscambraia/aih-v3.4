@@ -1,10 +1,16 @@
 const Dashboard = {
+    initialized: false,
+
     init() {
         try {
+            Logger.debug('Dashboard', 'Iniciando inicialização do Dashboard');
             this.setupEventListeners();
+            this.initialized = true;
             Logger.moduleLoad('Dashboard', true);
+            Logger.info('Dashboard', 'Dashboard inicializado com sucesso');
         } catch (error) {
             Logger.moduleLoad('Dashboard', false, error);
+            Logger.error('Dashboard', 'Falha na inicialização do Dashboard', error);
         }
     },
 
@@ -22,16 +28,35 @@ const Dashboard = {
         Logger.info('Dashboard', 'Iniciando carregamento do dashboard');
 
         try {
+            // Verificar se Dashboard foi inicializado
+            if (!this.initialized) {
+                Logger.warn('Dashboard', 'Dashboard não foi inicializado, inicializando agora');
+                this.init();
+            }
+
             const competencia = competenciaSelecionada || this.getCompetenciaAtual();
             Logger.debug('Dashboard', `Carregando dados para competência: ${competencia}`);
 
             // Verificar se ApiService está disponível
             if (!window.ApiService) {
+                Logger.error('Dashboard', 'ApiService não está disponível');
                 throw new Error('ApiService não está disponível');
             }
 
+            // Verificar se token está disponível
+            if (!AppState.token) {
+                Logger.error('Dashboard', 'Token não está disponível');
+                throw new Error('Token de autenticação não encontrado');
+            }
+
+            Logger.debug('Dashboard', 'Fazendo requisição para API');
             // Buscar dados do dashboard com a competência
             const dados = await ApiService.get('/dashboard', { competencia });
+            
+            if (!dados) {
+                throw new Error('Nenhum dado retornado da API');
+            }
+
             Logger.debug('Dashboard', 'Dados recebidos da API', dados);
 
             this.criarSeletorCompetencia(dados, competencia);

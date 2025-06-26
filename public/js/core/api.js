@@ -40,8 +40,26 @@ const ApiService = {
             return data;
         } catch (err) {
             const duration = Date.now() - startTime;
-            Logger.error('API', `Erro na requisição: ${method} ${endpoint} (${duration}ms)`, err);
-            throw err;
+            
+            // Log detalhado do erro
+            const errorDetails = {
+                method,
+                endpoint,
+                duration,
+                message: err.message,
+                stack: err.stack
+            };
+            
+            Logger.error('API', `Erro na requisição: ${method} ${endpoint} (${duration}ms)`, errorDetails);
+            
+            // Re-throw com informações mais detalhadas
+            const enhancedError = new Error(`API Error [${method} ${endpoint}]: ${err.message}`);
+            enhancedError.originalError = err;
+            enhancedError.endpoint = endpoint;
+            enhancedError.method = method;
+            enhancedError.duration = duration;
+            
+            throw enhancedError;
         }
     },
 

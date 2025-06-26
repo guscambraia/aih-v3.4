@@ -82,48 +82,15 @@ const Navigation = {
         try {
             switch(telaId) {
                 case 'telaPrincipal':
-                    if (window.Dashboard && typeof window.Dashboard.carregar === 'function') {
-                        setTimeout(() => {
-                            try {
-                                window.Dashboard.carregar();
-                                Logger.debug('Navigation', 'Dashboard.carregar executado');
-                            } catch (error) {
-                                Logger.error('Navigation', 'Erro ao executar Dashboard.carregar', error);
-                            }
-                        }, 100);
-                    } else {
-                        Logger.warn('Navigation', 'Dashboard não disponível ou método carregar não existe');
-                    }
+                    this.executarCallbackDashboard();
                     break;
 
                 case 'telaMovimentacao':
-                    if (window.Movements && typeof window.Movements.carregarDados === 'function') {
-                        setTimeout(() => {
-                            try {
-                                window.Movements.carregarDados();
-                                Logger.debug('Navigation', 'Movements.carregarDados executado');
-                            } catch (error) {
-                                Logger.error('Navigation', 'Erro ao executar Movements.carregarDados', error);
-                            }
-                        }, 100);
-                    } else {
-                        Logger.warn('Navigation', 'Movements não disponível ou método carregarDados não existe');
-                    }
+                    this.executarCallbackMovimentacao();
                     break;
 
                 case 'telaPendencias':
-                    if (window.Glosas && typeof window.Glosas.carregar === 'function') {
-                        setTimeout(() => {
-                            try {
-                                window.Glosas.carregar();
-                                Logger.debug('Navigation', 'Glosas.carregar executado');
-                            } catch (error) {
-                                Logger.error('Navigation', 'Erro ao executar Glosas.carregar', error);
-                            }
-                        }, 100);
-                    } else {
-                        Logger.warn('Navigation', 'Glosas não disponível ou método carregar não existe');
-                    }
+                    this.executarCallbackPendencias();
                     break;
 
                 default:
@@ -131,6 +98,67 @@ const Navigation = {
             }
         } catch (error) {
             Logger.error('Navigation', `Erro ao executar callback para ${telaId}`, error);
+        }
+    },
+
+    // Callbacks específicos para cada tela
+    executarCallbackDashboard() {
+        if (window.Dashboard && typeof window.Dashboard.carregar === 'function') {
+            setTimeout(() => {
+                try {
+                    window.Dashboard.carregar();
+                    Logger.debug('Navigation', 'Dashboard.carregar executado');
+                } catch (error) {
+                    Logger.error('Navigation', 'Erro ao executar Dashboard.carregar', error);
+                }
+            }, 100);
+        } else {
+            Logger.warn('Navigation', 'Dashboard não disponível ou método carregar não existe');
+            // Tentar carregar dashboard com função global de fallback
+            if (typeof carregarDashboard === 'function') {
+                Logger.debug('Navigation', 'Usando função global carregarDashboard como fallback');
+                setTimeout(carregarDashboard, 100);
+            }
+        }
+    },
+
+    executarCallbackMovimentacao() {
+        if (window.Movements && typeof window.Movements.carregarDados === 'function') {
+            setTimeout(() => {
+                try {
+                    window.Movements.carregarDados();
+                    Logger.debug('Navigation', 'Movements.carregarDados executado');
+                } catch (error) {
+                    Logger.error('Navigation', 'Erro ao executar Movements.carregarDados', error);
+                }
+            }, 100);
+        } else {
+            Logger.warn('Navigation', 'Movements não disponível ou método carregarDados não existe');
+            // Tentar carregar com função global de fallback
+            if (typeof carregarDadosMovimentacao === 'function') {
+                Logger.debug('Navigation', 'Usando função global carregarDadosMovimentacao como fallback');
+                setTimeout(carregarDadosMovimentacao, 100);
+            }
+        }
+    },
+
+    executarCallbackPendencias() {
+        if (window.Glosas && typeof window.Glosas.carregar === 'function') {
+            setTimeout(() => {
+                try {
+                    window.Glosas.carregar();
+                    Logger.debug('Navigation', 'Glosas.carregar executado');
+                } catch (error) {
+                    Logger.error('Navigation', 'Erro ao executar Glosas.carregar', error);
+                }
+            }, 100);
+        } else {
+            Logger.warn('Navigation', 'Glosas não disponível ou método carregar não existe');
+            // Tentar carregar com função global de fallback
+            if (typeof carregarGlosas === 'function') {
+                Logger.debug('Navigation', 'Usando função global carregarGlosas como fallback');
+                setTimeout(carregarGlosas, 100);
+            }
         }
     },
 

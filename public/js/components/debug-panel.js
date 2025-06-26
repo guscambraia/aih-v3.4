@@ -7,7 +7,7 @@ const DebugPanel = {
     init() {
         this.createPanel();
         this.setupKeyboardShortcut();
-        Logger.debug('DebugPanel', 'Painel de debug inicializado');
+        Logger.info('DebugPanel', 'Debug Panel inicializado - Use Ctrl+Shift+D para abrir');
     },
 
     createPanel() {
@@ -19,30 +19,26 @@ const DebugPanel = {
             right: -400px;
             width: 400px;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.95);
+            background: #1a1a1a;
             color: #00ff00;
             font-family: 'Courier New', monospace;
             font-size: 12px;
             z-index: 10000;
             transition: right 0.3s ease;
             overflow-y: auto;
-            padding: 20px;
-            box-sizing: border-box;
+            border-left: 2px solid #00ff00;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.5);
         `;
 
         panel.innerHTML = `
-            <div style="position: sticky; top: 0; background: rgba(0, 0, 0, 0.9); margin: -20px -20px 20px -20px; padding: 20px;">
-                <h3 style="color: #00ff00; margin: 0 0 10px 0;">🔧 Debug Panel</h3>
-                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                    <button onclick="DebugPanel.exportLogs()" style="background: #333; color: #00ff00; border: 1px solid #00ff00; padding: 5px 10px; cursor: pointer;">
-                        Export Logs
-                    </button>
-                    <button onclick="DebugPanel.clearLogs()" style="background: #333; color: #ff0000; border: 1px solid #ff0000; padding: 5px 10px; cursor: pointer;">
-                        Clear Logs
-                    </button>
-                    <button onclick="DebugPanel.close()" style="background: #333; color: #fff; border: 1px solid #fff; padding: 5px 10px; cursor: pointer;">
-                        ✕
-                    </button>
+            <div style="padding: 10px; border-bottom: 1px solid #333; background: #0a0a0a;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="color: #00ff00; margin: 0;">🐛 Debug Panel</h3>
+                    <div>
+                        <button onclick="DebugPanel.exportLogs()" style="background: #1a4a1a; color: #00ff00; border: 1px solid #00ff00; padding: 5px; margin-right: 5px; cursor: pointer;">Export</button>
+                        <button onclick="DebugPanel.clearLogs()" style="background: #4a1a1a; color: #ff0000; border: 1px solid #ff0000; padding: 5px; margin-right: 5px; cursor: pointer;">Clear</button>
+                        <button onclick="DebugPanel.close()" style="background: #333; color: #fff; border: 1px solid #666; padding: 5px; cursor: pointer;">×</button>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 10px; margin-bottom: 10px;">
                     <select id="debug-filter-level" onchange="DebugPanel.updateLogs()" style="background: #333; color: #00ff00; border: 1px solid #00ff00; padding: 2px;">
@@ -123,7 +119,7 @@ const DebugPanel = {
         
         const stats = Logger.getStats();
         if (!stats) return;
-
+        
         const statsContainer = document.getElementById('debug-stats');
         statsContainer.innerHTML = `
             <h4 style="color: #00ff00; margin: 0 0 10px 0;">📊 Estatísticas</h4>
@@ -154,7 +150,8 @@ const DebugPanel = {
             ${modules.map(({ name, obj }) => {
                 const status = obj ? '✅' : '❌';
                 const color = obj ? '#00ff00' : '#ff0000';
-                return `<div style="color: ${color};">${status} ${name}</div>`;
+                const hasInit = obj && typeof obj.init === 'function' ? ' (init)' : '';
+                return `<div style="color: ${color};">${status} ${name}${hasInit}</div>`;
             }).join('')}
         `;
     },
@@ -162,36 +159,25 @@ const DebugPanel = {
     updateLogs() {
         if (!Logger) return;
         
-        const levelFilter = document.getElementById('debug-filter-level')?.value;
-        const moduleFilter = document.getElementById('debug-filter-module')?.value;
+        const levelFilter = document.getElementById('debug-filter-level').value;
+        const moduleFilter = document.getElementById('debug-filter-module').value;
         
-        const filters = {};
-        if (levelFilter) filters.level = levelFilter;
-        if (moduleFilter) filters.module = moduleFilter;
-        
-        const logs = Logger.filterLogs(filters).slice(-50); // Últimos 50 logs
-        
+        const logs = Logger.getLogs().filter(log => {
+            if (levelFilter && log.level !== levelFilter) return false;
+            if (moduleFilter && log.module !== moduleFilter) return false;
+            return true;
+        });
+
         const logsContainer = document.getElementById('debug-logs');
-        logsContainer.innerHTML = `
-            <h4 style="color: #00ff00; margin: 0 0 10px 0;">📋 Logs Recentes</h4>
-            ${logs.reverse().map(log => {
-                const time = new Date(log.timestamp).toLocaleTimeString();
-                const color = this.getLevelColor(log.level);
-                return `
-                    <div style="margin-bottom: 8px; padding: 5px; background: #222; border-left: 3px solid ${color};">
-                        <div style="color: ${color}; font-weight: bold;">
-                            [${time}] ${log.level} [${log.module}]
-                        </div>
-                        <div style="color: #ccc; margin-top: 2px;">
-                            ${log.message}
-                        </div>
-                        ${log.data ? `<div style="color: #888; font-size: 10px; margin-top: 2px;">
-                            ${JSON.stringify(log.data, null, 2).substring(0, 200)}...
-                        </div>` : ''}
-                    </div>
-                `;
-            }).join('')}
-        `;
+        logsContainer.innerHTML = logs.slice(-50).map(log => `
+            <div style="border-bottom: 1px solid #333; padding: 5px; color: ${this.getLevelColor(log.level)};">
+                <div style="font-size: 10px; color: #666;">[${log.timestamp.substring(11, 19)}]</div>
+                <div><strong>${log.level}</strong> [${log.module}] ${log.message}</div>
+                ${log.data ? `<div style="color: #999; font-size: 10px; margin-left: 20px;">${typeof log.data === 'object' ? JSON.stringify(log.data, null, 2) : log.data}</div>` : ''}
+            </div>
+        `).join('');
+        
+        logsContainer.scrollTop = logsContainer.scrollHeight;
     },
 
     updateFilters() {

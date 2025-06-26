@@ -1,16 +1,31 @@
 const Movements = {
+    initialized: false,
+
     init() {
-        this.setupEventListeners();
-        console.log('✅ Movements inicializado');
+        try {
+            Logger.debug('Movements', 'Iniciando inicialização do Movements');
+            this.setupEventListeners();
+            this.initialized = true;
+            Logger.moduleLoad('Movements', true);
+            Logger.info('Movements', 'Movements inicializado com sucesso');
+        } catch (error) {
+            Logger.moduleLoad('Movements', false, error);
+            Logger.error('Movements', 'Falha na inicialização do Movements', error);
+        }
     },
 
     setupEventListeners() {
-        const btnNovaMovimentacao = document.getElementById('btnNovaMovimentacao');
-        if (btnNovaMovimentacao) {
-            btnNovaMovimentacao.addEventListener('click', () => {
-                Navigation.irParaMovimentacao();
-            });
-        }
+        try {
+            const btnNovaMovimentacao = document.getElementById('btnNovaMovimentacao');
+            if (btnNovaMovimentacao) {
+                btnNovaMovimentacao.addEventListener('click', () => {
+                    Logger.debug('Movements', 'Botão nova movimentação clicado');
+                    Navigation.irParaMovimentacao();
+                });
+                Logger.debug('Movements', 'Event listener btnNovaMovimentacao configurado');
+            } else {
+                Logger.warn('Movements', 'Botão btnNovaMovimentacao não encontrado');
+            }
 
         const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
         if (btnGerenciarGlosas) {
@@ -35,13 +50,25 @@ const Movements = {
     },
 
     async carregarDados() {
-        if (!AppState.aihAtual) {
-            alert('Nenhuma AIH selecionada');
-            Navigation.voltarTelaPrincipal();
-            return;
-        }
+        Logger.info('Movements', 'Iniciando carregamento de dados da movimentação');
 
         try {
+            // Verificar se foi inicializado
+            if (!this.initialized) {
+                Logger.warn('Movements', 'Movements não foi inicializado, inicializando agora');
+                this.init();
+            }
+
+            // Verificar se há AIH selecionada
+            if (!AppState.aihAtual) {
+                Logger.error('Movements', 'Nenhuma AIH selecionada');
+                Modal.alerta('Erro', 'Nenhuma AIH selecionada');
+                Navigation.voltarTelaPrincipal();
+                return;
+            }
+
+            Logger.debug('Movements', 'Carregando dados para AIH', { numero: AppState.aihAtual.numero_aih });
+
             // Carregar próxima movimentação
             await this.carregarProximaMovimentacao();
 
@@ -54,9 +81,11 @@ const Movements = {
             // Preencher dados iniciais
             this.preencherDadosIniciais();
 
+            Logger.info('Movements', 'Dados da movimentação carregados com sucesso');
+
         } catch (err) {
-            console.error('Erro ao carregar dados da movimentação:', err);
-            alert('Erro ao carregar dados: ' + err.message);
+            Logger.error('Movements', 'Erro ao carregar dados da movimentação', err);
+            Modal.alerta('Erro', 'Erro ao carregar dados: ' + err.message);
         }
     },
 

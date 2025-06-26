@@ -2290,28 +2290,54 @@ const verificarTokenValido = async () => {
 
 // Inicializar aplicação quando DOM estiver carregado
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar Logger primeiro
-    if (window.Logger) {
-        Logger.init();
-        Logger.info('App', '🚀 Inicializando aplicação...');
-    } else {
-        console.log('🚀 Inicializando aplicação... (Logger não disponível)');
-    }
-    
-    // Aguardar scripts carregarem e inicializar módulos
-    setTimeout(() => {
-        // Inicializar módulos core primeiro
-        if (window.AppState && typeof window.AppState.init === 'function') {
-            window.AppState.init();
-            Logger.moduleLoad('AppState', true);
+    try {
+        // Inicializar Logger primeiro
+        if (window.Logger) {
+            Logger.init();
+            Logger.info('App', '🚀 Inicializando aplicação...');
+        } else {
+            console.log('🚀 Inicializando aplicação... (Logger não disponível)');
         }
         
-        if (window.Navigation && typeof window.Navigation.init === 'function') {
-            window.Navigation.init();
-        }
+        // Aguardar scripts carregarem e inicializar módulos
+        setTimeout(() => {
+            inicializarModulos();
+        }, 200);
+    } catch (error) {
+        console.error('Erro fatal na inicialização da aplicação:', error);
+        alert('Erro fatal na inicialização da aplicação. Verifique o console para mais detalhes.');
+    }
+});
+
+// Função para inicializar módulos com tratamento robusto de erros
+function inicializarModulos() {
+    try {
+        Logger.info('App', 'Iniciando inicialização dos módulos');
+
+        // Inicializar módulos core primeiro
+        const modulosCore = [
+            { nome: 'AppState', objeto: window.AppState },
+            { nome: 'Navigation', objeto: window.Navigation },
+            { nome: 'ApiService', objeto: window.ApiService },
+            { nome: 'Modal', objeto: window.Modal }
+        ];
+
+        modulosCore.forEach(({ nome, objeto }) => {
+            try {
+                if (objeto && typeof objeto.init === 'function') {
+                    objeto.init();
+                    Logger.moduleLoad(nome, true);
+                } else {
+                    Logger.warn('App', `Módulo core ${nome} não disponível ou sem método init`);
+                }
+            } catch (error) {
+                Logger.moduleLoad(nome, false, error);
+                Logger.error('App', `Erro crítico ao inicializar módulo core ${nome}`, error);
+            }
+        });
 
         // Inicializar módulos de páginas
-        const modulos = [
+        const modulosPaginas = [
             { nome: 'Dashboard', objeto: window.Dashboard },
             { nome: 'Movements', objeto: window.Movements },
             { nome: 'AIHManagement', objeto: window.AIHManagement },
@@ -2320,28 +2346,60 @@ document.addEventListener('DOMContentLoaded', () => {
             { nome: 'Reports', objeto: window.Reports }
         ];
 
-        modulos.forEach(({ nome, objeto }) => {
-            if (objeto && typeof objeto.init === 'function') {
-                try {
+        modulosPaginas.forEach(({ nome, objeto }) => {
+            try {
+                if (objeto && typeof objeto.init === 'function') {
                     objeto.init();
                     Logger.moduleLoad(nome, true);
-                } catch (error) {
-                    Logger.moduleLoad(nome, false, error);
+                } else {
+                    Logger.warn('App', `Módulo ${nome} não disponível ou sem método init`);
                 }
-            } else {
-                Logger.warn('App', `Módulo ${nome} não disponível ou sem método init`);
+            } catch (error) {
+                Logger.moduleLoad(nome, false, error);
+                Logger.error('App', `Erro ao inicializar módulo ${nome}`, error);
             }
         });
 
         // Inicializar Debug Panel
-        if (window.DebugPanel) {
-            DebugPanel.init();
+        try {
+            if (window.DebugPanel) {
+                DebugPanel.init();
+                Logger.moduleLoad('DebugPanel', true);
+            }
+        } catch (error) {
+            Logger.moduleLoad('DebugPanel', false, error);
         }
 
         // Verificar token e inicializar aplicação
         verificarTokenInicial();
         
-        Logger.info('App', '✅ Aplicação inicializada');
+        Logger.info('App', '✅ Aplicação inicializada com sucesso');
         Logger.info('App', '💡 Pressione Ctrl+Shift+D para abrir o painel de debug');
-    }, 200);
-});
+        
+        // Log de estatísticas dos módulos
+        const stats = gerarEstatisticasModulos();
+        Logger.info('App', 'Estatísticas de inicialização', stats);
+        
+    } catch (error) {
+        Logger.error('App', 'Erro fatal na inicialização dos módulos', error);
+        console.error('Erro fatal na inicialização dos módulos:', error);
+    }
+}
+
+// Função para gerar estatísticas dos módulos carregados
+function gerarEstatisticasModulos() {
+    const modulos = [
+        'Logger', 'AppState', 'Navigation', 'ApiService', 'Modal',
+        'Dashboard', 'Movements', 'AIHManagement', 'Glosas', 'Search', 'Reports', 'DebugPanel'
+    ];
+    
+    const carregados = modulos.filter(nome => window[nome]).length;
+    const comInit = modulos.filter(nome => window[nome] && typeof window[nome].init === 'function').length;
+    
+    return {
+        total: modulos.length,
+        carregados,
+        comInit,
+        percentual: Math.round((carregados / modulos.length) * 100)
+    };
+}
