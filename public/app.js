@@ -43,11 +43,14 @@ const mostrarTela = (telaId) => {
 
 // Função global de fallback para voltar à tela principal
 function voltarTelaPrincipal() {
-    Logger.debug('App', 'Função global voltarTelaPrincipal chamada');
+    if (typeof Logger !== 'undefined') {
+        Logger.debug('App', 'Função global voltarTelaPrincipal chamada');
+    }
+
     if (window.Navigation) {
         Navigation.voltarTelaPrincipal();
     } else {
-        Logger.warn('App', 'Navigation não disponível, usando fallback');
+        console.warn('Navigation não disponível, usando fallback');
         mostrarTela('telaPrincipal');
         setTimeout(() => {
             if (window.Dashboard && window.Dashboard.carregar) {
@@ -61,12 +64,15 @@ function voltarTelaPrincipal() {
 
 // Função global de fallback para voltar à tela anterior
 function voltarTelaAnterior() {
-    Logger.debug('App', 'Função global voltarTelaAnterior chamada');
+    if (typeof Logger !== 'undefined') {
+        Logger.debug('App', 'Função global voltarTelaAnterior chamada');
+    }
+
     if (window.Navigation) {
         Navigation.voltarTelaAnterior();
     } else {
-        Logger.warn('App', 'Navigation não disponível, usando fallback');
-        if (AppState && AppState.telaAnterior) {
+        console.warn('Navigation não disponível, usando fallback');
+        if (window.AppState && AppState.telaAnterior) {
             mostrarTela(AppState.telaAnterior);
         } else {
             voltarTelaPrincipal();
@@ -293,7 +299,7 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
         const competencia = competenciaSelecionada || getCompetenciaAtual();
 
         // Buscar dados do dashboard com a competência
-        const dados = await ApiService.get('/dashboard', { competencia });
+        const dados = await api(`/dashboard?competencia=${encodeURIComponent(competencia)}`);
 
         // Criar/atualizar seletor de competência
         let seletorContainer = document.querySelector('.seletor-competencia-container');
@@ -1535,7 +1541,7 @@ document.getElementById('formNovoTipoGlosa').addEventListener('submit', async (e
     } catch (err) {
         alert('Erro ao adicionar tipo de glosa: ' + err.message);
     }
-});
+};
 
 // Relatórios
 document.getElementById('btnRelatorios').addEventListener('click', () => {
@@ -2232,19 +2238,21 @@ const verificarTokenInicial = () => {
         state.token = token;
 
         if (userType === 'admin') {
-            // Se é admin, ir direto para gestão de usuários
             mostrarTela('telaGestaoUsuarios');
             carregarUsuarios();
         } else {
-            // Se é usuário normal, verificar se token ainda é válido
             verificarTokenValido()
                 .then(() => {
-                    // Token válido, ir para dashboard
                     mostrarTela('telaPrincipal');
-                    carregarDashboard();
+                    setTimeout(() => {
+                        if (window.Dashboard && window.Dashboard.carregar) {
+                            window.Dashboard.carregar();
+                        } else {
+                            carregarDashboard();
+                        }
+                    }, 200);
                 })
                 .catch(() => {
-                    // Token inválido, limpar e ir para login
                     localStorage.removeItem('token');
                     localStorage.removeItem('userType');
                     state.token = null;
@@ -2269,18 +2277,12 @@ const verificarTokenValido = async () => {
 // Inicializar aplicação quando DOM estiver carregado
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        // Inicializar Logger primeiro
-        if (window.Logger) {
-            Logger.init();
-            Logger.info('App', '🚀 Inicializando aplicação...');
-        } else {
-            console.log('🚀 Inicializando aplicação... (Logger não disponível)');
-        }
+        console.log('🚀 Inicializando aplicação...');
 
         // Aguardar scripts carregarem e inicializar módulos
         setTimeout(() => {
             inicializarModulos();
-        }, 200);
+        }, 300);
     } catch (error) {
         console.error('Erro fatal na inicialização da aplicação:', error);
         alert('Erro fatal na inicialização da aplicação. Verifique o console para mais detalhes.');
@@ -2290,13 +2292,19 @@ document.addEventListener('DOMContentLoaded', () => {
 // Função para inicializar módulos com tratamento robusto de erros
 function inicializarModulos() {
     try {
-        if (typeof Logger !== 'undefined') {
-            Logger.info('App', 'Iniciando inicialização dos módulos');
-        } else {
-            console.log('Iniciando inicialização dos módulos (Logger não disponível)');
+        console.log('Iniciando inicialização dos módulos');
+
+        // Inicializar Logger primeiro
+        if (window.Logger && typeof window.Logger.init === 'function') {
+            try {
+                Logger.init();
+                Logger.info('App', '📝 Logger inicializado');
+            } catch (error) {
+                console.error('Erro ao inicializar Logger:', error);
+            }
         }
 
-        // Inicializar módulos core primeiro
+        // Inicializar módulos core
         const modulosCore = [
             { nome: 'AppState', objeto: window.AppState },
             { nome: 'Navigation', objeto: window.Navigation },
@@ -2308,23 +2316,12 @@ function inicializarModulos() {
             try {
                 if (objeto && typeof objeto.init === 'function') {
                     objeto.init();
-                    if (typeof Logger !== 'undefined') {
-                        Logger.moduleLoad(nome, true);
-                    }
+                    console.log(`✅ ${nome} inicializado`);
                 } else {
-                    if (typeof Logger !== 'undefined') {
-                        Logger.warn('App', `Módulo core ${nome} não disponível ou sem método init`);
-                    } else {
-                        console.warn(`Módulo core ${nome} não disponível ou sem método init`);
-                    }
+                    console.warn(`⚠️ ${nome} não disponível ou sem método init`);
                 }
             } catch (error) {
-                if (typeof Logger !== 'undefined') {
-                    Logger.moduleLoad(nome, false, error);
-                    Logger.error('App', `Erro crítico ao inicializar módulo core ${nome}`, error);
-                } else {
-                    console.error(`Erro crítico ao inicializar módulo core ${nome}:`, error);
-                }
+                console.error(`❌ Erro ao inicializar ${nome}:`, error);
             }
         });
 
@@ -2342,23 +2339,12 @@ function inicializarModulos() {
             try {
                 if (objeto && typeof objeto.init === 'function') {
                     objeto.init();
-                    if (typeof Logger !== 'undefined') {
-                        Logger.moduleLoad(nome, true);
-                    }
+                    console.log(`✅ ${nome} inicializado`);
                 } else {
-                    if (typeof Logger !== 'undefined') {
-                        Logger.warn('App', `Módulo ${nome} não disponível ou sem método init`);
-                    } else {
-                        console.warn(`Módulo ${nome} não disponível ou sem método init`);
-                    }
+                    console.warn(`⚠️ ${nome} não disponível ou sem método init`);
                 }
             } catch (error) {
-                if (typeof Logger !== 'undefined') {
-                    Logger.moduleLoad(nome, false, error);
-                    Logger.error('App', `Erro ao inicializar módulo ${nome}`, error);
-                } else {
-                    console.error(`Erro ao inicializar módulo ${nome}:`, error);
-                }
+                console.error(`❌ Erro ao inicializar ${nome}:`, error);
             }
         });
 
@@ -2366,56 +2352,20 @@ function inicializarModulos() {
         try {
             if (window.DebugPanel && typeof window.DebugPanel.init === 'function') {
                 DebugPanel.init();
-                if (typeof Logger !== 'undefined') {
-                    Logger.moduleLoad('DebugPanel', true);
-                }
+                console.log('✅ DebugPanel inicializado');
             }
         } catch (error) {
-            if (typeof Logger !== 'undefined') {
-                Logger.moduleLoad('DebugPanel', false, error);
-            } else {
-                console.error('Erro ao inicializar DebugPanel:', error);
-            }
+            console.error('❌ Erro ao inicializar DebugPanel:', error);
         }
 
         // Verificar token e inicializar aplicação
         verificarTokenInicial();
 
-        if (typeof Logger !== 'undefined') {
-            Logger.info('App', '✅ Aplicação inicializada com sucesso');
-            Logger.info('App', '💡 Pressione Ctrl+Shift+D para abrir o painel de debug');
-
-            // Log de estatísticas dos módulos
-            const stats = gerarEstatisticasModulos();
-            Logger.info('App', 'Estatísticas de inicialização', stats);
-        } else {
-            console.log('✅ Aplicação inicializada com sucesso');
-            console.log('💡 Pressione Ctrl+Shift+D para abrir o painel de debug');
-        }
+        console.log('✅ Aplicação inicializada com sucesso');
+        console.log('💡 Pressione Ctrl+Shift+D para abrir o painel de debug');
 
     } catch (error) {
-        if (typeof Logger !== 'undefined') {
-            Logger.error('App', 'Erro fatal na inicialização dos módulos', error);
-        }
         console.error('Erro fatal na inicialização dos módulos:', error);
+        alert('Erro crítico na inicialização. A aplicação pode não funcionar corretamente.');
     }
 }
-
-// Função para gerar estatísticas dos módulos carregados
-function gerarEstatisticasModulos() {
-    const modulos = [
-        'Logger', 'AppState', 'Navigation', 'ApiService', 'Modal',
-        'Dashboard', 'Movements', 'AIHManagement', 'Glosas', 'Search', 'Reports', 'DebugPanel'
-    ];
-
-    const carregados = modulos.filter(nome => window[nome]).length;
-    const comInit = modulos.filter(nome => window[nome] && typeof window[nome].init === 'function').length;
-
-    return {
-        total: modulos.length,
-        carregados,
-        comInit,
-        percentual: Math.round((carregados / modulos.length) * 100)
-    };
-}
-

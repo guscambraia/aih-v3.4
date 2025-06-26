@@ -1,108 +1,94 @@
-const Dashboard = {
-    initialized: false,
 
+// Módulo do Dashboard
+const Dashboard = {
+    competenciaAtual: null,
+
+    // Inicializar o dashboard
     init() {
         try {
-            Logger.debug('Dashboard', 'Iniciando inicialização do Dashboard');
-            this.setupEventListeners();
-            this.initialized = true;
+            Logger.debug('Dashboard', 'Inicializando módulo Dashboard');
+            this.competenciaAtual = this.obterCompetenciaAtual();
             Logger.moduleLoad('Dashboard', true);
-            Logger.info('Dashboard', 'Dashboard inicializado com sucesso');
+            Logger.info('Dashboard', '✅ Dashboard inicializado');
         } catch (error) {
             Logger.moduleLoad('Dashboard', false, error);
-            Logger.error('Dashboard', 'Falha na inicialização do Dashboard', error);
+            Logger.error('Dashboard', 'Erro na inicialização', error);
         }
     },
 
-    setupEventListeners() {
-        try {
-            Logger.debug('Dashboard', 'Configurando event listeners');
-            // Event listeners específicos do dashboard podem ser adicionados aqui
-            Logger.debug('Dashboard', 'Event listeners configurados');
-        } catch (error) {
-            Logger.error('Dashboard', 'Erro ao configurar event listeners', error);
-        }
+    // Obter competência atual (MM/YYYY)
+    obterCompetenciaAtual() {
+        const hoje = new Date();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        const ano = hoje.getFullYear();
+        return `${mes}/${ano}`;
     },
 
+    // Carregar dados do dashboard
     async carregar(competenciaSelecionada = null) {
-        Logger.info('Dashboard', 'Iniciando carregamento do dashboard');
-
         try {
-            // Verificar se Dashboard foi inicializado
-            if (!this.initialized) {
-                Logger.warn('Dashboard', 'Dashboard não foi inicializado, inicializando agora');
-                this.init();
-            }
-
-            const competencia = competenciaSelecionada || this.getCompetenciaAtual();
+            Logger.info('Dashboard', 'Iniciando carregamento do dashboard');
+            
+            const competencia = competenciaSelecionada || this.competenciaAtual;
             Logger.debug('Dashboard', `Carregando dados para competência: ${competencia}`);
 
-            // Verificar se ApiService está disponível
-            if (!window.ApiService) {
-                Logger.error('Dashboard', 'ApiService não está disponível');
-                throw new Error('ApiService não está disponível');
-            }
-
-            // Verificar se token está disponível
-            if (!AppState.token) {
-                Logger.error('Dashboard', 'Token não está disponível');
-                throw new Error('Token de autenticação não encontrado');
-            }
-
             Logger.debug('Dashboard', 'Fazendo requisição para API');
-            // Buscar dados do dashboard com a competência
-            const dados = await ApiService.get('/dashboard', { competencia });
-
-            if (!dados) {
-                throw new Error('Nenhum dado retornado da API');
+            
+            // Usar ApiService se disponível, senão usar método de fallback
+            let dados;
+            if (window.ApiService && typeof window.ApiService.get === 'function') {
+                dados = await ApiService.get('/dashboard', { competencia });
+            } else {
+                Logger.warn('Dashboard', 'ApiService não disponível, usando fetch direto');
+                dados = await this.fetchDashboard(competencia);
             }
 
             Logger.debug('Dashboard', 'Dados recebidos da API', dados);
 
-            this.criarSeletorCompetencia(dados, competencia);
-            this.atualizarCards(dados, competencia);
-            this.criarResumoFinanceiro(dados, competencia);
-            this.animarNumeros();
-
+            this.renderizarDashboard(dados);
+            this.criarSeletorCompetencia(dados.competencias_disponiveis, competencia);
+            this.criarResumoFinanceiro(dados);
+            
             Logger.info('Dashboard', 'Dashboard carregado com sucesso');
 
-        } catch (err) {
-            Logger.error('Dashboard', 'Erro ao carregar dashboard', err);
-            this.mostrarErroDashboard(err);
+        } catch (error) {
+            Logger.error('Dashboard', 'Erro ao carregar dashboard', error);
+            this.mostrarErroDashboard(error);
         }
     },
 
-    criarSeletorCompetencia(dados, competencia) {
-        let seletorContainer = document.querySelector('.seletor-competencia-container');
-        if (!seletorContainer) {
-            const dashboardContainer = document.querySelector('.dashboard');
-            seletorContainer = document.createElement('div');
-            seletorContainer.className = 'seletor-competencia-container';
-            dashboardContainer.parentNode.insertBefore(seletorContainer, dashboardContainer);
+    // Método de fallback para fetch direto
+    async fetchDashboard(competencia) {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/dashboard?competencia=${encodeURIComponent(competencia)}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
         }
 
-        seletorContainer.innerHTML = `
-            <div class="seletor-competencia">
-                <label for="selectCompetencia">Competência:</label>
-                <select id="selectCompetencia" onchange="Dashboard.carregar(this.value)">
-                    ${dados.competencias_disponiveis.map(comp => 
-                        `<option value="${comp}" ${comp === competencia ? 'selected' : ''}>${comp}</option>`
-                    ).join('')}
-                </select>
-                <span class="competencia-info">📅 Visualizando dados de ${competencia}</span>
-            </div>
-        `;
+        return await response.json();
     },
 
-    atualizarCards(dados, competencia) {
+    // Renderizar cards do dashboard
+    renderizarDashboard(dados) {
         const dashboard = document.querySelector('.dashboard');
+        if (!dashboard) {
+            Logger.error('Dashboard', 'Container .dashboard não encontrado');
+            return;
+        }
+
         dashboard.innerHTML = `
             <!-- Card 1: Em Processamento na Competência -->
             <div class="stat-card">
                 <div class="stat-icon">📊</div>
                 <h3>Em Processamento</h3>
-                <p class="stat-number" id="emProcessamentoCompetencia">${dados.em_processamento_competencia}</p>
-                <p class="stat-subtitle">AIHs em análise em ${competencia}</p>
+                <p class="stat-number">${dados.em_processamento_competencia}</p>
+                <p class="stat-subtitle">AIHs em análise em ${dados.competencia_selecionada}</p>
                 <p class="stat-detail">Entradas SUS - Saídas Hospital</p>
             </div>
 
@@ -110,8 +96,8 @@ const Dashboard = {
             <div class="stat-card success">
                 <div class="stat-icon">✅</div>
                 <h3>Finalizadas</h3>
-                <p class="stat-number" id="finalizadasCompetencia">${dados.finalizadas_competencia}</p>
-                <p class="stat-subtitle">AIHs concluídas em ${competencia}</p>
+                <p class="stat-number">${dados.finalizadas_competencia}</p>
+                <p class="stat-subtitle">AIHs concluídas em ${dados.competencia_selecionada}</p>
                 <p class="stat-detail">Status 1 e 4</p>
             </div>
 
@@ -119,8 +105,8 @@ const Dashboard = {
             <div class="stat-card warning">
                 <div class="stat-icon">⚠️</div>
                 <h3>Com Pendências</h3>
-                <p class="stat-number" id="comPendenciasCompetencia">${dados.com_pendencias_competencia}</p>
-                <p class="stat-subtitle">AIHs com glosas em ${competencia}</p>
+                <p class="stat-number">${dados.com_pendencias_competencia}</p>
+                <p class="stat-subtitle">AIHs com glosas em ${dados.competencia_selecionada}</p>
                 <p class="stat-detail">Status 2 e 3</p>
             </div>
 
@@ -128,16 +114,16 @@ const Dashboard = {
             <div class="stat-card info">
                 <div class="stat-icon">🏥</div>
                 <h3>Total em Processamento</h3>
-                <p class="stat-number" id="totalProcessamentoGeral">${dados.total_em_processamento_geral}</p>
+                <p class="stat-number">${dados.total_em_processamento_geral}</p>
                 <p class="stat-subtitle">Desde o início do sistema</p>
                 <p class="stat-detail">Total: ${dados.total_entradas_sus} entradas - ${dados.total_saidas_hospital} saídas</p>
             </div>
 
-            <!-- Card 5: Total Finalizadas (Histórico Geral) -->
+            <!-- Card 5: Total Finalizadas -->
             <div class="stat-card success" style="border-left: 4px solid #10b981;">
                 <div class="stat-icon">🎯</div>
                 <h3>Total Finalizadas</h3>
-                <p class="stat-number" id="totalFinalizadasGeral">${dados.total_finalizadas_geral}</p>
+                <p class="stat-number">${dados.total_finalizadas_geral}</p>
                 <p class="stat-subtitle">Desde o início do sistema</p>
                 <p class="stat-detail">AIHs concluídas (Status 1 e 4)</p>
             </div>
@@ -146,50 +132,87 @@ const Dashboard = {
             <div class="stat-card" style="border-left: 4px solid #6366f1;">
                 <div class="stat-icon">📈</div>
                 <h3>Total Cadastradas</h3>
-                <p class="stat-number" id="totalAIHsGeral">${dados.total_aihs_geral}</p>
+                <p class="stat-number">${dados.total_aihs_geral}</p>
                 <p class="stat-subtitle">Desde o início do sistema</p>
                 <p class="stat-detail">Todas as AIHs do sistema</p>
             </div>
         `;
+
+        // Animar números
+        setTimeout(() => this.animarNumeros(), 100);
     },
 
-    criarResumoFinanceiro(dados, competencia) {
-        const resumoFinanceiro = document.createElement('div');
-        resumoFinanceiro.className = 'resumo-financeiro';
-        resumoFinanceiro.innerHTML = `
-            <h3>💰 Resumo Financeiro - ${competencia}</h3>
-            <div class="resumo-cards">
-                <div class="resumo-card">
-                    <span class="resumo-label">Valor Inicial Total</span>
-                    <span class="resumo-valor">R$ ${dados.valores_competencia.inicial.toFixed(2)}</span>
-                </div>
-                <div class="resumo-card">
-                    <span class="resumo-label">Valor Atual Total</span>
-                    <span class="resumo-valor">R$ ${dados.valores_competencia.atual.toFixed(2)}</span>
-                </div>
-                <div class="resumo-card">
-                    <span class="resumo-label">Média de Glosas</span>
-                    <span class="resumo-valor" style="color: var(--danger)">R$ ${dados.valores_competencia.media_glosa.toFixed(2)}</span>
-                </div>
-                <div class="resumo-card">
-                    <span class="resumo-label">Total de AIHs</span>
-                    <span class="resumo-valor">${dados.total_aihs_competencia}</span>
-                </div>
-            </div>
-        `;
-
-        const dashboardContainer = document.querySelector('.dashboard');
-        const resumoExistente = document.querySelector('.resumo-financeiro');
-        if (resumoExistente) {
-            resumoExistente.remove();
+    // Criar seletor de competência
+    criarSeletorCompetencia(competenciasDisponiveis, competenciaAtual) {
+        let seletorContainer = document.querySelector('.seletor-competencia-container');
+        
+        if (!seletorContainer) {
+            const dashboardContainer = document.querySelector('.dashboard');
+            if (dashboardContainer) {
+                seletorContainer = document.createElement('div');
+                seletorContainer.className = 'seletor-competencia-container';
+                dashboardContainer.parentNode.insertBefore(seletorContainer, dashboardContainer);
+            }
         }
-        dashboardContainer.parentNode.insertBefore(resumoFinanceiro, dashboardContainer.nextSibling);
+
+        if (seletorContainer) {
+            seletorContainer.innerHTML = `
+                <div class="seletor-competencia">
+                    <label for="selectCompetencia">Competência:</label>
+                    <select id="selectCompetencia" onchange="Dashboard.carregar(this.value)">
+                        ${competenciasDisponiveis.map(comp => 
+                            `<option value="${comp}" ${comp === competenciaAtual ? 'selected' : ''}>${comp}</option>`
+                        ).join('')}
+                    </select>
+                    <span class="competencia-info">📅 Visualizando dados de ${competenciaAtual}</span>
+                </div>
+            `;
+        }
     },
 
+    // Criar resumo financeiro
+    criarResumoFinanceiro(dados) {
+        let resumoFinanceiro = document.querySelector('.resumo-financeiro');
+        
+        if (!resumoFinanceiro) {
+            const dashboardContainer = document.querySelector('.dashboard');
+            if (dashboardContainer) {
+                resumoFinanceiro = document.createElement('div');
+                resumoFinanceiro.className = 'resumo-financeiro';
+                dashboardContainer.parentNode.insertBefore(resumoFinanceiro, dashboardContainer.nextSibling);
+            }
+        }
+
+        if (resumoFinanceiro && dados.valores_competencia) {
+            resumoFinanceiro.innerHTML = `
+                <h3>💰 Resumo Financeiro - ${dados.competencia_selecionada}</h3>
+                <div class="resumo-cards">
+                    <div class="resumo-card">
+                        <span class="resumo-label">Valor Inicial Total</span>
+                        <span class="resumo-valor">R$ ${dados.valores_competencia.inicial.toFixed(2)}</span>
+                    </div>
+                    <div class="resumo-card">
+                        <span class="resumo-label">Valor Atual Total</span>
+                        <span class="resumo-valor">R$ ${dados.valores_competencia.atual.toFixed(2)}</span>
+                    </div>
+                    <div class="resumo-card">
+                        <span class="resumo-label">Média de Glosas</span>
+                        <span class="resumo-valor" style="color: var(--danger)">R$ ${dados.valores_competencia.media_glosa.toFixed(2)}</span>
+                    </div>
+                    <div class="resumo-card">
+                        <span class="resumo-label">Total de AIHs</span>
+                        <span class="resumo-valor">${dados.total_aihs_competencia}</span>
+                    </div>
+                </div>
+            `;
+        }
+    },
+
+    // Animar números dos cards
     animarNumeros() {
         const numeros = document.querySelectorAll('.stat-number');
         numeros.forEach(elemento => {
-            const valorFinal = parseInt(elemento.textContent);
+            const valorFinal = parseInt(elemento.textContent) || 0;
             let valorAtual = 0;
             const incremento = valorFinal / 30;
 
@@ -204,20 +227,20 @@ const Dashboard = {
         });
     },
 
-    mostrarErroDashboard(erro) {
-        document.querySelector('.dashboard').innerHTML = `
-            <div class="erro-dashboard">
-                <p>⚠️ Erro ao carregar dados do dashboard: ${erro}</p>
-                <button onclick="Dashboard.carregar()">Tentar novamente</button>
-            </div>
-        `;
-    },
-
-    getCompetenciaAtual() {
-        const hoje = new Date();
-        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-        const ano = hoje.getFullYear();
-        return `${mes}/${ano}`;
+    // Mostrar erro no dashboard
+    mostrarErroDashboard(error) {
+        const dashboard = document.querySelector('.dashboard');
+        if (dashboard) {
+            dashboard.innerHTML = `
+                <div class="erro-dashboard" style="text-align: center; padding: 2rem; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px;">
+                    <h3 style="color: #dc2626; margin-bottom: 1rem;">⚠️ Erro ao carregar dashboard</h3>
+                    <p style="color: #7f1d1d; margin-bottom: 1rem;">${error.message}</p>
+                    <button onclick="Dashboard.carregar()" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                        Tentar novamente
+                    </button>
+                </div>
+            `;
+        }
     }
 };
 

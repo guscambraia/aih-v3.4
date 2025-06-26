@@ -1,290 +1,189 @@
-// Sistema de Logs para Debug e Monitoramento
+// Sistema de logging centralizado e robusto
 const Logger = {
-    // Configurações
-    config: {
-        enableConsole: true,
-        enableStorage: true,
-        maxStoredLogs: 1000,
-        logLevel: 'DEBUG' // DEBUG, INFO, WARN, ERROR
-    },
+    logs: [],
+    maxLogs: 1000,
+    isInitialized: false,
 
-    // Níveis de log
-    levels: {
-        DEBUG: 0,
-        INFO: 1,
-        WARN: 2,
-        ERROR: 3
-    },
-
-    // Inicializar logger
+    // Inicializar o logger
     init() {
-        this.setupGlobalErrorHandlers();
-        this.log('INFO', 'Logger', 'Sistema de logs inicializado');
-    },
-
-    // Log principal
-    log(level, module, message, data = null) {
-        const timestamp = new Date().toISOString();
-        const logEntry = {
-            timestamp,
-            level,
-            module,
-            message,
-            data,
-            url: window.location.href,
-            userAgent: navigator.userAgent.substring(0, 100)
-        };
-
-        // Verificar se deve logar baseado no nível
-        if (this.levels[level] >= this.levels[this.config.logLevel]) {
-            // Console
-            if (this.config.enableConsole) {
-                this.logToConsole(logEntry);
-            }
-
-            // Storage local
-            if (this.config.enableStorage) {
-                this.logToStorage(logEntry);
-            }
-        }
-    },
-
-    // Log para console com cores
-    logToConsole(entry) {
-        const colors = {
-            DEBUG: 'color: #6b7280',
-            INFO: 'color: #059669',
-            WARN: 'color: #d97706',
-            ERROR: 'color: #dc2626; font-weight: bold'
-        };
-
-        const style = colors[entry.level] || '';
-        const prefix = `[${entry.timestamp.split('T')[1].split('.')[0]}] ${entry.level} [${entry.module}]`;
-
-        if (entry.data) {
-            console.log(`%c${prefix} ${entry.message}`, style, entry.data);
-        } else {
-            console.log(`%c${prefix} ${entry.message}`, style);
-        }
-    },
-
-    // Log para localStorage
-    logToStorage(entry) {
         try {
-            let logs = JSON.parse(localStorage.getItem('app_logs') || '[]');
-            logs.push(entry);
-
-            // Manter apenas os últimos N logs
-            if (logs.length > this.config.maxStoredLogs) {
-                logs = logs.slice(-this.config.maxStoredLogs);
-            }
-
-            localStorage.setItem('app_logs', JSON.stringify(logs));
-        } catch (err) {
-            console.error('Erro ao salvar log no storage:', err);
+            this.isInitialized = true;
+            this.setupGlobalErrorHandling();
+            this.info('Logger', '📝 Sistema de logging inicializado');
+            console.log('📝 Logger inicializado com sucesso');
+        } catch (error) {
+            console.error('Erro ao inicializar Logger:', error);
         }
     },
 
-    // Configurar handlers globais de erro
-    setupGlobalErrorHandlers() {
-        // Erros JavaScript não capturados
-        window.addEventListener('error', (event) => {
-            this.log('ERROR', 'Global', 'JavaScript Error', {
-                message: event.message,
-                filename: event.filename,
-                lineno: event.lineno,
-                colno: event.colno,
-                stack: event.error?.stack
-            });
-        });
-
-        // Promises rejeitadas não capturadas
-        window.addEventListener('unhandledrejection', (event) => {
-            this.log('ERROR', 'Global', 'Unhandled Promise Rejection', {
-                reason: event.reason,
-                stack: event.reason?.stack
-            });
-        });
-
-        // Interceptar chamadas de API para log
-        this.interceptFetch();
-    },
-
-    // Interceptar fetch para logar requisições
-    interceptFetch() {
-        const originalFetch = window.fetch;
-        window.fetch = async (...args) => {
-            const [url, options = {}] = args;
-            const startTime = Date.now();
-
-            this.log('DEBUG', 'API', `Requisição iniciada: ${options.method || 'GET'} ${url}`);
-
-            try {
-                const response = await originalFetch(...args);
-                const duration = Date.now() - startTime;
-
-                if (response.ok) {
-                    this.log('DEBUG', 'API', `Requisição bem-sucedida: ${response.status} ${url} (${duration}ms)`);
-                } else {
-                    this.log('WARN', 'API', `Requisição com erro: ${response.status} ${url} (${duration}ms)`);
-                }
-
-                return response;
-            } catch (error) {
-                const duration = Date.now() - startTime;
-                this.log('ERROR', 'API', `Requisição falhou: ${url} (${duration}ms)`, error);
-                throw error;
-            }
-        };
-    },
-
-    // Métodos de conveniência
-    debug(module, message, data) {
-        this.log('DEBUG', module, message, data);
-    },
-
-    info(module, message, data) {
-        this.log('INFO', module, message, data);
-    },
-
-    warn(module, message, data) {
-        this.log('WARN', module, message, data);
-    },
-
-    error(module, message, data) {
-        this.log('ERROR', module, message, data);
-    },
-
-    // Log específico para navegação
-    navigation(action, from, to, data = null) {
-        this.log('INFO', 'Navigation', `${action}: ${from} → ${to}`, data);
-    },
-
-    // Log específico para módulos
-    moduleLoad(moduleName, success = true, error = null) {
-        if (success) {
-            this.log('INFO', 'Module', `Módulo carregado: ${moduleName}`);
-        } else {
-            this.log('ERROR', 'Module', `Falha ao carregar módulo: ${moduleName}`, error);
-        }
-    },
-
-    // Exportar logs
-    exportLogs() {
-        try {
-            const logs = JSON.parse(localStorage.getItem('app_logs') || '[]');
-            const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `app_logs_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            this.log('INFO', 'Logger', 'Logs exportados com sucesso');
-        } catch (err) {
-            this.log('ERROR', 'Logger', 'Erro ao exportar logs', err);
-        }
-    },
-
-    // Limpar logs
-    clearLogs() {
-        localStorage.removeItem('app_logs');
-        this.log('INFO', 'Logger', 'Logs limpos');
-    },
-
-    // Obter estatísticas dos logs
-    getStats() {
-        try {
-            const logs = JSON.parse(localStorage.getItem('app_logs') || '[]');
-            const stats = {
-                total: logs.length,
-                byLevel: {},
-                byModule: {},
-                recent: logs.slice(-10)
-            };
-
-            logs.forEach(log => {
-                stats.byLevel[log.level] = (stats.byLevel[log.level] || 0) + 1;
-                stats.byModule[log.module] = (stats.byModule[log.module] || 0) + 1;
-            });
-
-            return stats;
-        } catch (err) {
-            this.log('ERROR', 'Logger', 'Erro ao obter estatísticas', err);
-            return null;
-        }
-    },
-
-    // Filtrar logs
-    filterLogs(filters = {}) {
-        try {
-            let logs = JSON.parse(localStorage.getItem('app_logs') || '[]');
-
-            if (filters.level) {
-                logs = logs.filter(log => log.level === filters.level);
-            }
-
-            if (filters.module) {
-                logs = logs.filter(log => log.module === filters.module);
-            }
-
-            if (filters.since) {
-                const since = new Date(filters.since);
-                logs = logs.filter(log => new Date(log.timestamp) >= since);
-            }
-
-            if (filters.search) {
-                logs = logs.filter(log => 
-                    log.message.toLowerCase().includes(filters.search.toLowerCase())
-                );
-            }
-
-            return logs;
-        } catch (err) {
-            this.log('ERROR', 'Logger', 'Erro ao filtrar logs', err);
-            return [];
-        }
-    },
-    // Método para capturar erros JavaScript globais
-    captureGlobalErrors() {
+    // Configurar captura global de erros
+    setupGlobalErrorHandling() {
+        // Capturar erros JavaScript não tratados
         window.addEventListener('error', (event) => {
             this.error('Global', 'JavaScript Error', {
                 message: event.message,
                 filename: event.filename,
                 lineno: event.lineno,
                 colno: event.colno,
-                stack: event.error?.stack
+                stack: event.error ? event.error.stack : 'N/A'
             });
         });
 
+        // Capturar promises rejeitadas
         window.addEventListener('unhandledrejection', (event) => {
-            this.error('Global', 'Unhandled Promise Rejection', {
+            this.error('Global', 'Promise Rejection', {
                 reason: event.reason,
                 promise: event.promise
             });
         });
     },
 
-    // Método para obter logs (necessário para o DebugPanel)
-    getLogs() {
-        try {
-            return this.logs.slice(); // Retorna uma cópia dos logs
-        } catch (error) {
-            console.error('Erro ao obter logs:', error);
-            return [];
+    // Adicionar log à lista
+    addLog(level, category, message, data = null) {
+        if (!this.isInitialized) {
+            console.warn('Logger não inicializado, usando console.log');
+            console.log(`[${level.toUpperCase()}] [${category}] ${message}`, data);
+            return;
+        }
+
+        const timestamp = new Date().toLocaleTimeString('pt-BR');
+        const logEntry = {
+            id: Date.now() + Math.random(),
+            timestamp,
+            level: level.toUpperCase(),
+            category,
+            message,
+            data: data ? JSON.stringify(data, null, 2) : null,
+            fullTimestamp: new Date().toISOString()
+        };
+
+        this.logs.unshift(logEntry);
+
+        // Limitar número de logs
+        if (this.logs.length > this.maxLogs) {
+            this.logs = this.logs.slice(0, this.maxLogs);
+        }
+
+        // Log no console com cores
+        this.logToConsole(level, category, message, data, timestamp);
+    },
+
+    // Log colorido no console
+    logToConsole(level, category, message, data, timestamp) {
+        const colors = {
+            debug: '#6b7280',
+            info: '#059669', 
+            warn: '#d97706',
+            error: '#dc2626; font-weight: bold'
+        };
+
+        const color = colors[level] || '#374151';
+        const prefix = `%c[${timestamp}] ${level.toUpperCase()} [${category}] ${message}`;
+
+        if (data) {
+            console.log(prefix, `color: ${color}`, data);
+        } else {
+            console.log(prefix, `color: ${color}`);
         }
     },
 
-    // Método para limpar logs
-    clearLogs() {
-        try {
-            this.logs = [];
-            console.log('Logs limpos');
-        } catch (error) {
-            console.error('Erro ao limpar logs:', error);
+    // Métodos de logging
+    debug(category, message, data = null) {
+        this.addLog('debug', category, message, data);
+    },
+
+    info(category, message, data = null) {
+        this.addLog('info', category, message, data);
+    },
+
+    warn(category, message, data = null) {
+        this.addLog('warn', category, message, data);
+    },
+
+    error(category, message, data = null) {
+        this.addLog('error', category, message, data);
+    },
+
+    // Logs específicos do sistema
+    moduleLoad(moduleName, success, error = null) {
+        if (success) {
+            this.info('Module', `✅ ${moduleName} carregado com sucesso`);
+        } else {
+            this.error('Module', `❌ Falha ao carregar ${moduleName}`, error);
         }
+    },
+
+    navigation(action, from, to) {
+        this.info('Navigation', `${action}: ${from} → ${to}`);
+    },
+
+    apiCall(method, endpoint, duration, success = true) {
+        const message = `${method} ${endpoint} (${duration}ms)`;
+        if (success) {
+            this.debug('API', `Requisição bem-sucedida: ${message}`);
+        } else {
+            this.warn('API', `Requisição falhou: ${message}`);
+        }
+    },
+
+    // Obter logs (MÉTODO NECESSÁRIO PARA DEBUG PANEL)
+    getLogs() {
+        return [...this.logs];
+    },
+
+    // Filtrar logs
+    getLogsByLevel(level) {
+        return this.logs.filter(log => log.level === level.toUpperCase());
+    },
+
+    getLogsByCategory(category) {
+        return this.logs.filter(log => log.category === category);
+    },
+
+    // Limpar logs
+    clearLogs() {
+        this.logs = [];
+        this.info('Logger', 'Logs limpos');
+    },
+
+    // Exportar logs
+    exportLogs() {
+        const logsText = this.logs.map(log => {
+            let line = `[${log.timestamp}] ${log.level} [${log.category}] ${log.message}`;
+            if (log.data) {
+                line += `\nDados: ${log.data}`;
+            }
+            return line;
+        }).join('\n\n');
+
+        const blob = new Blob([logsText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `logs-${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
+
+    // Estatísticas dos logs
+    getStats() {
+        const levels = {};
+        const categories = {};
+
+        this.logs.forEach(log => {
+            levels[log.level] = (levels[log.level] || 0) + 1;
+            categories[log.category] = (categories[log.category] || 0) + 1;
+        });
+
+        return {
+            total: this.logs.length,
+            levels,
+            categories,
+            oldestLog: this.logs[this.logs.length - 1]?.timestamp,
+            newestLog: this.logs[0]?.timestamp
+        };
     }
 };
 
