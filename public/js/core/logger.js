@@ -161,6 +161,30 @@ const Logger = {
     clearLogs() {
         this.logs = [];
         console.log('%c[Logger] Logs limpos', 'color: #10b981');
+    },
+    // Exportar logs (útil para debug)
+    exportLogs() {
+        const logsData = {
+            timestamp: new Date().toISOString(),
+            logs: this.logs,
+            stats: this.getStats()
+        };
+
+        const blob = new Blob([JSON.stringify(logsData, null, 2)], {
+            type: 'application/json'
+        });
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `aih-logs-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    },
+
+    // Obter todos os logs
+    getLogs() {
+        return this.logs;
     }
 };
 

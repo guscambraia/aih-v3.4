@@ -1,6 +1,10 @@
 
 // Módulo do Dashboard
 const Dashboard = {
+    // Inicializar dashboard
+    init() {
+        Logger.moduleLoad('Dashboard', true);
+    },
     competenciaAtual: null,
 
     // Inicializar o dashboard

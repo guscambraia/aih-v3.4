@@ -7,26 +7,38 @@ const Login = {
 
     setupEventListeners() {
         // Login normal
-        document.getElementById('formLogin').addEventListener('submit', (e) => {
-            this.handleLogin(e);
-        });
+        const formLogin = document.getElementById('formLogin');
+        if (formLogin) {
+            formLogin.addEventListener('submit', (e) => {
+                this.handleLogin(e);
+            });
+        }
 
         // Link para gerenciar usuários
-        document.getElementById('linkGerenciarUsuarios').addEventListener('click', (e) => {
-            e.preventDefault();
-            Navigation.mostrarTela('telaAdminUsuarios');
-        });
+        const linkGerenciar = document.getElementById('linkGerenciarUsuarios');
+        if (linkGerenciar) {
+            linkGerenciar.addEventListener('click', (e) => {
+                e.preventDefault();
+                Navigation.mostrarTela('telaAdminUsuarios');
+            });
+        }
 
         // Voltar para login
-        document.getElementById('linkVoltarLogin').addEventListener('click', (e) => {
-            e.preventDefault();
-            Navigation.mostrarTela('telaLogin');
-        });
+        const linkVoltar = document.getElementById('linkVoltarLogin');
+        if (linkVoltar) {
+            linkVoltar.addEventListener('click', (e) => {
+                e.preventDefault();
+                Navigation.mostrarTela('telaLogin');
+            });
+        }
 
         // Login de administrador
-        document.getElementById('formLoginAdmin').addEventListener('submit', (e) => {
-            this.handleLoginAdmin(e);
-        });
+        const formLoginAdmin = document.getElementById('formLoginAdmin');
+        if (formLoginAdmin) {
+            formLoginAdmin.addEventListener('submit', (e) => {
+                this.handleLoginAdmin(e);
+            });
+        }
     },
 
     async handleLogin(e) {

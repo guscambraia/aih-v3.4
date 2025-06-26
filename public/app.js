@@ -2276,6 +2276,20 @@ const verificarTokenValido = async () => {
 
 // Inicializar aplicação quando DOM estiver carregado
 document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar módulos principais
+    if (window.Logger && typeof window.Logger.init === 'function') {
+            Logger.init();
+        }
+    if (window.AppState && typeof window.AppState.init === 'function') {
+            AppState.init();
+        }
+    if (window.Navigation && typeof window.Navigation.init === 'function') {
+            Navigation.init();
+        }
+    if (window.Dashboard && typeof window.Dashboard.init === 'function') {
+            Dashboard.init();
+        }
+
     try {
         console.log('🚀 Inicializando aplicação...');
 
