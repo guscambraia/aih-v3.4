@@ -45,8 +45,10 @@ const voltarTelaPrincipal = () => {
     mostrarTela('telaPrincipal');
     // Aguardar renderização e carregar dashboard
     setTimeout(() => {
-        if (window.Dashboard && window.Dashboard.carregar) {
+        if (window.Dashboard && typeof window.Dashboard.carregar === 'function') {
             window.Dashboard.carregar();
+        } else {
+            carregarDashboard();
         }
     }, 100);
 };
@@ -147,13 +149,21 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
         localStorage.setItem('token', result.token);
         localStorage.setItem('userType', 'user');
 
-        document.getElementById('nomeUsuario').textContent = result.usuario.nome;
-        mostrarTela('telaPrincipal');
-        if (window.Dashboard && window.Dashboard.carregar) {
-            window.Dashboard.carregar();
-        } else {
-            carregarDashboard();
+        const nomeUsuarioElement = document.getElementById('nomeUsuario');
+        if (nomeUsuarioElement) {
+            nomeUsuarioElement.textContent = result.usuario.nome;
         }
+        
+        mostrarTela('telaPrincipal');
+        
+        // Aguardar um pouco mais para garantir que a tela foi renderizada
+        setTimeout(() => {
+            if (window.Dashboard && typeof window.Dashboard.carregar === 'function') {
+                window.Dashboard.carregar();
+            } else {
+                carregarDashboard();
+            }
+        }, 200);
     } catch (err) {
         alert('Erro no login: ' + err.message);
     }
@@ -2235,33 +2245,84 @@ const garantirCampoAtendimento = () => {
     }
 };
 
-// Inicializar módulos quando DOM estiver carregado
+// Verificar token existente na inicialização
+const verificarTokenInicial = () => {
+    const token = localStorage.getItem('token');
+    const userType = localStorage.getItem('userType');
+    
+    if (token) {
+        state.token = token;
+        
+        if (userType === 'admin') {
+            // Se é admin, ir direto para gestão de usuários
+            mostrarTela('telaGestaoUsuarios');
+            carregarUsuarios();
+        } else {
+            // Se é usuário normal, verificar se token ainda é válido
+            verificarTokenValido()
+                .then(() => {
+                    // Token válido, ir para dashboard
+                    mostrarTela('telaPrincipal');
+                    carregarDashboard();
+                })
+                .catch(() => {
+                    // Token inválido, limpar e ir para login
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userType');
+                    state.token = null;
+                    mostrarTela('telaLogin');
+                });
+        }
+    } else {
+        mostrarTela('telaLogin');
+    }
+};
+
+// Função para verificar se token ainda é válido
+const verificarTokenValido = async () => {
+    try {
+        await api('/dashboard?competencia=' + getCompetenciaAtual());
+        return true;
+    } catch (err) {
+        throw err;
+    }
+};
+
+// Inicializar aplicação quando DOM estiver carregado
 document.addEventListener('DOMContentLoaded', () => {
-    // Aguardar todos os scripts carregarem
+    console.log('🚀 Inicializando aplicação...');
+    
+    // Aguardar scripts carregarem e inicializar módulos
     setTimeout(() => {
         // Inicializar módulos disponíveis
-        if (window.Login && typeof window.Login.init === 'function') {
-            window.Login.init();
-        }
         if (window.Dashboard && typeof window.Dashboard.init === 'function') {
             window.Dashboard.init();
-        }
-        if (window.AIHManagement && typeof window.AIHManagement.init === 'function') {
-            window.AIHManagement.init();
+            console.log('✅ Dashboard inicializado');
         }
         if (window.Movements && typeof window.Movements.init === 'function') {
             window.Movements.init();
+            console.log('✅ Movements inicializado');
+        }
+        if (window.AIHManagement && typeof window.AIHManagement.init === 'function') {
+            window.AIHManagement.init();
+            console.log('✅ AIH Management inicializado');
         }
         if (window.Glosas && typeof window.Glosas.init === 'function') {
             window.Glosas.init();
+            console.log('✅ Glosas inicializado');
         }
         if (window.Search && typeof window.Search.init === 'function') {
             window.Search.init();
+            console.log('✅ Search inicializado');
         }
         if (window.Reports && typeof window.Reports.init === 'function') {
             window.Reports.init();
+            console.log('✅ Reports inicializado');
         }
 
-        console.log('✅ Módulos disponíveis inicializados');
-    }, 100);
+        // Verificar token e inicializar aplicação
+        verificarTokenInicial();
+        
+        console.log('✅ Aplicação inicializada com sucesso');
+    }, 200);
 });

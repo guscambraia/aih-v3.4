@@ -63,16 +63,19 @@ const Movements = {
     async carregarProximaMovimentacao() {
         try {
             if (AppState.aihAtual) {
-                const proximaMovResult = await api(`/aih/${AppState.aihAtual.id}/proxima-movimentacao`);
+                const proximaMovResult = await API.call(`/aih/${AppState.aihAtual.id}/proxima-movimentacao`);
 
                 // Mostrar informações sobre próxima movimentação
-                document.getElementById('infoProximaMovimentacao').innerHTML = `
-                    <div style="background: #e0f2fe; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                        <h4>📝 Próxima Movimentação</h4>
-                        <p><strong>Tipo:</strong> ${proximaMovResult.descricao}</p>
-                        <p><strong>Explicação:</strong> ${proximaMovResult.explicacao}</p>
-                    </div>
-                `;
+                const infoContainer = document.getElementById('infoProximaMovimentacao');
+                if (infoContainer) {
+                    infoContainer.innerHTML = `
+                        <div style="background: #e0f2fe; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                            <h4>📝 Próxima Movimentação</h4>
+                            <p><strong>Tipo:</strong> ${proximaMovResult.descricao}</p>
+                            <p><strong>Explicação:</strong> ${proximaMovResult.explicacao}</p>
+                        </div>
+                    `;
+                }
 
                 // Definir tipo automaticamente
                 AppState.setProximoTipoMovimentacao(proximaMovResult.tipo);
@@ -84,16 +87,16 @@ const Movements = {
 
     async carregarProfissionais() {
         try {
-            const response = await api('/profissionais');
+            const response = await API.call('/profissionais');
 
             // Preencher selects de profissionais
-            const selects = ['movMedicina', 'movEnfermagem', 'movFisioterapia', 'movBucomaxilo'];
+            const selects = ['movProfMedicina', 'movProfEnfermagem', 'movProfFisioterapia', 'movProfBucomaxilo'];
 
             selects.forEach(selectId => {
                 const select = document.getElementById(selectId);
                 if (select) {
                     select.innerHTML = '<option value="">Selecione...</option>';
-                    response.forEach(prof => {
+                    response.profissionais.forEach(prof => {
                         const option = document.createElement('option');
                         option.value = prof.nome;
                         option.textContent = prof.nome;
@@ -120,10 +123,10 @@ const Movements = {
 
         // Sugerir os mesmos profissionais da última movimentação
         const campos = [
-            { campo: 'movMedicina', valor: ultimaMovimentacao.prof_medicina },
-            { campo: 'movEnfermagem', valor: ultimaMovimentacao.prof_enfermagem },
-            { campo: 'movFisioterapia', valor: ultimaMovimentacao.prof_fisioterapia },
-            { campo: 'movBucomaxilo', valor: ultimaMovimentacao.prof_bucomaxilo }
+            { campo: 'movProfMedicina', valor: ultimaMovimentacao.prof_medicina },
+            { campo: 'movProfEnfermagem', valor: ultimaMovimentacao.prof_enfermagem },
+            { campo: 'movProfFisioterapia', valor: ultimaMovimentacao.prof_fisioterapia },
+            { campo: 'movProfBucomaxilo', valor: ultimaMovimentacao.prof_bucomaxilo }
         ];
 
         campos.forEach(({ campo, valor }) => {
@@ -136,7 +139,7 @@ const Movements = {
 
     async carregarGlosas() {
         try {
-            const response = await api(`/aih/${AppState.aihAtual.id}/glosas`);
+            const response = await API.call(`/aih/${AppState.aihAtual.id}/glosas`);
             this.exibirGlosas(response.glosas);
             AppState.setGlosasPendentes(response.glosas);
         } catch (err) {
@@ -235,7 +238,7 @@ const Movements = {
             };
 
             // Salvar movimentação
-            await api(`/aih/${AppState.aihAtual.id}/movimentacao`, {
+            await API.call(`/aih/${AppState.aihAtual.id}/movimentacao`, {
                 method: 'POST',
                 body: JSON.stringify(dados)
             });
@@ -243,7 +246,7 @@ const Movements = {
             alert('Movimentação salva com sucesso!');
 
              // Recarregar AIH
-             const aih = await api(`/aih/${AppState.aihAtual.numero_aih}`);
+             const aih = await API.call(`/aih/${AppState.aihAtual.numero_aih}`);
              AppState.setAihAtual(aih);
 
             // Voltar para informações da AIH
