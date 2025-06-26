@@ -1,24 +1,30 @@
-
 const Movements = {
     init() {
         this.setupEventListeners();
+        console.log('✅ Movements inicializado');
     },
 
     setupEventListeners() {
-        // Salvar movimentação
-        document.getElementById('btnSalvarMovimentacao').addEventListener('click', () => {
-            this.salvarMovimentacao();
-        });
+        const btnNovaMovimentacao = document.getElementById('btnNovaMovimentacao');
+        if (btnNovaMovimentacao) {
+            btnNovaMovimentacao.addEventListener('click', () => {
+                Navigation.irParaMovimentacao();
+            });
+        }
 
-        // Voltar da movimentação
-        document.getElementById('btnVoltarMovimentacao').addEventListener('click', () => {
-            Navigation.voltarTelaAnterior();
-        });
+        const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
+        if (btnGerenciarGlosas) {
+            btnGerenciarGlosas.addEventListener('click', () => {
+                AppState.setTelaAnterior('telaMovimentacao');
+                Navigation.mostrarTela('telaPendencias');
 
-        // Gerenciar glosas
-        document.getElementById('btnGerenciarGlosas').addEventListener('click', () => {
-            Navigation.irParaPendencias();
-        });
+                setTimeout(() => {
+                    if (window.Glosas && window.Glosas.carregar) {
+                        window.Glosas.carregar();
+                    }
+                }, 100);
+            });
+        }
     },
 
     async carregarDados() {
@@ -31,16 +37,16 @@ const Movements = {
         try {
             // Carregar próxima movimentação
             await this.carregarProximaMovimentacao();
-            
+
             // Carregar profissionais
             await this.carregarProfissionais();
-            
+
             // Carregar glosas
             await this.carregarGlosas();
-            
+
             // Preencher dados iniciais
             this.preencherDadosIniciais();
-            
+
         } catch (err) {
             console.error('Erro ao carregar dados da movimentação:', err);
             alert('Erro ao carregar dados: ' + err.message);
@@ -49,20 +55,21 @@ const Movements = {
 
     async carregarProximaMovimentacao() {
         try {
-            const response = await ApiService.get(`/aih/${AppState.aihAtual.id}/proxima-movimentacao`);
-            
-            // Mostrar informações sobre próxima movimentação
-            document.getElementById('infoProximaMovimentacao').innerHTML = `
-                <div style="background: #e0f2fe; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <h4>📝 Próxima Movimentação</h4>
-                    <p><strong>Tipo:</strong> ${response.descricao}</p>
-                    <p><strong>Explicação:</strong> ${response.explicacao}</p>
-                </div>
-            `;
-
-            // Definir tipo automaticamente
-            AppState.setProximoTipoMovimentacao(response.tipo);
-            
+            if (AppState.aihAtual) {
+                const proximaMovResult = await api(`/aih/${AppState.aihAtual.id}/proxima-movimentacao`);
+    
+                // Mostrar informações sobre próxima movimentação
+                document.getElementById('infoProximaMovimentacao').innerHTML = `
+                    <div style="background: #e0f2fe; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <h4>📝 Próxima Movimentação</h4>
+                        <p><strong>Tipo:</strong> ${proximaMovResult.descricao}</p>
+                        <p><strong>Explicação:</strong> ${proximaMovResult.explicacao}</p>
+                    </div>
+                `;
+    
+                // Definir tipo automaticamente
+                AppState.setProximoTipoMovimentacao(proximaMovResult.tipo);
+            }
         } catch (err) {
             console.error('Erro ao carregar próxima movimentação:', err);
         }
@@ -70,16 +77,16 @@ const Movements = {
 
     async carregarProfissionais() {
         try {
-            const profissionais = await ApiService.carregarProfissionais();
-            
+            const response = await api('/profissionais');
+
             // Preencher selects de profissionais
             const selects = ['movMedicina', 'movEnfermagem', 'movFisioterapia', 'movBucomaxilo'];
-            
+
             selects.forEach(selectId => {
                 const select = document.getElementById(selectId);
                 if (select) {
                     select.innerHTML = '<option value="">Selecione...</option>';
-                    profissionais.forEach(prof => {
+                    response.forEach(prof => {
                         const option = document.createElement('option');
                         option.value = prof.nome;
                         option.textContent = prof.nome;
@@ -90,7 +97,7 @@ const Movements = {
 
             // Pré-selecionar profissionais baseado na última movimentação
             this.preencherProfissionaisSugeridos();
-            
+
         } catch (err) {
             console.error('Erro ao carregar profissionais:', err);
         }
@@ -122,7 +129,7 @@ const Movements = {
 
     async carregarGlosas() {
         try {
-            const response = await ApiService.carregarGlosas(AppState.aihAtual.id);
+            const response = await api(`/aih/${AppState.aihAtual.id}/glosas`);
             this.exibirGlosas(response.glosas);
             AppState.setGlosasPendentes(response.glosas);
         } catch (err) {
@@ -133,7 +140,7 @@ const Movements = {
 
     exibirGlosas(glosas) {
         const container = document.getElementById('glosasPendentesContainer');
-        
+
         if (!glosas || glosas.length === 0) {
             container.innerHTML = `
                 <div style="text-align: center; color: #64748b; padding: 2rem;">
@@ -221,13 +228,16 @@ const Movements = {
             };
 
             // Salvar movimentação
-            await ApiService.criarMovimentacao(AppState.aihAtual.id, dados);
+            await api(`/aih/${AppState.aihAtual.id}/movimentacao`, {
+                method: 'POST',
+                body: JSON.stringify(dados)
+            });
 
             alert('Movimentação salva com sucesso!');
 
-            // Recarregar AIH atualizada
-            const aihAtualizada = await ApiService.buscarAIH(AppState.aihAtual.numero_aih);
-            AppState.setAihAtual(aihAtualizada);
+             // Recarregar AIH
+             const aih = await api(`/aih/${AppState.aihAtual.numero_aih}`);
+             AppState.setAihAtual(aih);
 
             // Voltar para informações da AIH
             Navigation.voltarTelaAnterior();

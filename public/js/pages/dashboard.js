@@ -14,7 +14,7 @@ const Dashboard = {
             const competencia = competenciaSelecionada || this.getCompetenciaAtual();
 
             // Buscar dados do dashboard com a competência
-            const dados = await API.call(`/dashboard?competencia=${competencia}`);
+            const dados = await api(`/dashboard?competencia=${competencia}`);
 
             this.criarSeletorCompetencia(dados, competencia);
             this.atualizarCards(dados, competencia);
