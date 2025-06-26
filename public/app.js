@@ -315,7 +315,7 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
         const competencia = competenciaSelecionada || getCompetenciaAtual();
 
         // Buscar dados do dashboard com a competência
-        const dados = await api(`/dashboard?competencia=${competencia}`);
+        const dados = await ApiService.get('/dashboard', { competencia });
 
         // Criar/atualizar seletor de competência
         let seletorContainer = document.querySelector('.seletor-competencia-container');
@@ -2290,39 +2290,58 @@ const verificarTokenValido = async () => {
 
 // Inicializar aplicação quando DOM estiver carregado
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Inicializando aplicação...');
+    // Inicializar Logger primeiro
+    if (window.Logger) {
+        Logger.init();
+        Logger.info('App', '🚀 Inicializando aplicação...');
+    } else {
+        console.log('🚀 Inicializando aplicação... (Logger não disponível)');
+    }
     
     // Aguardar scripts carregarem e inicializar módulos
     setTimeout(() => {
-        // Inicializar módulos disponíveis
-        if (window.Dashboard && typeof window.Dashboard.init === 'function') {
-            window.Dashboard.init();
-            console.log('✅ Dashboard inicializado');
+        // Inicializar módulos core primeiro
+        if (window.AppState && typeof window.AppState.init === 'function') {
+            window.AppState.init();
+            Logger.moduleLoad('AppState', true);
         }
-        if (window.Movements && typeof window.Movements.init === 'function') {
-            window.Movements.init();
-            console.log('✅ Movements inicializado');
+        
+        if (window.Navigation && typeof window.Navigation.init === 'function') {
+            window.Navigation.init();
         }
-        if (window.AIHManagement && typeof window.AIHManagement.init === 'function') {
-            window.AIHManagement.init();
-            console.log('✅ AIH Management inicializado');
-        }
-        if (window.Glosas && typeof window.Glosas.init === 'function') {
-            window.Glosas.init();
-            console.log('✅ Glosas inicializado');
-        }
-        if (window.Search && typeof window.Search.init === 'function') {
-            window.Search.init();
-            console.log('✅ Search inicializado');
-        }
-        if (window.Reports && typeof window.Reports.init === 'function') {
-            window.Reports.init();
-            console.log('✅ Reports inicializado');
+
+        // Inicializar módulos de páginas
+        const modulos = [
+            { nome: 'Dashboard', objeto: window.Dashboard },
+            { nome: 'Movements', objeto: window.Movements },
+            { nome: 'AIHManagement', objeto: window.AIHManagement },
+            { nome: 'Glosas', objeto: window.Glosas },
+            { nome: 'Search', objeto: window.Search },
+            { nome: 'Reports', objeto: window.Reports }
+        ];
+
+        modulos.forEach(({ nome, objeto }) => {
+            if (objeto && typeof objeto.init === 'function') {
+                try {
+                    objeto.init();
+                    Logger.moduleLoad(nome, true);
+                } catch (error) {
+                    Logger.moduleLoad(nome, false, error);
+                }
+            } else {
+                Logger.warn('App', `Módulo ${nome} não disponível ou sem método init`);
+            }
+        });
+
+        // Inicializar Debug Panel
+        if (window.DebugPanel) {
+            DebugPanel.init();
         }
 
         // Verificar token e inicializar aplicação
         verificarTokenInicial();
         
-        console.log('✅ Aplicação inicializada com sucesso');
+        Logger.info('App', '✅ Aplicação inicializada');
+        Logger.info('App', '💡 Pressione Ctrl+Shift+D para abrir o painel de debug');
     }, 200);
 });

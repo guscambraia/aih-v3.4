@@ -1,29 +1,49 @@
-
 const Dashboard = {
-    // Inicializar módulo
     init() {
-        console.log('✅ Dashboard inicializado');
-        // Não precisa fazer nada específico na inicialização
-        // O carregamento será feito quando necessário
+        try {
+            this.setupEventListeners();
+            Logger.moduleLoad('Dashboard', true);
+        } catch (error) {
+            Logger.moduleLoad('Dashboard', false, error);
+        }
     },
 
-    // Carregar dashboard
-    async carregar(competenciaSelecionada = null) {
+    setupEventListeners() {
         try {
-            // Se não foi passada competência, usar a atual
+            Logger.debug('Dashboard', 'Configurando event listeners');
+            // Event listeners específicos do dashboard podem ser adicionados aqui
+            Logger.debug('Dashboard', 'Event listeners configurados');
+        } catch (error) {
+            Logger.error('Dashboard', 'Erro ao configurar event listeners', error);
+        }
+    },
+
+    async carregar(competenciaSelecionada = null) {
+        Logger.info('Dashboard', 'Iniciando carregamento do dashboard');
+
+        try {
             const competencia = competenciaSelecionada || this.getCompetenciaAtual();
+            Logger.debug('Dashboard', `Carregando dados para competência: ${competencia}`);
+
+            // Verificar se ApiService está disponível
+            if (!window.ApiService) {
+                throw new Error('ApiService não está disponível');
+            }
 
             // Buscar dados do dashboard com a competência
-            const dados = await API.call(`/dashboard?competencia=${competencia}`);
+            const dados = await ApiService.get('/dashboard', { competencia });
+            Logger.debug('Dashboard', 'Dados recebidos da API', dados);
 
             this.criarSeletorCompetencia(dados, competencia);
             this.atualizarCards(dados, competencia);
             this.criarResumoFinanceiro(dados, competencia);
             this.animarNumeros();
 
+            Logger.info('Dashboard', 'Dashboard carregado com sucesso');
+
         } catch (err) {
-            console.error('Erro ao carregar dashboard:', err);
-            this.mostrarErro();
+            Logger.error('Dashboard', 'Erro ao carregar dashboard', err);
+            this.mostrarErroDashboard(err);
         }
     },
 
@@ -159,10 +179,10 @@ const Dashboard = {
         });
     },
 
-    mostrarErro() {
+    mostrarErroDashboard(erro) {
         document.querySelector('.dashboard').innerHTML = `
             <div class="erro-dashboard">
-                <p>⚠️ Erro ao carregar dados do dashboard</p>
+                <p>⚠️ Erro ao carregar dados do dashboard: ${erro}</p>
                 <button onclick="Dashboard.carregar()">Tentar novamente</button>
             </div>
         `;

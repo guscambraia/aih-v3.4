@@ -3,6 +3,11 @@
 const ApiService = {
     // Função principal de requisição
     async request(endpoint, options = {}) {
+        const method = options.method || 'GET';
+        const startTime = Date.now();
+        
+        Logger.debug('API', `Iniciando requisição: ${method} ${endpoint}`);
+        
         const config = {
             ...options,
             headers: {
@@ -14,15 +19,28 @@ const ApiService = {
 
         try {
             const response = await fetch(`/api${endpoint}`, config);
-            const data = await response.json();
-
+            const duration = Date.now() - startTime;
+            
             if (!response.ok) {
-                throw new Error(data.error || 'Erro na requisição');
+                Logger.warn('API', `Resposta não OK: ${response.status} ${method} ${endpoint} (${duration}ms)`);
+                
+                let errorData;
+                try {
+                    errorData = await response.json();
+                } catch {
+                    errorData = { error: `HTTP ${response.status}` };
+                }
+                
+                throw new Error(errorData.error || `Erro ${response.status}`);
             }
 
+            const data = await response.json();
+            Logger.debug('API', `Requisição bem-sucedida: ${method} ${endpoint} (${duration}ms)`);
+            
             return data;
         } catch (err) {
-            console.error('Erro API:', err);
+            const duration = Date.now() - startTime;
+            Logger.error('API', `Erro na requisição: ${method} ${endpoint} (${duration}ms)`, err);
             throw err;
         }
     },
