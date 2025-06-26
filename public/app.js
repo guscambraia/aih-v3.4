@@ -12,7 +12,7 @@ const api = async (endpoint, options = {}) => {
     const config = {
         ...options,
         headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': application/json',
             ...(state.token && { 'Authorization': `Bearer ${state.token}` }),
             ...options.headers
         }
@@ -790,7 +790,7 @@ const carregarDadosMovimentacao = async () => {
                         </span>
                         <p style="color: #6b7280; margin-top: 0.5rem; font-size: 0.875rem;">
                             Competência: ${state.aihAtual.competencia} | Valor: R$ ${state.aihAtual.valor_atual.toFixed(2)}
-                        </p>
+                                                </p>
                     </div>                    `;
             }
         }
@@ -1316,7 +1316,7 @@ document.getElementById('formPesquisa').addEventListener('submit', async (e) => 
                                 transition: all 0.3s; cursor: pointer; border: 2px solid transparent;"
                          onmouseover="this.style.borderColor='#6366f1'; this.style.transform='translateY(-2px)'"
                          onmouseout="this.style.borderColor='transparent'; this.style.transform='translateY(0)'"
-                         onclick="abrirAIH('${r.numero_aih}')">
+                         onclick="abrirAIH('${r.numero_aih}')"">
                         <div>
                             <h4 style="color: #1e293b; margin-bottom: 0.5rem;">AIH ${r.numero_aih}</h4>
                             <div style="display: flex; gap: 2rem; color: #64748b; font-size: 0.875rem;">

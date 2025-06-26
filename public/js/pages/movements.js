@@ -27,25 +27,28 @@ const Movements = {
                 Logger.warn('Movements', 'Botão btnNovaMovimentacao não encontrado');
             }
 
-        const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
-        if (btnGerenciarGlosas) {
-            btnGerenciarGlosas.addEventListener('click', () => {
-                AppState.setTelaAnterior('telaMovimentacao');
-                Navigation.mostrarTela('telaPendencias');
+            const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
+            if (btnGerenciarGlosas) {
+                btnGerenciarGlosas.addEventListener('click', () => {
+                    AppState.setTelaAnterior('telaMovimentacao');
+                    Navigation.mostrarTela('telaPendencias');
 
-                setTimeout(() => {
-                    if (window.Glosas && window.Glosas.carregar) {
-                        window.Glosas.carregar();
-                    }
-                }, 100);
-            });
-        }
+                    setTimeout(() => {
+                        if (window.Glosas && window.Glosas.carregar) {
+                            window.Glosas.carregar();
+                        }
+                    }, 100);
+                });
+            }
 
-        const formMovimentacao = document.getElementById('formMovimentacao');
-        if (formMovimentacao) {
-            formMovimentacao.addEventListener('submit', (e) => {
-                this.salvarMovimentacao(e);
-            });
+            const formMovimentacao = document.getElementById('formMovimentacao');
+            if (formMovimentacao) {
+                formMovimentacao.addEventListener('submit', (e) => {
+                    this.salvarMovimentacao(e);
+                });
+            }
+        } catch (error) {
+            Logger.error('Movements', 'Erro ao configurar event listeners', error);
         }
     },
 

@@ -131,6 +131,11 @@ const Logger = {
         return [...this.logs];
     },
 
+    // Método de compatibilidade para debug panel
+    getRecentLogs(limit = 50) {
+        return this.logs.slice(0, limit);
+    },
+
     // Filtrar logs
     getLogsByLevel(level) {
         return this.logs.filter(log => log.level === level.toUpperCase());
