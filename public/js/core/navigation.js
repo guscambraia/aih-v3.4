@@ -205,53 +205,43 @@ const Navigation = {
         return this.mostrarTela('telaMovimentacao');
     },
 
-    // Voltar para tela principal (dashboard)
-    voltarTelaPrincipal() {
-        this.mostrarTela('telaPrincipal');
-        // Aguardar renderização e carregar dashboard
-        setTimeout(() => {
-            if (window.Dashboard && window.Dashboard.carregar) {
-                window.Dashboard.carregar();
-            }
-        }, 100);
-    },
-
-    // Voltar para tela anterior
+    // Voltar para tela anterior (corrigido)
     voltarTelaAnterior() {
+        const telaAtual = this.obterTelaAtual();
+        Logger.debug('Navigation', `Tentando voltar da tela atual: ${telaAtual}`);
+
         try {
             if (AppState.telaAnterior) {
-                this.mostrarTela(AppState.telaAnterior);
+                Logger.info('Navigation', `Voltando para tela anterior: ${AppState.telaAnterior}`);
+                const telaDestino = AppState.telaAnterior;
+                
+                // Limpar tela anterior para evitar loops
+                AppState.setTelaAnterior(null);
+                
+                this.mostrarTela(telaDestino);
 
-                // Lógica específica baseada na tela anterior
-                if (AppState.telaAnterior === 'telaMovimentacao') {
-                    // Recarregar dados de movimentação
+                // Lógica específica baseada na tela de destino
+                if (telaDestino === 'telaMovimentacao') {
                     setTimeout(() => {
-                        if (window.Movimentacao && window.Movimentacao.carregarDados) {
-                            window.Movimentacao.carregarDados();
+                        if (window.Movements && window.Movements.carregarDados) {
+                            window.Movements.carregarDados();
+                        } else if (typeof carregarDadosMovimentacao === 'function') {
+                            carregarDadosMovimentacao();
                         }
                     }, 100);
-                } else if (AppState.telaAnterior === 'telaInfoAIH' && AppState.aihAtual) {
-                    // Recarregar AIH atualizada
-                    ApiService.buscarAIH(AppState.aihAtual.numero_aih)
-                        .then(aih => {
-                            AppState.setAihAtual(aih);
-                            if (window.InfoAIH && window.InfoAIH.mostrar) {
-                                window.InfoAIH.mostrar(aih);
-                            }
-                        })
-                        .catch(err => {
-                            console.error('Erro ao recarregar AIH:', err);
-                            this.mostrarTela(AppState.telaAnterior);
-                        });
+                } else if (telaDestino === 'telaPrincipal') {
+                    setTimeout(() => {
+                        if (window.Dashboard && window.Dashboard.carregar) {
+                            window.Dashboard.carregar();
+                        }
+                    }, 100);
                 }
             } else {
-                // Se não há tela anterior, voltar ao dashboard
-                console.log('Nenhuma tela anterior definida, voltando ao dashboard');
+                Logger.warn('Navigation', 'Nenhuma tela anterior definida, voltando ao dashboard');
                 this.voltarTelaPrincipal();
             }
         } catch (error) {
-            console.error('Erro ao voltar para tela anterior:', error);
-            // Fallback: sempre tentar voltar ao dashboard
+            Logger.error('Navigation', 'Erro ao voltar para tela anterior', error);
             this.voltarTelaPrincipal();
         }
     },

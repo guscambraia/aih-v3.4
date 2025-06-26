@@ -1,4 +1,3 @@
-
 // Sistema de Logs para Debug e Monitoramento
 const Logger = {
     // Configurações
@@ -61,7 +60,7 @@ const Logger = {
 
         const style = colors[entry.level] || '';
         const prefix = `[${entry.timestamp.split('T')[1].split('.')[0]}] ${entry.level} [${entry.module}]`;
-        
+
         if (entry.data) {
             console.log(`%c${prefix} ${entry.message}`, style, entry.data);
         } else {
@@ -247,6 +246,36 @@ const Logger = {
             this.log('ERROR', 'Logger', 'Erro ao filtrar logs', err);
             return [];
         }
+    },
+    // Captura de erros globais
+    captureGlobalErrors() {
+        window.addEventListener('error', (event) => {
+            this.error('Global', 'JavaScript Error', {
+                message: event.message,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+                stack: event.error?.stack
+            });
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            this.error('Global', 'Unhandled Promise Rejection', {
+                reason: event.reason,
+                promise: event.promise
+            });
+        });
+    },
+
+    // Método para obter logs (usado pelo debug panel)
+    getLogs() {
+        return this.logs.slice(); // Retorna uma cópia dos logs
+    },
+
+    // Método para limpar logs
+    clearLogs() {
+        this.logs = [];
+        console.log('%c[Logger] Logs limpos', 'color: #059669');
     }
 };
 

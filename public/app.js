@@ -41,60 +41,38 @@ const mostrarTela = (telaId) => {
     document.getElementById(telaId).classList.add('ativa');
 };
 
-const voltarTelaPrincipal = () => {
-    mostrarTela('telaPrincipal');
-    // Aguardar renderização e carregar dashboard
-    setTimeout(() => {
-        if (window.Dashboard && typeof window.Dashboard.carregar === 'function') {
-            window.Dashboard.carregar();
-        } else {
-            carregarDashboard();
-        }
-    }, 100);
-};
-
-const voltarTelaAnterior = () => {
-    try {
-        if (state.telaAnterior) {
-            mostrarTela(state.telaAnterior);
-
-            // Se voltando para tela de movimentação, recarregar dados para atualizar glosas
-            if (state.telaAnterior === 'telaMovimentacao') {
-                // Usar setTimeout para garantir que a tela foi renderizada
-                setTimeout(() => {
-                    carregarDadosMovimentacao();
-                }, 100);
-            }
-            // Se voltando para tela de informações AIH, recarregar AIH atualizada
-            else if (state.telaAnterior === 'telaInfoAIH' && state.aihAtual) {
-                api(`/aih/${state.aihAtual.numero_aih}`)
-                    .then(aih => {
-                        state.aihAtual = aih;
-                        mostrarInfoAIH(aih);
-                    })
-                    .catch(err => {
-                        console.error('Erro ao recarregar AIH:', err);
-                        // Se der erro, pelo menos mostrar a tela anterior
-                        mostrarTela(state.telaAnterior);
-                    });
-            }
-        } else {
-            // Se não há tela anterior, voltar ao dashboard
-            console.log('Nenhuma tela anterior definida, voltando ao dashboard');
-            mostrarTela('telaPrincipal');
+// Função global de fallback para voltar à tela principal
+function voltarTelaPrincipal() {
+    Logger.debug('App', 'Função global voltarTelaPrincipal chamada');
+    if (window.Navigation) {
+        Navigation.voltarTelaPrincipal();
+    } else {
+        Logger.warn('App', 'Navigation não disponível, usando fallback');
+        mostrarTela('telaPrincipal');
+        setTimeout(() => {
             if (window.Dashboard && window.Dashboard.carregar) {
                 window.Dashboard.carregar();
-            } else {
+            } else if (typeof carregarDashboard === 'function') {
                 carregarDashboard();
             }
-        }
-    } catch (error) {
-        console.error('Erro ao voltar para tela anterior:', error);
-        // Fallback: sempre tentar voltar ao dashboard
-        mostrarTela('telaPrincipal');
-        carregarDashboard();
+        }, 100);
     }
-};
+}
+
+// Função global de fallback para voltar à tela anterior
+function voltarTelaAnterior() {
+    Logger.debug('App', 'Função global voltarTelaAnterior chamada');
+    if (window.Navigation) {
+        Navigation.voltarTelaAnterior();
+    } else {
+        Logger.warn('App', 'Navigation não disponível, usando fallback');
+        if (AppState && AppState.telaAnterior) {
+            mostrarTela(AppState.telaAnterior);
+        } else {
+            voltarTelaPrincipal();
+        }
+    }
+}
 
 // Modal
 const mostrarModal = (titulo, mensagem) => {
@@ -153,9 +131,9 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
         if (nomeUsuarioElement) {
             nomeUsuarioElement.textContent = result.usuario.nome;
         }
-        
+
         mostrarTela('telaPrincipal');
-        
+
         // Aguardar um pouco mais para garantir que a tela foi renderizada
         setTimeout(() => {
             if (window.Dashboard && typeof window.Dashboard.carregar === 'function') {
@@ -1509,7 +1487,7 @@ document.getElementById('formNovoProfissional').addEventListener('submit', async
     } catch (err) {
         alert('Erro ao adicionar profissional: ' + err.message);
     }
-});
+};
 
 // Configurações - Tipos de Glosa
 const carregarTiposGlosaConfig = async () => {
@@ -2249,10 +2227,10 @@ const garantirCampoAtendimento = () => {
 const verificarTokenInicial = () => {
     const token = localStorage.getItem('token');
     const userType = localStorage.getItem('userType');
-    
+
     if (token) {
         state.token = token;
-        
+
         if (userType === 'admin') {
             // Se é admin, ir direto para gestão de usuários
             mostrarTela('telaGestaoUsuarios');
@@ -2298,7 +2276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             console.log('🚀 Inicializando aplicação... (Logger não disponível)');
         }
-        
+
         // Aguardar scripts carregarem e inicializar módulos
         setTimeout(() => {
             inicializarModulos();
@@ -2372,14 +2350,14 @@ function inicializarModulos() {
 
         // Verificar token e inicializar aplicação
         verificarTokenInicial();
-        
+
         Logger.info('App', '✅ Aplicação inicializada com sucesso');
         Logger.info('App', '💡 Pressione Ctrl+Shift+D para abrir o painel de debug');
-        
+
         // Log de estatísticas dos módulos
         const stats = gerarEstatisticasModulos();
         Logger.info('App', 'Estatísticas de inicialização', stats);
-        
+
     } catch (error) {
         Logger.error('App', 'Erro fatal na inicialização dos módulos', error);
         console.error('Erro fatal na inicialização dos módulos:', error);
@@ -2392,14 +2370,119 @@ function gerarEstatisticasModulos() {
         'Logger', 'AppState', 'Navigation', 'ApiService', 'Modal',
         'Dashboard', 'Movements', 'AIHManagement', 'Glosas', 'Search', 'Reports', 'DebugPanel'
     ];
-    
+
     const carregados = modulos.filter(nome => window[nome]).length;
     const comInit = modulos.filter(nome => window[nome] && typeof window[nome].init === 'function').length;
-    
+
     return {
         total: modulos.length,
         carregados,
         comInit,
         percentual: Math.round((carregados / modulos.length) * 100)
     };
+}
+
+// Inicialização da aplicação
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        console.log('🚀 Iniciando aplicação AIH...');
+
+        // Inicializar módulos core primeiro
+        if (window.Logger) {
+            Logger.init();
+            Logger.info('App', 'Logger inicializado');
+        }
+
+        if (window.AppState) {
+            AppState.init();
+            Logger.info('App', 'AppState inicializado');
+        }
+
+        if (window.API) {
+            API.init();
+            Logger.info('App', 'API inicializada');
+        }
+
+        if (window.Modal) {
+            Modal.init();
+            Logger.info('App', 'Modal inicializado');
+        }
+
+        if (window.Navigation) {
+            Navigation.init();
+            Logger.info('App', 'Navigation inicializado');
+        }
+
+        // Inicializar componentes
+        if (window.DebugPanel) {
+            DebugPanel.init();
+            Logger.info('App', 'DebugPanel inicializado');
+        }
+
+        // Inicializar módulos de páginas
+        if (window.Dashboard) {
+            Dashboard.init();
+            Logger.info('App', 'Dashboard inicializado');
+        }
+
+        if (window.Movements) {
+            Movements.init();
+            Logger.info('App', 'Movements inicializado');
+        }
+
+        if (window.AIHManagement) {
+            AIHManagement.init();
+            Logger.info('App', 'AIHManagement inicializado');
+        }
+
+        // Configurar event listeners do menu principal
+        setupMainMenuListeners();
+
+        Logger.success('App', 'Aplicação AIH inicializada com sucesso');
+        console.log('✅ Aplicação AIH inicializada com sucesso');
+
+    } catch (error) {
+        console.error('❌ Erro na inicialização da aplicação:', error);
+        if (window.Logger) {
+            Logger.error('App', 'Erro na inicialização', error);
+        }
+    }
+});
+
+// Configurar listeners do menu principal
+function setupMainMenuListeners() {
+    try {
+        // Menu Principal
+        const btnInformarAIH = document.getElementById('btnInformarAIH');
+        if (btnInformarAIH) {
+            btnInformarAIH.addEventListener('click', () => {
+                Navigation.mostrarTela('telaInformarAIH');
+            });
+        }
+
+        const btnBuscarAIH = document.getElementById('btnBuscarAIH');
+        if (btnBuscarAIH) {
+            btnBuscarAIH.addEventListener('click', () => {
+                Navigation.mostrarTela('telaPesquisa');
+            });
+        }
+
+        const btnConfiguracoes = document.getElementById('btnConfiguracoes');
+        if (btnConfiguracoes) {
+            btnConfiguracoes.addEventListener('click', () => {
+                Navigation.irParaConfiguracoes();
+            });
+        }
+
+        const btnRelatorios = document.getElementById('btnRelatorios');
+        if (btnRelatorios) {
+            btnRelatorios.addEventListener('click', () => {
+                Navigation.irParaRelatorios();
+            });
+        }
+
+        Logger.debug('App', 'Event listeners do menu principal configurados');
+    } catch (error) {
+        Logger.error('App', 'Erro ao configurar event listeners do menu', error);
+    }
 }

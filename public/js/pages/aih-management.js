@@ -1,30 +1,55 @@
 
 const AIHManagement = {
     init() {
-        this.setupEventListeners();
-        this.preencherCompetenciaAtual();
+        try {
+            this.setupEventListeners();
+            this.preencherCompetenciaAtual();
+            Logger.moduleLoad('AIHManagement', true);
+        } catch (error) {
+            Logger.moduleLoad('AIHManagement', false, error);
+        }
     },
 
     setupEventListeners() {
-        // Buscar AIH
-        document.getElementById('formBuscarAIH').addEventListener('submit', (e) => {
-            this.buscarAIH(e);
-        });
+        try {
+            // Buscar AIH
+            const formBuscarAIH = document.getElementById('formBuscarAIH');
+            if (formBuscarAIH) {
+                formBuscarAIH.addEventListener('submit', (e) => {
+                    this.buscarAIH(e);
+                });
+            }
 
-        // Cadastrar AIH
-        document.getElementById('formCadastroAIH').addEventListener('submit', (e) => {
-            this.cadastrarAIH(e);
-        });
+            // Cadastrar AIH
+            const formCadastroAIH = document.getElementById('formCadastroAIH');
+            if (formCadastroAIH) {
+                formCadastroAIH.addEventListener('submit', (e) => {
+                    this.cadastrarAIH(e);
+                });
+            }
 
-        // Adicionar atendimento
-        document.getElementById('btnAddAtendimento').addEventListener('click', () => {
-            this.adicionarCampoAtendimento();
-        });
+            // Adicionar atendimento
+            const btnAddAtendimento = document.getElementById('btnAddAtendimento');
+            if (btnAddAtendimento) {
+                btnAddAtendimento.addEventListener('click', () => {
+                    this.adicionarCampoAtendimento();
+                });
+            }
 
-        // Nova movimentação
-        document.getElementById('btnNovaMovimentacao').addEventListener('click', () => {
-            Navigation.irParaMovimentacao();
-        });
+            // Nova movimentação
+            const btnNovaMovimentacao = document.getElementById('btnNovaMovimentacao');
+            if (btnNovaMovimentacao) {
+                btnNovaMovimentacao.addEventListener('click', () => {
+                    if (window.Navigation) {
+                        Navigation.irParaMovimentacao();
+                    }
+                });
+            }
+
+            Logger.debug('AIHManagement', 'Event listeners configurados');
+        } catch (error) {
+            Logger.error('AIHManagement', 'Erro ao configurar event listeners', error);
+        }
     },
 
     async buscarAIH(e) {
