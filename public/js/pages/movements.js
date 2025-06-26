@@ -25,6 +25,13 @@ const Movements = {
                 }, 100);
             });
         }
+
+        const formMovimentacao = document.getElementById('formMovimentacao');
+        if (formMovimentacao) {
+            formMovimentacao.addEventListener('submit', (e) => {
+                this.salvarMovimentacao(e);
+            });
+        }
     },
 
     async carregarDados() {
@@ -57,7 +64,7 @@ const Movements = {
         try {
             if (AppState.aihAtual) {
                 const proximaMovResult = await api(`/aih/${AppState.aihAtual.id}/proxima-movimentacao`);
-    
+
                 // Mostrar informações sobre próxima movimentação
                 document.getElementById('infoProximaMovimentacao').innerHTML = `
                     <div style="background: #e0f2fe; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
@@ -66,7 +73,7 @@ const Movements = {
                         <p><strong>Explicação:</strong> ${proximaMovResult.explicacao}</p>
                     </div>
                 `;
-    
+
                 // Definir tipo automaticamente
                 AppState.setProximoTipoMovimentacao(proximaMovResult.tipo);
             }

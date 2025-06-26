@@ -43,11 +43,12 @@ const mostrarTela = (telaId) => {
 
 const voltarTelaPrincipal = () => {
     mostrarTela('telaPrincipal');
-    if (window.Dashboard && window.Dashboard.carregar) {
-        window.Dashboard.carregar();
-    } else {
-        carregarDashboard();
-    }
+    // Aguardar renderização e carregar dashboard
+    setTimeout(() => {
+        if (window.Dashboard && window.Dashboard.carregar) {
+            window.Dashboard.carregar();
+        }
+    }, 100);
 };
 
 const voltarTelaAnterior = () => {
@@ -1586,7 +1587,7 @@ window.gerarRelatorio = async (tipo) => {
             periodoTexto = `Período: ${new Date(dataInicio).toLocaleDateString('pt-BR')} a ${new Date(dataFim).toLocaleDateString('pt-BR')}`;
         } else if (dataInicio) {
             periodoTexto = `A partir de: ${new Date(dataInicio).toLocaleDateString('pt-BR')}`;
-        } else if (dataFim) {
+        } else if (dataFim){
             periodoTexto = `Até: ${new Date(dataFim).toLocaleDateString('pt-BR')}`;
         } else {
             periodoTexto = 'Todos os períodos';
