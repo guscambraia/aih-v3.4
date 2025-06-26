@@ -1,5 +1,12 @@
 
 const Dashboard = {
+    // Inicializar módulo
+    init() {
+        console.log('✅ Dashboard inicializado');
+        // Não precisa fazer nada específico na inicialização
+        // O carregamento será feito quando necessário
+    },
+
     // Carregar dashboard
     async carregar(competenciaSelecionada = null) {
         try {

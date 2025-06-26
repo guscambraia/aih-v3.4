@@ -43,7 +43,11 @@ const mostrarTela = (telaId) => {
 
 const voltarTelaPrincipal = () => {
     mostrarTela('telaPrincipal');
-    carregarDashboard();
+    if (window.Dashboard && window.Dashboard.carregar) {
+        window.Dashboard.carregar();
+    } else {
+        carregarDashboard();
+    }
 };
 
 const voltarTelaAnterior = () => {
@@ -75,7 +79,11 @@ const voltarTelaAnterior = () => {
             // Se não há tela anterior, voltar ao dashboard
             console.log('Nenhuma tela anterior definida, voltando ao dashboard');
             mostrarTela('telaPrincipal');
-            carregarDashboard();
+            if (window.Dashboard && window.Dashboard.carregar) {
+                window.Dashboard.carregar();
+            } else {
+                carregarDashboard();
+            }
         }
     } catch (error) {
         console.error('Erro ao voltar para tela anterior:', error);
@@ -140,7 +148,11 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
 
         document.getElementById('nomeUsuario').textContent = result.usuario.nome;
         mostrarTela('telaPrincipal');
-        carregarDashboard();
+        if (window.Dashboard && window.Dashboard.carregar) {
+            window.Dashboard.carregar();
+        } else {
+            carregarDashboard();
+        }
     } catch (err) {
         alert('Erro no login: ' + err.message);
     }
@@ -1189,7 +1201,11 @@ document.getElementById('btnCancelarMovimentacao').addEventListener('click', asy
             } else {
                 // Último recurso: voltar ao dashboard
                 mostrarTela('telaPrincipal');
-                carregarDashboard();
+                if (window.Dashboard && window.Dashboard.carregar) {
+                    window.Dashboard.carregar();
+                } else {
+                    carregarDashboard();
+                }
 
                 // Limpar estado apenas se voltando ao dashboard
                 state.telaAnterior = null;
@@ -1203,7 +1219,11 @@ document.getElementById('btnCancelarMovimentacao').addEventListener('click', asy
             mostrarInfoAIH(state.aihAtual);
         } else {
             mostrarTela('telaPrincipal');
-            carregarDashboard();
+            if (window.Dashboard && window.Dashboard.carregar) {
+                window.Dashboard.carregar();
+            } else {
+                carregarDashboard();
+            }
         }
     }
 });
@@ -2216,14 +2236,31 @@ const garantirCampoAtendimento = () => {
 
 // Inicializar módulos quando DOM estiver carregado
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar todos os módulos
-    if (window.Login) Login.init();
-    if (window.Dashboard) Dashboard.init();
-    if (window.AIHManagement) AIHManagement.init();
-    if (window.Movements) Movements.init();
-    if (window.Glosas) Glosas.init();
-    if (window.Search) Search.init();
-    if (window.Reports) Reports.init();
+    // Aguardar todos os scripts carregarem
+    setTimeout(() => {
+        // Inicializar módulos disponíveis
+        if (window.Login && typeof window.Login.init === 'function') {
+            window.Login.init();
+        }
+        if (window.Dashboard && typeof window.Dashboard.init === 'function') {
+            window.Dashboard.init();
+        }
+        if (window.AIHManagement && typeof window.AIHManagement.init === 'function') {
+            window.AIHManagement.init();
+        }
+        if (window.Movements && typeof window.Movements.init === 'function') {
+            window.Movements.init();
+        }
+        if (window.Glosas && typeof window.Glosas.init === 'function') {
+            window.Glosas.init();
+        }
+        if (window.Search && typeof window.Search.init === 'function') {
+            window.Search.init();
+        }
+        if (window.Reports && typeof window.Reports.init === 'function') {
+            window.Reports.init();
+        }
 
-    console.log('✅ Todos os módulos inicializados');
+        console.log('✅ Módulos disponíveis inicializados');
+    }, 100);
 });
