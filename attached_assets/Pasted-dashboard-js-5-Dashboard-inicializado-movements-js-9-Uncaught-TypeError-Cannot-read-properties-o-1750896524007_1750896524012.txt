@@ -1,0 +1,63 @@
+dashboard.js:5 ✅ Dashboard inicializado
+movements.js:9 Uncaught TypeError: Cannot read properties of null (reading 'addEventListener')
+    at Object.setupEventListeners (movements.js:9:57)
+    at Object.init (movements.js:4:14)
+    at app.js:2252:30
+dashboard.js:25 Erro ao carregar dashboard: ReferenceError: API is not defined
+    at Object.carregar (dashboard.js:17:27)
+    at HTMLFormElement.<anonymous> (app.js:152:30)
+carregar @ dashboard.js:25
+dashboard.js:25 Erro ao carregar dashboard: ReferenceError: API is not defined
+    at Object.carregar (dashboard.js:17:27)
+    at HTMLButtonElement.onclick ((índice):1:11)
+carregar @ dashboard.js:25
+dashboard.js:25 Erro ao carregar dashboard: ReferenceError: API is not defined
+    at Object.carregar (dashboard.js:17:27)
+    at voltarTelaPrincipal (app.js:47:26)
+    at HTMLButtonElement.onclick ((índice):289:76)
+carregar @ dashboard.js:25
+voltarTelaPrincipal @ app.js:47
+onclick @ (índice):289
+navigation.js:16 Navegou para tela: telaMovimentacao
+navigation.js:16 Navegou para tela: telaMovimentacao
+app.js:859 Profissionais a pré-selecionar: {id: 20, aih_id: 11, tipo: 'saida_hospital', data_movimentacao: '2025-06-26 00:01:27', usuario_id: 5, …}
+app.js:889 ✅ Pré-seleção aplicada: movProfMedicina = Gustavo
+app.js:889 ✅ Pré-seleção aplicada: movProfEnfermagem = Andreza
+app.js:859 Profissionais a pré-selecionar: {id: 20, aih_id: 11, tipo: 'saida_hospital', data_movimentacao: '2025-06-26 00:01:27', usuario_id: 5, …}
+app.js:889 ✅ Pré-seleção aplicada: movProfMedicina = Gustavo
+app.js:889 ✅ Pré-seleção aplicada: movProfEnfermagem = Andreza
+f6ff846b-8aa7-4627-a…spock.replit.dev/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+f6ff846b-8aa7-4627-a…spock.replit.dev/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+f6ff846b-8aa7-4627-a…spock.replit.dev/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+f6ff846b-8aa7-4627-a…spock.replit.dev/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+f6ff846b-8aa7-4627-a…spock.replit.dev/:1 Uncaught (in promise) Error: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received
+navigation.js:16 Navegou para tela: telaMovimentacao
+navigation.js:16 Navegou para tela: telaMovimentacao
+app.js:859 Profissionais a pré-selecionar: {id: 20, aih_id: 11, tipo: 'saida_hospital', data_movimentacao: '2025-06-26 00:01:27', usuario_id: 5, …}
+app.js:889 ✅ Pré-seleção aplicada: movProfMedicina = Gustavo
+app.js:889 ✅ Pré-seleção aplicada: movProfEnfermagem = Andreza
+app.js:859 Profissionais a pré-selecionar: {id: 20, aih_id: 11, tipo: 'saida_hospital', data_movimentacao: '2025-06-26 00:01:27', usuario_id: 5, …}
+app.js:889 ✅ Pré-seleção aplicada: movProfMedicina = Gustavo
+app.js:889 ✅ Pré-seleção aplicada: movProfEnfermagem = Andreza
+app.js:859 Profissionais a pré-selecionar: {id: 20, aih_id: 11, tipo: 'saida_hospital', data_movimentacao: '2025-06-26 00:01:27', usuario_id: 5, …}
+app.js:889 ✅ Pré-seleção aplicada: movProfMedicina = Gustavo
+app.js:889 ✅ Pré-seleção aplicada: movProfEnfermagem = Andreza
+dashboard.js:25 Erro ao carregar dashboard: ReferenceError: API is not defined
+    at Object.carregar (dashboard.js:17:27)
+    at voltarTelaPrincipal (app.js:47:26)
+    at HTMLButtonElement.onclick ((índice):181:76)
+carregar @ dashboard.js:25
+voltarTelaPrincipal @ app.js:47
+onclick @ (índice):181
+dashboard.js:25 Erro ao carregar dashboard: ReferenceError: API is not defined
+    at Object.carregar (dashboard.js:17:27)
+    at HTMLButtonElement.onclick ((índice):1:11)
+carregar @ dashboard.js:25
+onclick @ (índice):1
+dashboard.js:25 Erro ao carregar dashboard: ReferenceError: API is not defined
+    at Object.carregar (dashboard.js:17:27)
+    at voltarTelaPrincipal (app.js:47:26)
+    at HTMLButtonElement.onclick ((índice):380:76)
+carregar @ dashboard.js:25
+voltarTelaPrincipal @ app.js:47
+onclick @ (índice):380
