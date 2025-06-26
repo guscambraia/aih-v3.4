@@ -247,7 +247,7 @@ const Logger = {
             return [];
         }
     },
-    // Captura de erros globais
+    // Método para capturar erros JavaScript globais
     captureGlobalErrors() {
         window.addEventListener('error', (event) => {
             this.error('Global', 'JavaScript Error', {
@@ -267,15 +267,24 @@ const Logger = {
         });
     },
 
-    // Método para obter logs (usado pelo debug panel)
+    // Método para obter logs (necessário para o DebugPanel)
     getLogs() {
-        return this.logs.slice(); // Retorna uma cópia dos logs
+        try {
+            return this.logs.slice(); // Retorna uma cópia dos logs
+        } catch (error) {
+            console.error('Erro ao obter logs:', error);
+            return [];
+        }
     },
 
     // Método para limpar logs
     clearLogs() {
-        this.logs = [];
-        console.log('%c[Logger] Logs limpos', 'color: #059669');
+        try {
+            this.logs = [];
+            console.log('Logs limpos');
+        } catch (error) {
+            console.error('Erro ao limpar logs:', error);
+        }
     }
 };
 

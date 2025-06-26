@@ -52,7 +52,7 @@ const Dashboard = {
             Logger.debug('Dashboard', 'Fazendo requisição para API');
             // Buscar dados do dashboard com a competência
             const dados = await ApiService.get('/dashboard', { competencia });
-            
+
             if (!dados) {
                 throw new Error('Nenhum dado retornado da API');
             }

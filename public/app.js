@@ -2290,7 +2290,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // Função para inicializar módulos com tratamento robusto de erros
 function inicializarModulos() {
     try {
-        Logger.info('App', 'Iniciando inicialização dos módulos');
+        if (typeof Logger !== 'undefined') {
+            Logger.info('App', 'Iniciando inicialização dos módulos');
+        } else {
+            console.log('Iniciando inicialização dos módulos (Logger não disponível)');
+        }
 
         // Inicializar módulos core primeiro
         const modulosCore = [
@@ -2304,13 +2308,23 @@ function inicializarModulos() {
             try {
                 if (objeto && typeof objeto.init === 'function') {
                     objeto.init();
-                    Logger.moduleLoad(nome, true);
+                    if (typeof Logger !== 'undefined') {
+                        Logger.moduleLoad(nome, true);
+                    }
                 } else {
-                    Logger.warn('App', `Módulo core ${nome} não disponível ou sem método init`);
+                    if (typeof Logger !== 'undefined') {
+                        Logger.warn('App', `Módulo core ${nome} não disponível ou sem método init`);
+                    } else {
+                        console.warn(`Módulo core ${nome} não disponível ou sem método init`);
+                    }
                 }
             } catch (error) {
-                Logger.moduleLoad(nome, false, error);
-                Logger.error('App', `Erro crítico ao inicializar módulo core ${nome}`, error);
+                if (typeof Logger !== 'undefined') {
+                    Logger.moduleLoad(nome, false, error);
+                    Logger.error('App', `Erro crítico ao inicializar módulo core ${nome}`, error);
+                } else {
+                    console.error(`Erro crítico ao inicializar módulo core ${nome}:`, error);
+                }
             }
         });
 
@@ -2328,38 +2342,61 @@ function inicializarModulos() {
             try {
                 if (objeto && typeof objeto.init === 'function') {
                     objeto.init();
-                    Logger.moduleLoad(nome, true);
+                    if (typeof Logger !== 'undefined') {
+                        Logger.moduleLoad(nome, true);
+                    }
                 } else {
-                    Logger.warn('App', `Módulo ${nome} não disponível ou sem método init`);
+                    if (typeof Logger !== 'undefined') {
+                        Logger.warn('App', `Módulo ${nome} não disponível ou sem método init`);
+                    } else {
+                        console.warn(`Módulo ${nome} não disponível ou sem método init`);
+                    }
                 }
             } catch (error) {
-                Logger.moduleLoad(nome, false, error);
-                Logger.error('App', `Erro ao inicializar módulo ${nome}`, error);
+                if (typeof Logger !== 'undefined') {
+                    Logger.moduleLoad(nome, false, error);
+                    Logger.error('App', `Erro ao inicializar módulo ${nome}`, error);
+                } else {
+                    console.error(`Erro ao inicializar módulo ${nome}:`, error);
+                }
             }
         });
 
         // Inicializar Debug Panel
         try {
-            if (window.DebugPanel) {
+            if (window.DebugPanel && typeof window.DebugPanel.init === 'function') {
                 DebugPanel.init();
-                Logger.moduleLoad('DebugPanel', true);
+                if (typeof Logger !== 'undefined') {
+                    Logger.moduleLoad('DebugPanel', true);
+                }
             }
         } catch (error) {
-            Logger.moduleLoad('DebugPanel', false, error);
+            if (typeof Logger !== 'undefined') {
+                Logger.moduleLoad('DebugPanel', false, error);
+            } else {
+                console.error('Erro ao inicializar DebugPanel:', error);
+            }
         }
 
         // Verificar token e inicializar aplicação
         verificarTokenInicial();
 
-        Logger.info('App', '✅ Aplicação inicializada com sucesso');
-        Logger.info('App', '💡 Pressione Ctrl+Shift+D para abrir o painel de debug');
+        if (typeof Logger !== 'undefined') {
+            Logger.info('App', '✅ Aplicação inicializada com sucesso');
+            Logger.info('App', '💡 Pressione Ctrl+Shift+D para abrir o painel de debug');
 
-        // Log de estatísticas dos módulos
-        const stats = gerarEstatisticasModulos();
-        Logger.info('App', 'Estatísticas de inicialização', stats);
+            // Log de estatísticas dos módulos
+            const stats = gerarEstatisticasModulos();
+            Logger.info('App', 'Estatísticas de inicialização', stats);
+        } else {
+            console.log('✅ Aplicação inicializada com sucesso');
+            console.log('💡 Pressione Ctrl+Shift+D para abrir o painel de debug');
+        }
 
     } catch (error) {
-        Logger.error('App', 'Erro fatal na inicialização dos módulos', error);
+        if (typeof Logger !== 'undefined') {
+            Logger.error('App', 'Erro fatal na inicialização dos módulos', error);
+        }
         console.error('Erro fatal na inicialização dos módulos:', error);
     }
 }
@@ -2382,107 +2419,3 @@ function gerarEstatisticasModulos() {
     };
 }
 
-// Inicialização da aplicação
-document.addEventListener('DOMContentLoaded', function() {
-    try {
-        console.log('🚀 Iniciando aplicação AIH...');
-
-        // Inicializar módulos core primeiro
-        if (window.Logger) {
-            Logger.init();
-            Logger.info('App', 'Logger inicializado');
-        }
-
-        if (window.AppState) {
-            AppState.init();
-            Logger.info('App', 'AppState inicializado');
-        }
-
-        if (window.API) {
-            API.init();
-            Logger.info('App', 'API inicializada');
-        }
-
-        if (window.Modal) {
-            Modal.init();
-            Logger.info('App', 'Modal inicializado');
-        }
-
-        if (window.Navigation) {
-            Navigation.init();
-            Logger.info('App', 'Navigation inicializado');
-        }
-
-        // Inicializar componentes
-        if (window.DebugPanel) {
-            DebugPanel.init();
-            Logger.info('App', 'DebugPanel inicializado');
-        }
-
-        // Inicializar módulos de páginas
-        if (window.Dashboard) {
-            Dashboard.init();
-            Logger.info('App', 'Dashboard inicializado');
-        }
-
-        if (window.Movements) {
-            Movements.init();
-            Logger.info('App', 'Movements inicializado');
-        }
-
-        if (window.AIHManagement) {
-            AIHManagement.init();
-            Logger.info('App', 'AIHManagement inicializado');
-        }
-
-        // Configurar event listeners do menu principal
-        setupMainMenuListeners();
-
-        Logger.success('App', 'Aplicação AIH inicializada com sucesso');
-        console.log('✅ Aplicação AIH inicializada com sucesso');
-
-    } catch (error) {
-        console.error('❌ Erro na inicialização da aplicação:', error);
-        if (window.Logger) {
-            Logger.error('App', 'Erro na inicialização', error);
-        }
-    }
-});
-
-// Configurar listeners do menu principal
-function setupMainMenuListeners() {
-    try {
-        // Menu Principal
-        const btnInformarAIH = document.getElementById('btnInformarAIH');
-        if (btnInformarAIH) {
-            btnInformarAIH.addEventListener('click', () => {
-                Navigation.mostrarTela('telaInformarAIH');
-            });
-        }
-
-        const btnBuscarAIH = document.getElementById('btnBuscarAIH');
-        if (btnBuscarAIH) {
-            btnBuscarAIH.addEventListener('click', () => {
-                Navigation.mostrarTela('telaPesquisa');
-            });
-        }
-
-        const btnConfiguracoes = document.getElementById('btnConfiguracoes');
-        if (btnConfiguracoes) {
-            btnConfiguracoes.addEventListener('click', () => {
-                Navigation.irParaConfiguracoes();
-            });
-        }
-
-        const btnRelatorios = document.getElementById('btnRelatorios');
-        if (btnRelatorios) {
-            btnRelatorios.addEventListener('click', () => {
-                Navigation.irParaRelatorios();
-            });
-        }
-
-        Logger.debug('App', 'Event listeners do menu principal configurados');
-    } catch (error) {
-        Logger.error('App', 'Erro ao configurar event listeners do menu', error);
-    }
-}

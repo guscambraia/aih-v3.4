@@ -1,4 +1,3 @@
-
 // Painel de Debug para visualizar logs e status dos módulos
 const DebugPanel = {
     isOpen: false,
@@ -53,7 +52,7 @@ const DebugPanel = {
                     </select>
                 </div>
             </div>
-            
+
             <div id="debug-stats" style="background: #111; padding: 10px; margin-bottom: 20px; border: 1px solid #333;"></div>
             <div id="debug-modules" style="background: #111; padding: 10px; margin-bottom: 20px; border: 1px solid #333;"></div>
             <div id="debug-logs" style="max-height: 400px; overflow-y: auto;"></div>
@@ -85,12 +84,12 @@ const DebugPanel = {
         panel.style.right = '0px';
         this.isOpen = true;
         this.updateAll();
-        
+
         // Atualizar a cada 2 segundos
         this.updateInterval = setInterval(() => {
             this.updateAll();
         }, 2000);
-        
+
         Logger.debug('DebugPanel', 'Painel de debug aberto');
     },
 
@@ -98,12 +97,12 @@ const DebugPanel = {
         const panel = document.getElementById('debug-panel');
         panel.style.right = '-400px';
         this.isOpen = false;
-        
+
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
         }
-        
+
         Logger.debug('DebugPanel', 'Painel de debug fechado');
     },
 
@@ -116,10 +115,10 @@ const DebugPanel = {
 
     updateStats() {
         if (!Logger) return;
-        
+
         const stats = Logger.getStats();
         if (!stats) return;
-        
+
         const statsContainer = document.getElementById('debug-stats');
         statsContainer.innerHTML = `
             <h4 style="color: #00ff00; margin: 0 0 10px 0;">📊 Estatísticas</h4>
@@ -156,39 +155,52 @@ const DebugPanel = {
         `;
     },
 
+    // Atualizar logs
     updateLogs() {
-        if (!Logger) return;
-        
-        const levelFilter = document.getElementById('debug-filter-level').value;
-        const moduleFilter = document.getElementById('debug-filter-module').value;
-        
-        const logs = Logger.getLogs().filter(log => {
-            if (levelFilter && log.level !== levelFilter) return false;
-            if (moduleFilter && log.module !== moduleFilter) return false;
-            return true;
-        });
+        try {
+            if (typeof Logger === 'undefined' || typeof Logger.getLogs !== 'function') {
+                const logsContainer = document.getElementById('debug-logs');
+                logsContainer.innerHTML = '<p>Logger não disponível ou método getLogs não existe</p>';
+                return;
+            }
 
-        const logsContainer = document.getElementById('debug-logs');
-        logsContainer.innerHTML = logs.slice(-50).map(log => `
-            <div style="border-bottom: 1px solid #333; padding: 5px; color: ${this.getLevelColor(log.level)};">
-                <div style="font-size: 10px; color: #666;">[${log.timestamp.substring(11, 19)}]</div>
-                <div><strong>${log.level}</strong> [${log.module}] ${log.message}</div>
-                ${log.data ? `<div style="color: #999; font-size: 10px; margin-left: 20px;">${typeof log.data === 'object' ? JSON.stringify(log.data, null, 2) : log.data}</div>` : ''}
-            </div>
-        `).join('');
-        
-        logsContainer.scrollTop = logsContainer.scrollHeight;
+            const levelFilter = document.getElementById('debug-filter-level').value;
+            const moduleFilter = document.getElementById('debug-filter-module').value;
+
+            const logs = Logger.getLogs().filter(log => {
+                if (levelFilter && log.level !== levelFilter) return false;
+                if (moduleFilter && log.module !== moduleFilter) return false;
+                return true;
+            });
+
+            const logsContainer = document.getElementById('debug-logs');
+            logsContainer.innerHTML = logs.slice(-50).map(log => `
+                <div style="border-bottom: 1px solid #333; padding: 5px; color: ${this.getLevelColor(log.level)};">
+                    <div style="font-size: 10px; color: #666;">[${log.timestamp.substring(11, 19)}]</div>
+                    <div><strong>${log.level}</strong> [${log.module}] ${log.message}</div>
+                    ${log.data ? `<div style="color: #999; font-size: 10px; margin-left: 20px;">${typeof log.data === 'object' ? JSON.stringify(log.data, null, 2) : log.data}</div>` : ''}
+                </div>
+            `).join('');
+
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        } catch (error) {
+            console.error('Erro ao atualizar logs:', error);
+            const logsContainer = document.getElementById('debug-logs');
+            if (logsContainer) {
+                logsContainer.innerHTML = '<p>Erro ao carregar logs</p>';
+            }
+        }
     },
 
     updateFilters() {
         if (!Logger) return;
-        
+
         const stats = Logger.getStats();
         if (!stats) return;
 
         const moduleSelect = document.getElementById('debug-filter-module');
         const currentValue = moduleSelect.value;
-        
+
         moduleSelect.innerHTML = '<option value="">Todos os módulos</option>';
         Object.keys(stats.byModule).forEach(module => {
             const option = document.createElement('option');
