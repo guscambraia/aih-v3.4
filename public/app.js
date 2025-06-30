@@ -35,8 +35,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// API Helper
-const api = async (endpoint, options = {}) => {
+// Cache do frontend para reduzir requisições
+const frontendCache = new Map();
+const FRONTEND_CACHE_TTL = 2 * 60 * 1000; // 2 minutos
+const MAX_FRONTEND_CACHE = 100;
+
+// Debouncing para evitar múltiplas requisições
+const debounceTimers = new Map();
+
+const debounce = (key, func, delay = 300) => {
+    if (debounceTimers.has(key)) {
+        clearTimeout(debounceTimers.get(key));
+    }
+    
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(async () => {
+            try {
+                const result = await func();
+                resolve(result);
+            } catch (err) {
+                reject(err);
+            } finally {
+                debounceTimers.delete(key);
+            }
+        }, delay);
+        
+        debounceTimers.set(key, timer);
+    });
+};
+
+// API Helper otimizado com cache e debouncing
+const api = async (endpoint, options = {}, useCache = false) => {
+    const cacheKey = endpoint + JSON.stringify(options.body || {});
+    
+    // Verificar cache do frontend
+    if (useCache && options.method === 'GET') {
+        const cached = frontendCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp < FRONTEND_CACHE_TTL)) {
+            return cached.data;
+        }
+    }
+    
     const config = {
         method: 'GET',
         ...options,
@@ -63,6 +102,15 @@ const api = async (endpoint, options = {}) => {
 
         if (!response.ok) {
             throw new Error(data.error || `Erro HTTP ${response.status}`);
+        }
+
+        // Adicionar ao cache do frontend
+        if (useCache && options.method === 'GET' && data) {
+            if (frontendCache.size >= MAX_FRONTEND_CACHE) {
+                const firstKey = frontendCache.keys().next().value;
+                frontendCache.delete(firstKey);
+            }
+            frontendCache.set(cacheKey, { data, timestamp: Date.now() });
         }
 
         return data;
@@ -461,14 +509,15 @@ const animarNumero = (elementId, valorFinal) => {
     }, 16);
 };
 
-// Dashboard aprimorado com seletor de competência
+// Dashboard ultra-otimizado com debouncing e cache
 const carregarDashboard = async (competenciaSelecionada = null) => {
-    try {
-        // Se não foi passada competência, usar a atual
-        const competencia = competenciaSelecionada || getCompetenciaAtual();
-
-        // Buscar dados do dashboard com a competência
-        const dados = await api(`/dashboard?competencia=${competencia}`);
+    const competencia = competenciaSelecionada || getCompetenciaAtual();
+    const debounceKey = `dashboard_${competencia}`;
+    
+    return debounce(debounceKey, async () => {
+        try {
+            // Buscar dados com cache ativo
+            const dados = await api(`/dashboard?competencia=${competencia}`, {}, true);
 
         // Criar/atualizar seletor de competência
         let seletorContainer = document.querySelector('.seletor-competencia-container');
@@ -1013,29 +1062,47 @@ const mostrarInfoAIH = (aih) => {
     mostrarTela('telaInfoAIH');
 };
 
-// Carregar profissionais para o campo de pesquisa
+// Carregamento lazy e otimizado de profissionais
+let profissionaisCarregados = false;
+
 const carregarProfissionaisPesquisa = async () => {
-    try {
-        const response = await api('/profissionais');
-        const selectProfissional = document.getElementById('pesquisaProfissional');
+    if (profissionaisCarregados) return; // Evitar recarregamentos desnecessários
+    
+    const debounceKey = 'profissionais_pesquisa';
+    
+    return debounce(debounceKey, async () => {
+        try {
+            // Usar cache para profissionais (dados estáticos)
+            const response = await api('/profissionais', {}, true);
+            const selectProfissional = document.getElementById('pesquisaProfissional');
 
-        if (response && response.profissionais && selectProfissional) {
-            // Limpar opções existentes exceto a primeira
-            selectProfissional.innerHTML = '<option value="">Todos os profissionais</option>';
+            if (response && response.profissionais && selectProfissional) {
+                // Fragment para otimizar DOM updates
+                const fragment = document.createDocumentFragment();
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Todos os profissionais';
+                fragment.appendChild(defaultOption);
 
-            // Adicionar profissionais
-            response.profissionais.forEach(prof => {
-                const option = document.createElement('option');
-                option.value = prof.nome;
-                option.textContent = `${prof.nome} (${prof.especialidade})`;
-                selectProfissional.appendChild(option);
-            });
+                // Adicionar profissionais em lote
+                response.profissionais.forEach(prof => {
+                    const option = document.createElement('option');
+                    option.value = prof.nome;
+                    option.textContent = `${prof.nome} (${prof.especialidade})`;
+                    fragment.appendChild(option);
+                });
 
-            console.log('Profissionais carregados na pesquisa:', response.profissionais.length);
+                // Update DOM uma única vez
+                selectProfissional.innerHTML = '';
+                selectProfissional.appendChild(fragment);
+                
+                profissionaisCarregados = true;
+                console.log('Profissionais carregados na pesquisa:', response.profissionais.length);
+            }
+        } catch (err) {
+            console.error('Erro ao carregar profissionais para pesquisa:', err);
         }
-    } catch (err) {
-        console.error('Erro ao carregar profissionais para pesquisa:', err);
-    }
+    }, 100);
 };
 
 // Menu Principal
