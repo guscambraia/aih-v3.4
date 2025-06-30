@@ -87,22 +87,30 @@ const voltarTelaPrincipal = () => {
 
 const voltarTelaAnterior = () => {
     try {
+        console.log('Voltando para tela anterior:', state.telaAnterior);
+        
         if (state.telaAnterior) {
-            mostrarTela(state.telaAnterior);
+            const telaDestino = state.telaAnterior;
+            
+            // Limpar tela anterior para evitar loops
+            state.telaAnterior = null;
+            
+            mostrarTela(telaDestino);
 
             // Se voltando para tela de movimentação, recarregar dados para atualizar glosas
-            if (state.telaAnterior === 'telaMovimentacao') {
+            if (telaDestino === 'telaMovimentacao') {
+                console.log('Recarregando dados da movimentação...');
                 // Usar setTimeout para garantir que a tela foi renderizada
                 setTimeout(() => {
                     carregarDadosMovimentacao();
                     // Reconfigurar event listeners após carregar dados
                     setTimeout(() => {
                         configurarEventListenersMovimentacao();
-                    }, 200);
-                }, 100);
+                    }, 300);
+                }, 150);
             }
             // Se voltando para tela de informações AIH, recarregar AIH atualizada
-            else if (state.telaAnterior === 'telaInfoAIH' && state.aihAtual) {
+            else if (telaDestino === 'telaInfoAIH' && state.aihAtual) {
                 api(`/aih/${state.aihAtual.numero_aih}`)
                     .then(aih => {
                         state.aihAtual = aih;
@@ -111,7 +119,7 @@ const voltarTelaAnterior = () => {
                     .catch(err => {
                         console.error('Erro ao recarregar AIH:', err);
                         // Se der erro, pelo menos mostrar a tela anterior
-                        mostrarTela(state.telaAnterior);
+                        mostrarTela(telaDestino);
                     });
             }
         } else {
@@ -2070,8 +2078,8 @@ document.getElementById('btnNovaMovimentacao').addEventListener('click', async (
         // Buscar próxima movimentação possível
         const proximaMovimentacao = await api(`/aih/${state.aihAtual.id}/proxima-movimentacao`);
 
-        // Definir tela anterior
-        state.telaAnterior = 'telaInfoAIH';
+        // NÃO definir tela anterior aqui - deixar que os botões funcionem independentemente
+        // state.telaAnterior = 'telaInfoAIH';
 
         // Ir para tela de movimentação
         mostrarTela('telaMovimentacao');
@@ -2082,7 +2090,7 @@ document.getElementById('btnNovaMovimentacao').addEventListener('click', async (
         // Garantir que os event listeners estão configurados
         setTimeout(() => {
             configurarEventListenersMovimentacao();
-        }, 500);
+        }, 600);
 
         // Configurar campos com base na próxima movimentação
         if (proximaMovimentacao) {
@@ -2214,59 +2222,63 @@ window.cancelarMovimentacao = () => {
 const configurarEventListenersMovimentacao = () => {
     console.log('Configurando event listeners da movimentação...');
     
-    // Remover event listeners existentes para evitar duplicação
-    const btnCancelar = document.getElementById('btnCancelarMovimentacao');
-    const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
-    
-    if (btnCancelar) {
-        // Remover event listeners existentes
-        btnCancelar.replaceWith(btnCancelar.cloneNode(true));
-        const novoBtnCancelar = document.getElementById('btnCancelarMovimentacao');
+    // Aguardar um pouco para garantir que os elementos estejam no DOM
+    setTimeout(() => {
+        const btnCancelar = document.getElementById('btnCancelarMovimentacao');
+        const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
         
-        novoBtnCancelar.addEventListener('click', (e) => {
-            e.preventDefault();
-            console.log('Botão cancelar clicado');
-            voltarTelaAnterior();
-        });
-        
-        // Também definir onclick como fallback
-        novoBtnCancelar.onclick = (e) => {
-            e.preventDefault();
-            console.log('Botão cancelar onclick');
-            voltarTelaAnterior();
-        };
-        
-        console.log('Event listener do botão cancelar configurado');
-    } else {
-        console.warn('Botão cancelar não encontrado');
-    }
+        if (btnCancelar) {
+            // Limpar todos os event listeners existentes
+            btnCancelar.onclick = null;
+            btnCancelar.replaceWith(btnCancelar.cloneNode(true));
+            
+            // Referenciar o novo elemento
+            const novoBtnCancelar = document.getElementById('btnCancelarMovimentacao');
+            
+            // Configurar event listener principal
+            novoBtnCancelar.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Botão cancelar clicado - voltando para tela anterior');
+                
+                // Voltar para tela de informações da AIH
+                if (state.aihAtual) {
+                    mostrarInfoAIH(state.aihAtual);
+                } else {
+                    voltarTelaPrincipal();
+                }
+            });
+            
+            console.log('Event listener do botão cancelar configurado');
+        } else {
+            console.warn('Botão cancelar não encontrado');
+        }
 
-    if (btnGerenciarGlosas) {
-        // Remover event listeners existentes
-        btnGerenciarGlosas.replaceWith(btnGerenciarGlosas.cloneNode(true));
-        const novoBtnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
-        
-        novoBtnGerenciarGlosas.addEventListener('click', (e) => {
-            e.preventDefault();
-            console.log('Botão gerenciar glosas clicado');
-            state.telaAnterior = 'telaMovimentacao';
-            mostrarTela('telaPendencias');
-            carregarGlosas();
-        });
-        
-        // Também definir onclick como fallback
-        novoBtnGerenciarGlosas.onclick = (e) => {
-            e.preventDefault();
-            console.log('Botão gerenciar glosas onclick');
-            state.telaAnterior = 'telaMovimentacao';
-            mostrarTela('telaPendencias');
-            carregarGlosas();
-        };
-        
-        console.log('Event listener do botão gerenciar glosas configurado');
-    } else {
-        console.warn('Botão gerenciar glosas não encontrado');
-    }
+        if (btnGerenciarGlosas) {
+            // Limpar todos os event listeners existentes
+            btnGerenciarGlosas.onclick = null;
+            btnGerenciarGlosas.replaceWith(btnGerenciarGlosas.cloneNode(true));
+            
+            // Referenciar o novo elemento
+            const novoBtnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
+            
+            // Configurar event listener principal
+            novoBtnGerenciarGlosas.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Botão gerenciar glosas clicado');
+                
+                // Definir tela anterior antes de navegar
+                state.telaAnterior = 'telaMovimentacao';
+                mostrarTela('telaPendencias');
+                carregarGlosas();
+            });
+            
+            console.log('Event listener do botão gerenciar glosas configurado');
+        } else {
+            console.warn('Botão gerenciar glosas não encontrado');
+        }
+    }, 100);
 };
 
 // Chamar configuração quando a página carregar
@@ -2393,5 +2405,22 @@ window.removerGlosa = async (id) => {
 
 // Salvar glosas e voltar
 document.getElementById('btnSalvarGlosas')?.addEventListener('click', () => {
-    voltarTelaAnterior();
+    console.log('Salvando glosas e voltando...');
+    
+    // Se veio da tela de movimentação, voltar para lá
+    if (state.telaAnterior === 'telaMovimentacao') {
+        console.log('Voltando para tela de movimentação...');
+        mostrarTela('telaMovimentacao');
+        
+        // Recarregar dados da movimentação para mostrar glosas atualizadas
+        setTimeout(() => {
+            carregarDadosMovimentacao();
+            setTimeout(() => {
+                configurarEventListenersMovimentacao();
+            }, 300);
+        }, 150);
+    } else {
+        // Caso contrário, usar função padrão
+        voltarTelaAnterior();
+    }
 });
