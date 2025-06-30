@@ -550,25 +550,25 @@
                 <div class="config-section" style="border: 2px solid #f59e0b; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; background: #fffbeb;">
                     <h3 style="color: #92400e;">🗑️ Deletar Movimentação</h3>
                     <p style="color: #92400e; margin-bottom: 1.5rem;">Remove completamente uma movimentação específica da base de dados.</p>
-                    
+
                     <form id="formDeletarMovimentacao" style="display: grid; gap: 1rem;">
                         <div>
                             <label style="font-weight: 600; color: #92400e;">Número da AIH:</label>
                             <input type="text" id="aihMovimentacao" placeholder="Digite o número da AIH" required style="width: 100%; padding: 0.75rem; border: 2px solid #f59e0b; border-radius: 6px;">
                         </div>
-                        
+
                         <div>
                             <label style="font-weight: 600; color: #92400e;">Movimentações Disponíveis:</label>
                             <div id="listaMovimentacoes" style="min-height: 100px; border: 2px solid #f59e0b; border-radius: 6px; padding: 1rem; background: white;">
                                 <p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as movimentações</p>
                             </div>
                         </div>
-                        
+
                         <div>
                             <label style="font-weight: 600; color: #92400e;">Justificativa (Obrigatória):</label>
                             <textarea id="justificativaMovimentacao" rows="4" placeholder="Descreva detalhadamente o motivo desta exclusão..." required style="width: 100%; padding: 0.75rem; border: 2px solid #f59e0b; border-radius: 6px; resize: vertical;"></textarea>
                         </div>
-                        
+
                         <button type="submit" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem;">
                             🗑️ Deletar Movimentação
                         </button>
@@ -579,29 +579,50 @@
                 <div class="config-section" style="border: 2px solid #dc2626; border-radius: 12px; padding: 2rem; background: #fef2f2;">
                     <h3 style="color: #dc2626;">💀 Deletar AIH Completa</h3>
                     <p style="color: #dc2626; margin-bottom: 1.5rem;">Remove completamente uma AIH e TODOS os seus dados relacionados da base de dados.</p>
-                    
+
                     <form id="formDeletarAIH" style="display: grid; gap: 1rem;">
                         <div>
                             <label style="font-weight: 600; color: #dc2626;">Número da AIH:</label>
                             <input type="text" id="aihCompleta" placeholder="Digite o número da AIH" required style="width: 100%; padding: 0.75rem; border: 2px solid #dc2626; border-radius: 6px;">
                         </div>
-                        
+
                         <div>
                             <label style="font-weight: 600; color: #dc2626;">Informações da AIH:</label>
                             <div id="infoAIHDeletar" style="min-height: 100px; border: 2px solid #dc2626; border-radius: 6px; padding: 1rem; background: white;">
                                 <p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as informações</p>
                             </div>
                         </div>
-                        
+
                         <div>
                             <label style="font-weight: 600; color: #dc2626;">Justificativa (Obrigatória):</label>
                             <textarea id="justificativaAIH" rows="4" placeholder="Descreva detalhadamente o motivo desta exclusão..." required style="width: 100%; padding: 0.75rem; border: 2px solid #dc2626; border-radius: 6px; resize: vertical;"></textarea>
                         </div>
-                        
+
                         <button type="submit" style="background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%); color: white; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem;">
                             💀 Deletar AIH Completa
                         </button>
                     </form>
+                </div>
+
+                <!-- Logs de Exclusão -->
+                <div class="config-section" style="border: 2px solid #6366f1; border-radius: 12px; padding: 2rem; background: #f0f9ff;">
+                    <h3 style="color: #1e40af;">📋 Histórico de Exclusões</h3>
+                    <p style="color: #1e40af; margin-bottom: 1.5rem;">Registro das últimas exclusões realizadas no sistema (últimos 50 registros).</p>
+
+                    <div style="margin-bottom: 1rem;">
+                        <button onclick="carregarLogsExclusao()" 
+                                style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); 
+                                       color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; 
+                                       cursor: pointer; font-weight: 600; transition: all 0.2s ease;"
+                                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            🔄 Carregar Logs de Exclusão
+                        </button>
+                    </div>
+
+                    <div id="containerLogsExclusao" style="min-height: 200px; border: 2px solid #93c5fd; border-radius: 8px; padding: 1rem; background: white;">
+                        <p style="color: #64748b; text-align: center; margin: 0;">Clique em "Carregar Logs de Exclusão" para visualizar o histórico</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -613,18 +634,18 @@
                 <div id="detalhesExclusao" style="background: #fef2f2; border: 1px solid #dc2626; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem;">
                     <!-- Detalhes serão preenchidos dinamicamente -->
                 </div>
-                
+
                 <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem;">
                     <p style="color: #92400e; font-weight: 600; margin: 0;">
                         ⚠️ Esta ação é IRREVERSÍVEL. Digite sua senha para confirmar:
                     </p>
                 </div>
-                
+
                 <div style="margin-bottom: 1.5rem;">
                     <label style="font-weight: 600; color: #374151;">Sua senha:</label>
                     <input type="password" id="senhaConfirmacao" placeholder="Digite sua senha" required style="width: 100%; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 6px; margin-top: 0.5rem;">
                 </div>
-                
+
                 <div class="modal-buttons">
                     <button onclick="cancelarExclusao()" style="background: #64748b; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
                         Cancelar

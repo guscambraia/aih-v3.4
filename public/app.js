@@ -1886,6 +1886,10 @@ document.getElementById('btnRelatorios').addEventListener('click', () => {
 document.getElementById('btnAlterarBD').addEventListener('click', () => {
     mostrarTela('telaAlterarBD');
     configurarAlteracaoBD();
+    // Carregar logs automaticamente após um pequeno delay
+    setTimeout(() => {
+        carregarLogsExclusao();
+    }, 500);
 });
 
 // Carregar opções de relatórios
@@ -2233,6 +2237,124 @@ let dadosExclusao = {
     tipo: null, // 'movimentacao' ou 'aih'
     dados: null,
     justificativa: null
+};
+
+// Função para carregar logs de exclusão
+window.carregarLogsExclusao = async () => {
+    const container = document.getElementById('containerLogsExclusao');
+    const botao = document.querySelector('button[onclick="carregarLogsExclusao()"]');
+    
+    // Mostrar indicador de carregamento
+    const textoOriginal = botao.textContent;
+    botao.textContent = '🔄 Carregando...';
+    botao.disabled = true;
+    
+    container.innerHTML = `
+        <div style="text-align: center; padding: 2rem;">
+            <div style="border: 3px solid #f3f3f3; border-top: 3px solid #6366f1; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+            <p style="color: #64748b; margin: 0;">Carregando logs de exclusão...</p>
+        </div>
+    `;
+
+    try {
+        const response = await api('/relatorios/logs-exclusao', {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+
+        const logs = response.resultado || [];
+
+        if (logs.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #64748b;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                    <h4 style="margin: 0 0 0.5rem 0;">Nenhum log de exclusão encontrado</h4>
+                    <p style="margin: 0;">Não há registros de exclusões no sistema.</p>
+                </div>
+            `;
+        } else {
+            // Ordenar logs por data (mais recente primeiro)
+            logs.sort((a, b) => new Date(b.data_exclusao) - new Date(a.data_exclusao));
+
+            container.innerHTML = `
+                <div style="margin-bottom: 1rem; padding: 1rem; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #6366f1;">
+                    <h4 style="color: #1e40af; margin: 0 0 0.5rem 0;">📊 Resumo dos Logs</h4>
+                    <p style="color: #1e40af; margin: 0; font-size: 0.9rem;">
+                        Total de exclusões registradas: <strong>${logs.length}</strong> | 
+                        Últimas 24h: <strong>${logs.filter(log => {
+                            const dataLog = new Date(log.data_exclusao);
+                            const agora = new Date();
+                            return (agora - dataLog) < (24 * 60 * 60 * 1000);
+                        }).length}</strong> | 
+                        Esta semana: <strong>${logs.filter(log => {
+                            const dataLog = new Date(log.data_exclusao);
+                            const agora = new Date();
+                            return (agora - dataLog) < (7 * 24 * 60 * 60 * 1000);
+                        }).length}</strong>
+                    </p>
+                </div>
+
+                <!-- Cabeçalho da tabela -->
+                <div style="background: #e0e7ff; padding: 1rem; border-radius: 8px 8px 0 0; display: grid; grid-template-columns: 100px 120px 120px 150px 1fr 100px; gap: 1rem; align-items: center; font-weight: 600; color: #3730a3; font-size: 0.875rem;">
+                    <div>ID</div>
+                    <div>Tipo</div>
+                    <div>Usuário</div>
+                    <div>Data/Hora</div>
+                    <div>Justificativa</div>
+                    <div>AIH</div>
+                </div>
+
+                <!-- Linhas dos logs -->
+                <div style="max-height: 500px; overflow-y: auto; border: 1px solid #c7d2fe; border-top: none;">
+                    ${logs.map((log, index) => {
+                        const dataFormatada = new Date(log.data_exclusao).toLocaleString('pt-BR');
+                        const tipoIcon = log.tipo_exclusao === 'movimentacao' ? '📝' : '🗂️';
+                        const tipoTexto = log.tipo_exclusao === 'movimentacao' ? 'Movimentação' : 'AIH Completa';
+                        const corFundo = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+                        
+                        return `
+                            <div style="background: ${corFundo}; padding: 1rem; display: grid; grid-template-columns: 100px 120px 120px 150px 1fr 100px; gap: 1rem; align-items: center; border-bottom: 1px solid #e2e8f0; font-size: 0.875rem;">
+                                <div style="font-weight: 600; color: #374151;">#${log.id}</div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; color: ${log.tipo_exclusao === 'aih_completa' ? '#dc2626' : '#f59e0b'}; font-weight: 500;">
+                                    ${tipoIcon} ${tipoTexto}
+                                </div>
+                                <div style="color: #6366f1; font-weight: 500;">${log.usuario_nome || 'Sistema'}</div>
+                                <div style="color: #64748b; font-size: 0.8rem;">${dataFormatada}</div>
+                                <div style="color: #374151; line-height: 1.4; max-width: 300px; word-wrap: break-word;">${log.justificativa}</div>
+                                <div style="color: #059669; font-weight: 500; font-family: monospace;">${log.numero_aih_afetado || 'N/A'}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                <!-- Rodapé com informações adicionais -->
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 0 0 8px 8px; border: 1px solid #c7d2fe; border-top: none; font-size: 0.8rem; color: #64748b;">
+                    💡 <strong>Informações:</strong> 
+                    Os logs são mantidos permanentemente para auditoria. 
+                    Movimentações: exclusão de uma movimentação específica | 
+                    AIH Completa: exclusão de toda a AIH e dados relacionados.
+                </div>
+            `;
+        }
+
+    } catch (err) {
+        console.error('Erro ao carregar logs de exclusão:', err);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: #dc2626;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                <h4 style="margin: 0 0 0.5rem 0;">Erro ao carregar logs</h4>
+                <p style="margin: 0 0 1rem 0;">${err.message}</p>
+                <button onclick="carregarLogsExclusao()" 
+                        style="background: #6366f1; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">
+                    🔄 Tentar Novamente
+                </button>
+            </div>
+        `;
+    } finally {
+        // Restaurar botão
+        botao.textContent = textoOriginal;
+        botao.disabled = false;
+    }
 };
 
 // Configurar funcionalidades de alteração da BD

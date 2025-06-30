@@ -1061,8 +1061,7 @@ tr:last-child {
     border-bottom: none;
 }
 
-/* Status Badges - Cores mais suaves */
-.status-badge {
+/* Status Badges - Cores mais suaves */.status-badge {
     display: inline-block;
     padding: 0.25rem 0.75rem;
     border-radius: 4px;
@@ -1308,6 +1307,11 @@ tr:last-child {
     box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
 }
 
+/* Animação de carregamento */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 .btn-cancelar {
     background: linear-gradient(135deg, #64748b 0%, #475569 100%);
     color: white;
@@ -2023,7 +2027,7 @@ tr:last-child {
     border: none;
     padding: 0.875rem;
     border-radius: 8px;
-    font-weight: 600;
+The provided change adds a CSS animation for a loading indicator.    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     margin: 0;

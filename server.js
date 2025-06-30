@@ -2064,10 +2064,8 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 break;
 
             case 'logs-exclusao':
-                // Relatório de logs de exclusão (apenas para admins)
-                if (req.usuario.tipo !== 'admin') {
-                    return res.status(403).json({ error: 'Acesso negado - apenas administradores' });
-                }
+                // Relatório de logs de exclusão (usuários autenticados podem ver)
+                // Não restringir apenas para admins, pois usuários podem querer ver logs de suas próprias exclusões
 
                 resultado = await all(`
                     SELECT 
