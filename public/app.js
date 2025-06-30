@@ -582,16 +582,6 @@ const carregarDadosMovimentacao = async () => {
     try {
         // Carregar profissionais para os selects
         const profissionais = await api('/profissionais');
-        
-        // Buscar última movimentação para pré-selecionar profissionais
-        let ultimaMovimentacao = null;
-        if (state.aihAtual && state.aihAtual.id) {
-            try {
-                ultimaMovimentacao = await api(`/aih/${state.aihAtual.id}/ultima-movimentacao`);
-            } catch (err) {
-                console.log('Nenhuma movimentação anterior encontrada');
-            }
-        }
 
         if (profissionais && profissionais.profissionais) {
             const especialidades = {
@@ -605,22 +595,9 @@ const carregarDadosMovimentacao = async () => {
             Object.entries(especialidades).forEach(([especialidade, selectId]) => {
                 const select = document.getElementById(selectId);
                 if (select) {
-                    // Configurar opção inicial baseada na obrigatoriedade
-                    let opcaoInicial;
-                    if (especialidade === 'Enfermagem') {
-                        opcaoInicial = `<option value="">⚠️ OBRIGATÓRIO - Selecione Enfermagem</option>`;
-                        select.style.borderColor = '#ef4444';
-                        select.setAttribute('required', 'true');
-                    } else if (especialidade === 'Fisioterapia') {
-                        opcaoInicial = `<option value="">Opcional - ${especialidade}</option>`;
-                        select.style.borderColor = '#d1d5db';
-                        select.removeAttribute('required');
-                    } else {
-                        opcaoInicial = `<option value="">Selecione - ${especialidade}</option>`;
-                        select.style.borderColor = '#d1d5db';
-                        select.removeAttribute('required');
-                    }
-                    
+                    // Verificar se existe primeira opção, senão criar
+                    const primeiraOpcao = select.querySelector('option');
+                    const opcaoInicial = primeiraOpcao ? primeiraOpcao.outerHTML : `<option value="">Selecione - ${especialidade}</option>`;
                     select.innerHTML = opcaoInicial;
 
                     // Adicionar profissionais da especialidade
@@ -632,37 +609,11 @@ const carregarDadosMovimentacao = async () => {
                             option.textContent = prof.nome;
                             select.appendChild(option);
                         });
-                    
-                    // Pré-selecionar profissional da última movimentação se existir
-                    if (ultimaMovimentacao) {
-                        let valorAnterior = null;
-                        switch (especialidade) {
-                            case 'Medicina':
-                                valorAnterior = ultimaMovimentacao.prof_medicina;
-                                break;
-                            case 'Enfermagem':
-                                valorAnterior = ultimaMovimentacao.prof_enfermagem;
-                                break;
-                            case 'Fisioterapia':
-                                valorAnterior = ultimaMovimentacao.prof_fisioterapia;
-                                break;
-                            case 'Bucomaxilo':
-                                valorAnterior = ultimaMovimentacao.prof_bucomaxilo;
-                                break;
-                        }
-                        
-                        if (valorAnterior) {
-                            select.value = valorAnterior;
-                            if (especialidade === 'Enfermagem') {
-                                select.style.borderColor = '#10b981';
-                            }
-                        }
-                    }
                 }
             });
         }
 
-        // Carregar e exibir glosas atuais com layout melhorado
+        // Carregar glosas atuais se existirem
         if (state.aihAtual && state.aihAtual.id) {
             const glosas = await api(`/aih/${state.aihAtual.id}/glosas`);
 
@@ -670,69 +621,25 @@ const carregarDadosMovimentacao = async () => {
             if (listaGlosas && glosas && glosas.glosas) {
                 if (glosas.glosas.length > 0) {
                     listaGlosas.innerHTML = `
-                        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
-                                <h5 style="color: #92400e; margin: 0; font-size: 1.1rem; font-weight: 600;">
-                                    ⚠️ Glosas/Pendências Ativas (${glosas.glosas.length})
-                                </h5>
-                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                    <button onclick="exportarGlosasAIH('csv')" 
-                                            style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
-                                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
-                                                   transition: all 0.2s ease;"
-                                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
-                                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                                        📄 Exportar CSV
-                                    </button>
-                                    <button onclick="exportarGlosasAIH('excel')" 
-                                            style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); 
-                                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
-                                                   transition: all 0.2s ease;"
-                                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
-                                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                                        📊 Exportar Excel
-                                    </button>
+                        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 1rem;">
+                            <h5 style="color: #92400e; margin-bottom: 0.5rem;">
+                                ⚠️ Glosas Ativas (${glosas.glosas.length})
+                            </h5>
+                            ${glosas.glosas.map(g => `
+                                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px;">
+                                    <strong>${g.linha}</strong> - ${g.tipo}
+                                    <span style="color: #64748b; font-size: 0.875rem; margin-left: 1rem;">
+                                        Por: ${g.profissional}
+                                    </span>
                                 </div>
-                            </div>
-                            <div style="display: grid; gap: 0.75rem;">
-                                ${glosas.glosas.map((g, index) => `
-                                    <div style="background: white; padding: 1rem; border-radius: 6px; border-left: 4px solid #f59e0b; 
-                                                display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center;">
-                                        <div style="background: #fbbf24; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; 
-                                                    font-weight: bold; font-size: 0.875rem; min-width: 40px; text-align: center;">
-                                            ${index + 1}
-                                        </div>
-                                        <div>
-                                            <div style="font-weight: 600; color: #92400e; margin-bottom: 0.25rem;">
-                                                📍 ${g.linha} - ${g.tipo}
-                                            </div>
-                                            <div style="color: #64748b; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem;">
-                                                <span>👨‍⚕️ Identificado por: <strong>${g.profissional}</strong></span>
-                                                <span>•</span>
-                                                <span>📅 ${new Date(g.criado_em).toLocaleDateString('pt-BR')}</span>
-                                                ${g.quantidade > 1 ? `<span>•</span><span>📊 Qtd: ${g.quantidade}</span>` : ''}
-                                            </div>
-                                        </div>
-                                        <div style="font-size: 0.75rem; color: #92400e; text-align: center;">
-                                            ID: ${g.id}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
+                            `).join('')}
                         </div>
                     `;
                 } else {
                     listaGlosas.innerHTML = `
-                        <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 1.5rem; text-align: center;">
-                            <div style="color: #166534; font-size: 1.1rem; margin-bottom: 0.5rem;">
-                                ✅ Nenhuma Glosa/Pendência Ativa
-                            </div>
-                            <div style="color: #16a34a; font-size: 0.875rem;">
-                                Esta AIH não possui glosas ou pendências em aberto
-                            </div>
-                        </div>
+                        <p style="color: #64748b; font-style: italic;">
+                            Nenhuma glosa ativa para esta AIH
+                        </p>
                     `;
                 }
             }
@@ -753,26 +660,20 @@ const carregarDadosMovimentacao = async () => {
             `;
         }
 
-        // Mostrar aviso sobre profissionais obrigatórios
-        const avisoDiv = document.getElementById('avisoProfissionais') || document.createElement('div');
-        avisoDiv.id = 'avisoProfissionais';
-        avisoDiv.innerHTML = `
-            <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
-                <h5 style="color: #92400e; margin-bottom: 0.5rem;">⚠️ Profissionais Auditores Obrigatórios</h5>
-                <ul style="margin: 0; padding-left: 1.5rem; color: #92400e;">
-                    <li><strong>Enfermagem:</strong> SEMPRE obrigatório</li>
-                    <li><strong>Medicina OU Bucomaxilo:</strong> Pelo menos um deve ser selecionado</li>
-                    <li><strong>Fisioterapia:</strong> Opcional</li>
-                </ul>
-            </div>
-        `;
-        
-        // Inserir antes do formulário se ainda não existir
-        if (!document.getElementById('avisoProfissionais')) {
-            const formMovimentacao = document.getElementById('formMovimentacao');
-            if (formMovimentacao) {
-                formMovimentacao.parentNode.insertBefore(avisoDiv, formMovimentacao);
-            }
+        // Mostrar lembrete sobre status
+        const lembreteDiv = document.getElementById('lembreteStatus');
+        if (lembreteDiv) {
+            lembreteDiv.innerHTML = `
+                <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <h5 style="color: #92400e; margin-bottom: 0.5rem;">💡 Lembrete sobre Status</h5>
+                    <ul style="margin: 0; padding-left: 1.5rem; color: #92400e;">
+                        <li><strong>Status 1:</strong> Finalizada com aprovação direta</li>
+                        <li><strong>Status 2:</strong> Ativa com aprovação indireta</li>
+                        <li><strong>Status 3:</strong> Ativa em discussão</li>
+                        <li><strong>Status 4:</strong> Finalizada após discussão</li>
+                    </ul>
+                </div>
+            `;
         }
 
     } catch (err) {
@@ -2142,46 +2043,6 @@ document.getElementById('formMovimentacao')?.addEventListener('submit', async (e
             observacoes: document.getElementById('movObservacoes').value || null
         };
 
-        // Validação de profissionais obrigatórios
-        const erros = [];
-
-        // Enfermagem sempre obrigatório
-        if (!dados.prof_enfermagem) {
-            erros.push('Profissional de Enfermagem é obrigatório');
-        }
-
-        // Medicina OU Bucomaxilo (pelo menos um)
-        if (!dados.prof_medicina && !dados.prof_bucomaxilo) {
-            erros.push('Pelo menos um profissional deve ser selecionado: Medicina OU Bucomaxilo');
-        }
-
-        if (erros.length > 0) {
-            alert('❌ Erros de validação:\n\n' + erros.join('\n'));
-            
-            // Destacar campos com erro
-            const enfermagemSelect = document.getElementById('movProfEnfermagem');
-            const medicinaSelect = document.getElementById('movProfMedicina');
-            const bucomaxiloSelect = document.getElementById('movProfBucomaxilo');
-            
-            if (!dados.prof_enfermagem && enfermagemSelect) {
-                enfermagemSelect.style.borderColor = '#ef4444';
-                enfermagemSelect.style.borderWidth = '2px';
-            }
-            
-            if (!dados.prof_medicina && !dados.prof_bucomaxilo) {
-                if (medicinaSelect) {
-                    medicinaSelect.style.borderColor = '#ef4444';
-                    medicinaSelect.style.borderWidth = '2px';
-                }
-                if (bucomaxiloSelect) {
-                    bucomaxiloSelect.style.borderColor = '#ef4444';
-                    bucomaxiloSelect.style.borderWidth = '2px';
-                }
-            }
-            
-            return;
-        }
-
         await api(`/aih/${state.aihAtual.id}/movimentacao`, {
             method: 'POST',
             body: JSON.stringify(dados)
@@ -2247,82 +2108,6 @@ window.removerGlosa = async (id) => {
         carregarGlosas();
     } catch (err) {
         alert('Erro ao remover glosa: ' + err.message);
-    }
-};
-
-// Exportar glosas/pendências da AIH atual
-window.exportarGlosasAIH = async (formato) => {
-    if (!state.aihAtual || !state.aihAtual.id) {
-        alert('Nenhuma AIH selecionada');
-        return;
-    }
-
-    try {
-        // Mostrar indicador de carregamento
-        const botoes = document.querySelectorAll('button[onclick*="exportarGlosasAIH"]');
-        botoes.forEach(btn => {
-            btn.disabled = true;
-            btn.textContent = btn.textContent.replace('📄', '⏳').replace('📊', '⏳');
-        });
-
-        const response = await fetch(`/api/aih/${state.aihAtual.id}/glosas/export/${formato}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${state.token}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        // Criar blob com o conteúdo da resposta
-        const blob = await response.blob();
-
-        // Determinar o nome do arquivo e tipo MIME
-        let fileName, mimeType;
-        if (formato === 'csv') {
-            fileName = `glosas-pendencias-AIH-${state.aihAtual.numero_aih}-${new Date().toISOString().split('T')[0]}.csv`;
-            mimeType = 'text/csv;charset=utf-8';
-        } else if (formato === 'excel') {
-            fileName = `glosas-pendencias-AIH-${state.aihAtual.numero_aih}-${new Date().toISOString().split('T')[0]}.xls`;
-            mimeType = 'application/vnd.ms-excel';
-        } else {
-            throw new Error('Formato não suportado');
-        }
-
-        // Criar link de download
-        const url = window.URL.createObjectURL(new Blob([blob], { type: mimeType }));
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-
-        // Adicionar ao DOM temporariamente e clicar
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Limpar URL do blob
-        window.URL.revokeObjectURL(url);
-
-        alert(`Glosas/Pendências exportadas com sucesso em formato ${formato.toUpperCase()}!`);
-
-    } catch (err) {
-        console.error('Erro ao exportar glosas:', err);
-        alert(`Erro ao exportar glosas: ${err.message}`);
-    } finally {
-        // Restaurar botões
-        setTimeout(() => {
-            const botoes = document.querySelectorAll('button[onclick*="exportarGlosasAIH"]');
-            botoes.forEach(btn => {
-                btn.disabled = false;
-                if (btn.textContent.includes('CSV')) {
-                    btn.textContent = '📄 Exportar CSV';
-                } else if (btn.textContent.includes('Excel')) {
-                    btn.textContent = '📊 Exportar Excel';
-                }
-            });
-        }, 1000);
     }
 };
 
