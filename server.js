@@ -873,6 +873,50 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
     }
 });
 
+// Endpoint para exportação de dados personalizados (resultados de pesquisa)
+app.post('/api/export/:formato', verificarToken, async (req, res) => {
+    try {
+        const { dados, titulo, tipo } = req.body;
+        
+        if (!dados || !Array.isArray(dados) || dados.length === 0) {
+            return res.status(400).json({ error: 'Dados não fornecidos ou inválidos' });
+        }
+
+        const nomeArquivo = `${tipo || 'exportacao'}-${new Date().toISOString().split('T')[0]}`;
+
+        if (req.params.formato === 'excel') {
+            // Criar workbook Excel
+            const worksheet = XLSX.utils.json_to_sheet(dados);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, titulo || 'Dados');
+
+            const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
+
+            res.setHeader('Content-Type', 'application/vnd.ms-excel');
+            res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
+            res.send(buffer);
+        } else if (req.params.formato === 'csv') {
+            // Criar CSV
+            const cabecalhos = Object.keys(dados[0]);
+            const csv = [
+                cabecalhos.join(','),
+                ...dados.map(item => 
+                    cabecalhos.map(header => `"${item[header] || ''}"`).join(',')
+                )
+            ].join('\n');
+
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.csv`);
+            res.send('\ufeff' + csv); // BOM para UTF-8
+        } else {
+            res.status(400).json({ error: 'Formato não suportado' });
+        }
+    } catch (err) {
+        console.error('Erro na exportação personalizada:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Helper para status no Excel
 const getStatusExcel = (status) => {
     const statusMap = {

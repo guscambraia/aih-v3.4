@@ -1097,13 +1097,24 @@ const exibirResultadosPesquisa = (resultados) => {
         return;
     }
 
+    // Armazenar resultados globalmente para exportação
+    window.ultimosResultadosPesquisa = resultados;
+
     container.innerHTML = `
         <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 1.5rem; margin-top: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                 <h3 style="color: #0369a1; margin: 0;">📊 Resultados da Pesquisa (${resultados.length})</h3>
-                <button onclick="limparResultados()" class="btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                    🗑️ Limpar Resultados
-                </button>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button onclick="exportarResultadosPesquisa('csv')" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                        📄 Exportar CSV
+                    </button>
+                    <button onclick="exportarResultadosPesquisa('excel')" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                        📊 Exportar Excel
+                    </button>
+                    <button onclick="limparResultados()" class="btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                        🗑️ Limpar Resultados
+                    </button>
+                </div>
             </div>
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -1428,9 +1439,89 @@ window.limparResultados = () => {
         container.innerHTML = '';
     }
     
+    // Limpar resultados armazenados
+    window.ultimosResultadosPesquisa = null;
+    
     // Também limpar os campos de busca rápida
     document.getElementById('buscaRapidaAIH').value = '';
     document.getElementById('buscaRapidaAtendimento').value = '';
+};
+
+// Função para exportar resultados da pesquisa
+window.exportarResultadosPesquisa = async (formato) => {
+    if (!window.ultimosResultadosPesquisa || window.ultimosResultadosPesquisa.length === 0) {
+        alert('Nenhum resultado disponível para exportação');
+        return;
+    }
+
+    try {
+        // Criar dados formatados para exportação
+        const dadosExportacao = window.ultimosResultadosPesquisa.map(aih => ({
+            'Número AIH': aih.numero_aih || '',
+            'Status': getStatusDescricao(aih.status),
+            'Competência': aih.competencia || '',
+            'Valor Inicial': `R$ ${(aih.valor_inicial || 0).toFixed(2)}`,
+            'Valor Atual': `R$ ${(aih.valor_atual || 0).toFixed(2)}`,
+            'Diferença': `R$ ${((aih.valor_inicial || 0) - (aih.valor_atual || 0)).toFixed(2)}`,
+            'Total Glosas': aih.total_glosas || 0,
+            'Cadastrado em': new Date(aih.criado_em).toLocaleDateString('pt-BR')
+        }));
+
+        const dataAtual = new Date().toISOString().split('T')[0];
+        
+        if (formato === 'csv') {
+            // Gerar CSV
+            const cabecalhos = Object.keys(dadosExportacao[0]);
+            const linhasCsv = [
+                cabecalhos.join(','),
+                ...dadosExportacao.map(linha => 
+                    cabecalhos.map(cabecalho => `"${linha[cabecalho]}"`).join(',')
+                )
+            ];
+            
+            const csvContent = '\ufeff' + linhasCsv.join('\n'); // BOM para UTF-8
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `resultados-pesquisa-${dataAtual}.csv`;
+            link.click();
+            
+            URL.revokeObjectURL(link.href);
+            
+        } else if (formato === 'excel') {
+            // Para Excel, vamos usar a API do servidor
+            const response = await fetch('/api/export/excel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.token}`
+                },
+                body: JSON.stringify({
+                    dados: dadosExportacao,
+                    titulo: 'Resultados da Pesquisa',
+                    tipo: 'resultados-pesquisa'
+                })
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `resultados-pesquisa-${dataAtual}.xls`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+            } else {
+                throw new Error('Erro ao gerar arquivo Excel');
+            }
+        }
+
+        alert(`Exportação ${formato.toUpperCase()} realizada com sucesso!`);
+        
+    } catch (err) {
+        console.error('Erro na exportação:', err);
+        alert('Erro ao exportar resultados: ' + err.message);
+    }
 };
 
 // Pesquisa avançada
