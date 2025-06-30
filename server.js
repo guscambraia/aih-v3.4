@@ -2045,8 +2045,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         g.profissional,
                         g.tipo as tipo_glosa,
                         COUNT(*) as ocorrencias,
-                        COUNT(DISTINCT g.aih_id) as aihs_afetadas,
-                        SUM(a.valor_inicial - a.valor_atual) as impacto_financeiro
+                        COUNT(DISTINCT g.aih_id) as aihs_afetadas
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
                     WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'g.criado_em')}
@@ -2724,8 +2723,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                         g.profissional as 'Profissional',
                         g.tipo as 'Tipo de Glosa',
                         COUNT(*) as 'Ocorrências',
-                        COUNT(DISTINCT g.aih_id) as 'AIHs Afetadas',
-                        ROUND(SUM(a.valor_inicial - a.valor_atual), 2) as 'Impacto Financeiro (R$)'
+                        COUNT(DISTINCT g.aih_id) as 'AIHs Afetadas'
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
                     WHERE g.ativa = 1 ${filtroWhere}
