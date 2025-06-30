@@ -1811,12 +1811,12 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                             WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN 1
                             WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN 1
                         END), 0) as movimentacoes_realizadas,
-                        COALESCE(AVG(CASE 
+                        COALESCE(SUM(CASE 
                             WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN m.valor_conta
                             WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN m.valor_conta
                             WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN m.valor_conta
                             WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN m.valor_conta
-                        END), 0) as valor_medio_auditado
+                        END), 0) as valor_total_auditado
                     FROM profissionais p
                     LEFT JOIN movimentacoes m ON (
                         (p.especialidade = 'Medicina' AND m.prof_medicina = p.nome) OR
@@ -2737,12 +2737,12 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                             WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN 1
                             WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN 1
                         END), 0) as 'Movimentações Realizadas (Quantidade)',
-                        COALESCE(ROUND(AVG(CASE 
+                        COALESCE(ROUND(SUM(CASE 
                             WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN m.valor_conta
                             WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN m.valor_conta
                             WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN m.valor_conta
                             WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN m.valor_conta
-                        END), 2), 0) as 'Valor Médio Auditado (R$)'
+                        END), 2), 0) as 'Valor Total Auditado (R$)'
                     FROM profissionais p
                     LEFT JOIN movimentacoes m ON (
                         (p.especialidade = 'Medicina' AND m.prof_medicina = p.nome) OR
