@@ -1,7 +1,7 @@
 
 const rateLimit = {};
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutos
-const MAX_REQUESTS = 500; // requests por janela (aumentado para desenvolvimento)
+const MAX_REQUESTS = 2000; // requests por janela - otimizado para volume de AIHs
 
 // Rate limiting simples
 const rateLimitMiddleware = (req, res, next) => {

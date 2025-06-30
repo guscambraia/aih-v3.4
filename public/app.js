@@ -3641,7 +3641,7 @@ window.cancelarMovimentacao = () => {
 
 // Event listeners para os botões na tela de movimentação
 const configurarEventListenersMovimentacao = () => {
-    console.log('Configurando event listeners da movimentação...');
+    // Event listeners configurados silenciosamente para melhor performance
 
     // Aguardar um pouco para garantir que os elementos estejam no DOM
     setTimeout(() => {

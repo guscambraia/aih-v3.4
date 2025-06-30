@@ -33,16 +33,18 @@ class DatabasePool {
                 return;
             }
             
-            // Configurações otimizadas para cada conexão
+            // Configurações otimizadas para alto volume
             conn.serialize(() => {
                 conn.run("PRAGMA journal_mode = WAL");
                 conn.run("PRAGMA synchronous = NORMAL");
-                conn.run("PRAGMA cache_size = 10000");
+                conn.run("PRAGMA cache_size = 50000"); // Cache maior
                 conn.run("PRAGMA temp_store = MEMORY");
-                conn.run("PRAGMA mmap_size = 268435456");
+                conn.run("PRAGMA mmap_size = 1073741824"); // 1GB memory-mapped
                 conn.run("PRAGMA foreign_keys = ON");
-                conn.run("PRAGMA busy_timeout = 30000");
-                conn.run("PRAGMA wal_autocheckpoint = 1000");
+                conn.run("PRAGMA busy_timeout = 60000"); // Timeout maior
+                conn.run("PRAGMA wal_autocheckpoint = 2000"); // Checkpoint menos frequente
+                conn.run("PRAGMA page_size = 32768"); // Páginas maiores
+                conn.run("PRAGMA threads = 4"); // Múltiplas threads
                 conn.run("PRAGMA optimize");
             });
         });
@@ -81,8 +83,8 @@ class DatabasePool {
     }
 }
 
-// Criar pool de conexões
-const pool = new DatabasePool(15); // 15 conexões simultâneas
+// Criar pool de conexões - otimizado para maior volume
+const pool = new DatabasePool(25); // 25 conexões simultâneas
 
 // Conexão principal para operações especiais
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -274,6 +276,15 @@ const initDB = () => {
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_exclusao_tipo ON logs_exclusao(tipo_exclusao, data_exclusao DESC)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_exclusao_data ON logs_exclusao(data_exclusao DESC)`);
         
+        // Índices específicos para dashboard e relatórios (performance crítica)
+        db.run(`CREATE INDEX IF NOT EXISTS idx_dashboard_competencia_status ON aihs(competencia, status, valor_inicial, valor_atual)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_mov_tipo_competencia_aih ON movimentacoes(tipo, competencia, aih_id)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_glosas_ativa_aih_tipo ON glosas(ativa, aih_id, tipo, profissional)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_aih_criado_status ON aihs(criado_em DESC, status, competencia)`);
+        
+        // Índice composto para consultas de fluxo
+        db.run(`CREATE INDEX IF NOT EXISTS idx_mov_competencia_tipo_data ON movimentacoes(competencia, tipo, data_movimentacao DESC)`);
+        
         // Índices para texto (FTS seria ideal, mas usando LIKE otimizado)
         db.run(`CREATE INDEX IF NOT EXISTS idx_mov_prof_medicina ON movimentacoes(prof_medicina) WHERE prof_medicina IS NOT NULL`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_mov_prof_enfermagem ON movimentacoes(prof_enfermagem) WHERE prof_enfermagem IS NOT NULL`);
@@ -284,10 +295,10 @@ const initDB = () => {
     });
 };
 
-// Cache para consultas frequentes
+// Cache para consultas frequentes - otimizado
 const queryCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-const MAX_CACHE_SIZE = 1000;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+const MAX_CACHE_SIZE = 5000; // Cache maior para mais consultas
 
 const clearExpiredCache = () => {
     const now = Date.now();

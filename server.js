@@ -57,15 +57,31 @@ scheduleMaintenance();
 const { logPerformance } = require('./monitor');
 setTimeout(logPerformance, 30000); // Log inicial após 30s
 
-// Backup automático diário
+// Backup automático otimizado para menor impacto
 const scheduleBackups = () => {
     const BACKUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 horas
 
     const performBackup = async () => {
         try {
-            console.log('🔄 Iniciando backup automático...');
-            const backupPath = await createBackup();
-            console.log(`✅ Backup automático concluído: ${backupPath}`);
+            // Backup em horário de menor movimento (madrugada)
+            const agora = new Date();
+            const hora = agora.getHours();
+            
+            // Só fazer backup entre 2h e 5h da manhã para menor impacto
+            if (hora >= 2 && hora <= 5) {
+                console.log('🔄 Iniciando backup automático...');
+                const backupPath = await createBackup();
+                console.log(`✅ Backup automático concluído: ${backupPath}`);
+            } else {
+                console.log('⏰ Backup agendado para horário de menor movimento');
+                // Reagendar para próximo horário adequado
+                const proximoBackup = new Date();
+                proximoBackup.setHours(3, 0, 0, 0); // 3h da manhã
+                if (proximoBackup <= agora) {
+                    proximoBackup.setDate(proximoBackup.getDate() + 1);
+                }
+                setTimeout(performBackup, proximoBackup.getTime() - agora.getTime());
+            }
         } catch (err) {
             console.error('❌ Erro no backup automático:', err);
         }
@@ -77,7 +93,7 @@ const scheduleBackups = () => {
     // Backups subsequentes a cada 24 horas
     setInterval(performBackup, BACKUP_INTERVAL);
 
-    console.log('📅 Backup automático agendado (diário)');
+    console.log('📅 Backup automático agendado (horário otimizado)');
 };
 
 scheduleBackups();
@@ -386,23 +402,16 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
         // Pegar competência da query ou usar atual
         const competencia = req.query.competencia || getCompetenciaAtual();
 
-        // 1. AIH em processamento na competência
-        // (entrada_sus - saida_hospital) na competência específica
-        const entradasSUS = await get(`
-            SELECT COUNT(DISTINCT m.aih_id) as count 
+        // 1. AIH em processamento na competência - consulta otimizada
+        const processamentoCompetencia = await get(`
+            SELECT 
+                COUNT(DISTINCT CASE WHEN m.tipo = 'entrada_sus' THEN m.aih_id END) as entradas,
+                COUNT(DISTINCT CASE WHEN m.tipo = 'saida_hospital' THEN m.aih_id END) as saidas
             FROM movimentacoes m
-            WHERE m.tipo = 'entrada_sus' 
-            AND m.competencia = ?
-        `, [competencia]);
+            WHERE m.competencia = ?
+        `, [competencia], true); // Usar cache
 
-        const saidasHospital = await get(`
-            SELECT COUNT(DISTINCT m.aih_id) as count 
-            FROM movimentacoes m
-            WHERE m.tipo = 'saida_hospital' 
-            AND m.competencia = ?
-        `, [competencia]);
-
-        const emProcessamentoCompetencia = (entradasSUS.count || 0) - (saidasHospital.count || 0);
+        const emProcessamentoCompetencia = (processamentoCompetencia.entradas || 0) - (processamentoCompetencia.saidas || 0);
 
         // 2. AIH finalizadas na competência (status 1 e 4)
         const finalizadasCompetencia = await get(`
