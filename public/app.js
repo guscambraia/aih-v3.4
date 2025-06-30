@@ -968,6 +968,416 @@ window.exportarDados = async (formato) => {
     }
 };
 
+// Busca rápida por AIH
+window.buscarPorAIH = async () => {
+    const numeroAIH = document.getElementById('buscaRapidaAIH').value.trim();
+    
+    if (!numeroAIH) {
+        alert('Por favor, digite o número da AIH');
+        return;
+    }
+
+    try {
+        const aih = await api(`/aih/${numeroAIH}`);
+        state.aihAtual = aih;
+        
+        if (aih.status === 1 || aih.status === 4) {
+            const continuar = await mostrarModal(
+                'AIH Finalizada',
+                'Esta AIH está finalizada. É uma reassinatura/reapresentação?'
+            );
+
+            if (!continuar) {
+                document.getElementById('buscaRapidaAIH').value = '';
+                return;
+            }
+        }
+
+        state.telaAnterior = 'telaPesquisa';
+        mostrarInfoAIH(aih);
+    } catch (err) {
+        if (err.message.includes('não encontrada')) {
+            alert(`AIH ${numeroAIH} não encontrada. Deseja cadastrá-la?`);
+            document.getElementById('cadastroNumeroAIH').value = numeroAIH;
+            state.telaAnterior = 'telaPesquisa';
+            mostrarTela('telaCadastroAIH');
+            setTimeout(garantirCampoAtendimento, 100);
+        } else {
+            alert('Erro ao buscar AIH: ' + err.message);
+        }
+    }
+};
+
+// Busca por número de atendimento
+window.buscarPorAtendimento = async () => {
+    const numeroAtendimento = document.getElementById('buscaRapidaAtendimento').value.trim();
+    
+    if (!numeroAtendimento) {
+        alert('Por favor, digite o número do atendimento');
+        return;
+    }
+
+    try {
+        const response = await api('/pesquisar', {
+            method: 'POST',
+            body: JSON.stringify({
+                filtros: {
+                    numero_atendimento: numeroAtendimento
+                }
+            })
+        });
+
+        if (response.resultados && response.resultados.length > 0) {
+            exibirResultadosPesquisa(response.resultados);
+        } else {
+            alert('Nenhuma AIH encontrada com este número de atendimento');
+        }
+    } catch (err) {
+        alert('Erro ao buscar por atendimento: ' + err.message);
+    }
+};
+
+// Função para exibir resultados da pesquisa
+const exibirResultadosPesquisa = (resultados) => {
+    const container = document.getElementById('resultadosPesquisa');
+    
+    if (resultados.length === 0) {
+        container.innerHTML = '<p>Nenhum resultado encontrado</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <h3>Resultados da Pesquisa (${resultados.length})</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>AIH</th>
+                    <th>Status</th>
+                    <th>Competência</th>
+                    <th>Valor Inicial</th>
+                    <th>Valor Atual</th>
+                    <th>Glosas</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${resultados.map(aih => `
+                    <tr>
+                        <td>${aih.numero_aih}</td>
+                        <td><span class="status-badge status-${aih.status}">${getStatusDescricao(aih.status)}</span></td>
+                        <td>${aih.competencia}</td>
+                        <td>R$ ${aih.valor_inicial.toFixed(2)}</td>
+                        <td>R$ ${aih.valor_atual.toFixed(2)}</td>
+                        <td>${aih.total_glosas || 0}</td>
+                        <td>
+                            <button onclick="visualizarAIH('${aih.numero_aih}')" class="btn-primary" style="padding: 0.5rem;">
+                                Ver Detalhes
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+};
+
+// Função para visualizar AIH dos resultados
+window.visualizarAIH = async (numeroAIH) => {
+    try {
+        const aih = await api(`/aih/${numeroAIH}`);
+        state.aihAtual = aih;
+        state.telaAnterior = 'telaPesquisa';
+        mostrarInfoAIH(aih);
+    } catch (err) {
+        alert('Erro ao carregar AIH: ' + err.message);
+    }
+};
+
+// Navegação para relatórios
+document.getElementById('btnRelatorios').addEventListener('click', () => {
+    mostrarTela('telaRelatorios');
+    carregarRelatorios();
+});
+
+// Carregar opções de relatórios
+const carregarRelatorios = () => {
+    const container = document.getElementById('opcoesRelatorios');
+    
+    container.innerHTML = `
+        <div class="relatorios-grid">
+            <div class="relatorio-card" onclick="gerarRelatorio('acessos')">
+                <div class="relatorio-icon">👥</div>
+                <h4>Relatório de Acessos</h4>
+                <p>Usuários e frequência de acessos</p>
+            </div>
+            
+            <div class="relatorio-card" onclick="gerarRelatorio('aprovacoes')">
+                <div class="relatorio-icon">✅</div>
+                <h4>Relatório de Aprovações</h4>
+                <p>Distribuição por status de aprovação</p>
+            </div>
+            
+            <div class="relatorio-card" onclick="gerarRelatorio('glosas-profissional')">
+                <div class="relatorio-icon">⚠️</div>
+                <h4>Glosas por Profissional</h4>
+                <p>Glosas identificadas por auditor</p>
+            </div>
+            
+            <div class="relatorio-card" onclick="gerarRelatorio('aihs-profissional')">
+                <div class="relatorio-icon">🏥</div>
+                <h4>AIHs por Profissional</h4>
+                <p>Produtividade por auditor</p>
+            </div>
+            
+            <div class="relatorio-card" onclick="gerarRelatorio('tipos-glosa')">
+                <div class="relatorio-icon">📊</div>
+                <h4>Tipos de Glosa</h4>
+                <p>Ranking dos tipos mais frequentes</p>
+            </div>
+            
+            <div class="relatorio-card" onclick="mostrarRelatoriosPeriodo()">
+                <div class="relatorio-icon">📅</div>
+                <h4>Relatórios por Período</h4>
+                <p>Análises com filtros de data</p>
+            </div>
+        </div>
+    `;
+};
+
+// Gerar relatório
+window.gerarRelatorio = async (tipo) => {
+    try {
+        const response = await api(`/relatorios/${tipo}`, {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+        
+        exibirRelatorio(tipo, response.resultado);
+    } catch (err) {
+        alert('Erro ao gerar relatório: ' + err.message);
+    }
+};
+
+// Exibir relatório
+const exibirRelatorio = (tipo, dados) => {
+    const container = document.getElementById('resultadoRelatorio');
+    let html = `<h3>📊 ${getTituloRelatorio(tipo)}</h3>`;
+    
+    if (Array.isArray(dados)) {
+        html += `
+            <div style="margin-bottom: 1rem;">
+                <button onclick="exportarRelatorio('${tipo}')" class="btn-success">
+                    📊 Exportar Excel
+                </button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        ${Object.keys(dados[0] || {}).map(key => `<th>${key}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${dados.map(item => `
+                        <tr>
+                            ${Object.values(item).map(value => `<td>${value}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } else {
+        html += `<pre>${JSON.stringify(dados, null, 2)}</pre>`;
+    }
+    
+    container.innerHTML = html;
+};
+
+// Obter título do relatório
+const getTituloRelatorio = (tipo) => {
+    const titulos = {
+        'acessos': 'Relatório de Acessos',
+        'aprovacoes': 'Relatório de Aprovações',
+        'glosas-profissional': 'Glosas por Profissional',
+        'aihs-profissional': 'AIHs por Profissional',
+        'tipos-glosa': 'Tipos de Glosa'
+    };
+    return titulos[tipo] || 'Relatório';
+};
+
+// Exportar relatório
+window.exportarRelatorio = (tipo) => {
+    const link = document.createElement('a');
+    link.href = `/api/relatorios/${tipo}/export`;
+    link.download = `relatorio-${tipo}-${new Date().toISOString().split('T')[0]}.xls`;
+    link.click();
+};
+
+// Mostrar relatórios com filtro de período
+window.mostrarRelatoriosPeriodo = () => {
+    const container = document.getElementById('resultadoRelatorio');
+    
+    container.innerHTML = `
+        <h3>📅 Relatórios por Período</h3>
+        <div class="filtros-periodo">
+            <div class="filtro-item">
+                <label>Data Início:</label>
+                <input type="date" id="dataInicioPeriodo">
+            </div>
+            <div class="filtro-item">
+                <label>Data Fim:</label>
+                <input type="date" id="dataFimPeriodo">
+            </div>
+            <div class="filtro-item">
+                <label>Competência:</label>
+                <input type="text" id="competenciaPeriodo" placeholder="MM/AAAA">
+            </div>
+        </div>
+        
+        <div class="relatorios-periodo-grid">
+            <button onclick="gerarRelatorioPeriodo('estatisticas-periodo')" class="relatorio-periodo-btn">
+                📊 Estatísticas Gerais
+            </button>
+            <button onclick="gerarRelatorioPeriodo('valores-glosas-periodo')" class="relatorio-periodo-btn">
+                💰 Análise Financeira
+            </button>
+            <button onclick="gerarRelatorioPeriodo('tipos-glosa-periodo')" class="relatorio-periodo-btn">
+                ⚠️ Tipos de Glosa
+            </button>
+            <button onclick="gerarRelatorioPeriodo('aihs-profissional-periodo')" class="relatorio-periodo-btn">
+                👨‍⚕️ Produtividade Profissionais
+            </button>
+        </div>
+        
+        <div id="resultadoRelatorioPeriodo"></div>
+    `;
+};
+
+// Gerar relatório com período
+window.gerarRelatorioPeriodo = async (tipo) => {
+    try {
+        const dataInicio = document.getElementById('dataInicioPeriodo').value;
+        const dataFim = document.getElementById('dataFimPeriodo').value;
+        const competencia = document.getElementById('competenciaPeriodo').value;
+        
+        const response = await api(`/relatorios/${tipo}`, {
+            method: 'POST',
+            body: JSON.stringify({
+                data_inicio: dataInicio,
+                data_fim: dataFim,
+                competencia: competencia
+            })
+        });
+        
+        exibirRelatorioPeriodo(tipo, response.resultado, { dataInicio, dataFim, competencia });
+    } catch (err) {
+        alert('Erro ao gerar relatório: ' + err.message);
+    }
+};
+
+// Exibir relatório com período
+const exibirRelatorioPeriodo = (tipo, dados, filtros) => {
+    const container = document.getElementById('resultadoRelatorioPeriodo');
+    let html = `
+        <h4>📊 ${getTituloRelatorio(tipo)}</h4>
+        <p><strong>Período:</strong> ${filtros.dataInicio || 'Início'} até ${filtros.dataFim || 'Fim'} 
+           ${filtros.competencia ? `| Competência: ${filtros.competencia}` : ''}</p>
+        <div style="margin-bottom: 1rem;">
+            <button onclick="exportarRelatorioPeriodo('${tipo}', ${JSON.stringify(filtros).replace(/"/g, '&quot;')})" class="btn-success">
+                📊 Exportar Excel
+            </button>
+        </div>
+    `;
+    
+    if (Array.isArray(dados)) {
+        html += `
+            <table>
+                <thead>
+                    <tr>
+                        ${Object.keys(dados[0] || {}).map(key => `<th>${key}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${dados.map(item => `
+                        <tr>
+                            ${Object.values(item).map(value => `<td>${value}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } else {
+        html += `<pre>${JSON.stringify(dados, null, 2)}</pre>`;
+    }
+    
+    container.innerHTML = html;
+};
+
+// Exportar relatório com período
+window.exportarRelatorioPeriodo = (tipo, filtros) => {
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/api/relatorios/${tipo}/export`;
+    form.style.display = 'none';
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'data';
+    input.value = JSON.stringify(filtros);
+    
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+};
+
+// Pesquisa avançada
+document.getElementById('formPesquisa').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const filtros = {
+        status: Array.from(document.querySelectorAll('input[name="status"]:checked')).map(cb => parseInt(cb.value)),
+        competencia: document.getElementById('filtroCompetencia').value,
+        data_inicio: document.getElementById('filtroDataInicio').value,
+        data_fim: document.getElementById('filtroDataFim').value,
+        valor_min: document.getElementById('filtroValorMin').value,
+        valor_max: document.getElementById('filtroValorMax').value,
+        numero_aih: document.getElementById('filtroNumeroAIH').value,
+        numero_atendimento: document.getElementById('filtroNumeroAtendimento').value,
+        profissional: document.getElementById('filtroProfissional').value
+    };
+    
+    // Remover filtros vazios
+    Object.keys(filtros).forEach(key => {
+        if (!filtros[key] || (Array.isArray(filtros[key]) && filtros[key].length === 0)) {
+            delete filtros[key];
+        }
+    });
+    
+    try {
+        const response = await api('/pesquisar', {
+            method: 'POST',
+            body: JSON.stringify({ filtros })
+        });
+        
+        exibirResultadosPesquisa(response.resultados);
+    } catch (err) {
+        alert('Erro na pesquisa: ' + err.message);
+    }
+});
+
+// Exportar histórico de movimentações
+window.exportarHistoricoMovimentacoes = (formato) => {
+    if (!state.aihAtual) {
+        alert('Nenhuma AIH selecionada');
+        return;
+    }
+    
+    const link = document.createElement('a');
+    link.href = `/api/aih/${state.aihAtual.id}/movimentacoes/export/${formato}`;
+    link.download = `historico-AIH-${state.aihAtual.numero_aih}.${formato}`;
+    link.click();
+};
+
 // Adicionar funcionalidades de configuração
 const carregarProfissionais = async () => {
     try {
