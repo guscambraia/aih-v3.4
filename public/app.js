@@ -613,6 +613,56 @@ const carregarDadosMovimentacao = async () => {
             });
         }
 
+        // Buscar e pré-selecionar profissionais da última movimentação desta AIH
+        if (state.aihAtual && state.aihAtual.id) {
+            try {
+                const ultimaMovimentacao = await api(`/aih/${state.aihAtual.id}/ultima-movimentacao`);
+                
+                if (ultimaMovimentacao && ultimaMovimentacao.movimentacao) {
+                    const mov = ultimaMovimentacao.movimentacao;
+                    
+                    // Pré-selecionar profissionais baseado na última movimentação
+                    if (mov.prof_medicina) {
+                        const selectMedicina = document.getElementById('movProfMedicina');
+                        if (selectMedicina) {
+                            selectMedicina.value = mov.prof_medicina;
+                        }
+                    }
+                    
+                    if (mov.prof_enfermagem) {
+                        const selectEnfermagem = document.getElementById('movProfEnfermagem');
+                        if (selectEnfermagem) {
+                            selectEnfermagem.value = mov.prof_enfermagem;
+                        }
+                    }
+                    
+                    if (mov.prof_fisioterapia) {
+                        const selectFisioterapia = document.getElementById('movProfFisioterapia');
+                        if (selectFisioterapia) {
+                            selectFisioterapia.value = mov.prof_fisioterapia;
+                        }
+                    }
+                    
+                    if (mov.prof_bucomaxilo) {
+                        const selectBucomaxilo = document.getElementById('movProfBucomaxilo');
+                        if (selectBucomaxilo) {
+                            selectBucomaxilo.value = mov.prof_bucomaxilo;
+                        }
+                    }
+                    
+                    console.log('Profissionais pré-selecionados da última movimentação:', {
+                        medicina: mov.prof_medicina,
+                        enfermagem: mov.prof_enfermagem,
+                        fisioterapia: mov.prof_fisioterapia,
+                        bucomaxilo: mov.prof_bucomaxilo
+                    });
+                }
+            } catch (err) {
+                console.log('Não foi possível carregar profissionais anteriores:', err.message);
+                // Não é um erro crítico, continua sem pré-seleção
+            }
+        }
+
         // Carregar glosas atuais se existirem
         if (state.aihAtual && state.aihAtual.id) {
             const glosas = await api(`/aih/${state.aihAtual.id}/glosas`);

@@ -496,6 +496,46 @@ app.get('/api/aih/:id/proxima-movimentacao', verificarToken, async (req, res) =>
     }
 });
 
+// Buscar última movimentação com profissionais para pré-seleção
+app.get('/api/aih/:id/ultima-movimentacao', verificarToken, async (req, res) => {
+    try {
+        const aihId = req.params.id;
+
+        // Buscar última movimentação com todos os dados dos profissionais
+        const ultimaMovimentacao = await get(
+            `SELECT * FROM movimentacoes 
+             WHERE aih_id = ? AND 
+                   (prof_medicina IS NOT NULL OR prof_enfermagem IS NOT NULL OR 
+                    prof_fisioterapia IS NOT NULL OR prof_bucomaxilo IS NOT NULL)
+             ORDER BY data_movimentacao DESC LIMIT 1`,
+            [aihId]
+        );
+
+        if (!ultimaMovimentacao) {
+            return res.json({ 
+                success: true, 
+                movimentacao: null, 
+                message: 'Nenhuma movimentação anterior com profissionais encontrada' 
+            });
+        }
+
+        res.json({
+            success: true,
+            movimentacao: {
+                prof_medicina: ultimaMovimentacao.prof_medicina,
+                prof_enfermagem: ultimaMovimentacao.prof_enfermagem,
+                prof_fisioterapia: ultimaMovimentacao.prof_fisioterapia,
+                prof_bucomaxilo: ultimaMovimentacao.prof_bucomaxilo,
+                data_movimentacao: ultimaMovimentacao.data_movimentacao,
+                tipo: ultimaMovimentacao.tipo
+            }
+        });
+    } catch (err) {
+        console.error('Erro ao buscar última movimentação:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Nova movimentação
 app.post('/api/aih/:id/movimentacao', verificarToken, async (req, res) => {
     try {
