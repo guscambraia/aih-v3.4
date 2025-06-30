@@ -81,8 +81,8 @@ class DatabasePool {
     }
 }
 
-// Criar pool de conexões otimizado para alto volume
-const pool = new DatabasePool(15); // 15 conexões simultâneas otimizadas
+// Criar pool de conexões
+const pool = new DatabasePool(15); // 15 conexões simultâneas
 
 // Conexão principal para operações especiais
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -269,16 +269,6 @@ const initDB = () => {
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_usuario_data ON logs_acesso(usuario_id, data_hora DESC)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_acao_data ON logs_acesso(acao, data_hora DESC)`);
         
-        // Índices otimizados para dashboard (alto volume)
-        db.run(`CREATE INDEX IF NOT EXISTS idx_dashboard_movim_count ON movimentacoes(tipo, competencia) WHERE tipo IN ('entrada_sus', 'saida_hospital')`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_dashboard_aihs_status ON aihs(status, competencia) WHERE status IN (1, 2, 3, 4)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_dashboard_valores ON aihs(competencia, valor_inicial, valor_atual)`);
-        
-        // Índices para pesquisas frequentes (performance crítica)
-        db.run(`CREATE INDEX IF NOT EXISTS idx_pesquisa_completa ON aihs(status, competencia, criado_em DESC)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_pesquisa_valores ON aihs(valor_atual, valor_inicial, competencia)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_movim_pesquisa ON movimentacoes(aih_id, tipo, competencia, data_movimentacao DESC)`);
-        
         // Índices para logs de exclusão
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_exclusao_usuario ON logs_exclusao(usuario_id, data_exclusao DESC)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_exclusao_tipo ON logs_exclusao(tipo_exclusao, data_exclusao DESC)`);
@@ -294,102 +284,18 @@ const initDB = () => {
     });
 };
 
-// Sistema de cache hierárquico para alto volume
-const cacheSystem = {
-    // Cache rápido para consultas frequentes (dashboard, contadores)
-    hot: new Map(),
-    hotTTL: 30 * 1000, // 30 segundos para dados críticos
-    hotMaxSize: 200,
-    
-    // Cache médio para consultas de busca
-    warm: new Map(), 
-    warmTTL: 5 * 60 * 1000, // 5 minutos para buscas
-    warmMaxSize: 1000,
-    
-    // Cache frio para dados estáticos
-    cold: new Map(),
-    coldTTL: 30 * 60 * 1000, // 30 minutos para dados estáticos
-    coldMaxSize: 3000
-};
+// Cache para consultas frequentes
+const queryCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const MAX_CACHE_SIZE = 1000;
 
-// Cache especializado para dashboard (ultra otimizado)
-const dashboardCache = new Map();
-const DASHBOARD_CACHE_TTL = 15 * 1000; // 15 segundos para dashboard em tempo real
-const MAX_DASHBOARD_CACHE = 50;
-
-// Sistema inteligente de limpeza de cache
 const clearExpiredCache = () => {
     const now = Date.now();
-    
-    // Limpar cache hierárquico
-    Object.keys(cacheSystem).forEach(level => {
-        if (level.endsWith('TTL') || level.endsWith('MaxSize')) return;
-        
-        const cache = cacheSystem[level];
-        const ttl = cacheSystem[level + 'TTL'];
-        
-        for (const [key, value] of cache.entries()) {
-            if (now - value.timestamp > ttl) {
-                cache.delete(key);
-            }
-        }
-    });
-    
-    // Limpar cache do dashboard
-    for (const [key, value] of dashboardCache.entries()) {
-        if (now - value.timestamp > DASHBOARD_CACHE_TTL) {
-            dashboardCache.delete(key);
+    for (const [key, value] of queryCache.entries()) {
+        if (now - value.timestamp > CACHE_TTL) {
+            queryCache.delete(key);
         }
     }
-};
-
-// Função para obter cache apropriado baseado no tipo de consulta
-const getCacheLevel = (sql, params) => {
-    const query = sql.toLowerCase();
-    
-    // Cache HOT: dashboard, contadores, consultas críticas
-    if (query.includes('count(') || query.includes('dashboard') || query.includes('sum(')) {
-        return 'hot';
-    }
-    
-    // Cache WARM: buscas, pesquisas
-    if (query.includes('where') || query.includes('like') || query.includes('pesquisar')) {
-        return 'warm';
-    }
-    
-    // Cache COLD: dados estáticos (profissionais, tipos)
-    if (query.includes('profissionais') || query.includes('tipos_glosa') || query.includes('usuarios')) {
-        return 'cold';
-    }
-    
-    return 'warm'; // padrão
-};
-
-// Função especial para cache do dashboard
-const getDashboardCached = async (sql, params = []) => {
-    const cacheKey = 'dashboard_' + sql + JSON.stringify(params);
-    const cached = dashboardCache.get(cacheKey);
-    
-    if (cached && (Date.now() - cached.timestamp < DASHBOARD_CACHE_TTL)) {
-        return cached.data;
-    }
-    
-    const conn = await pool.getConnection();
-    return new Promise((resolve, reject) => {
-        conn.get(sql, params, (err, row) => {
-            pool.releaseConnection(conn);
-            if (err) {
-                reject(err);
-            } else {
-                if (dashboardCache.size >= MAX_DASHBOARD_CACHE) {
-                    const firstKey = dashboardCache.keys().next().value;
-                    dashboardCache.delete(firstKey);
-                }
-                dashboardCache.set(cacheKey, { data: row, timestamp: Date.now() });
-                resolve(row);
-            }
-        });
-    });
 };
 
 // Limpar cache expirado a cada minuto
@@ -412,17 +318,11 @@ const run = async (sql, params = []) => {
 };
 
 const get = async (sql, params = [], useCache = false) => {
-    // Cache inteligente baseado no tipo de consulta
+    // Verificar cache se solicitado
     if (useCache) {
-        const cacheLevel = getCacheLevel(sql, params);
-        const cache = cacheSystem[cacheLevel];
-        const ttl = cacheSystem[cacheLevel + 'TTL'];
-        const maxSize = cacheSystem[cacheLevel + 'MaxSize'];
-        
         const cacheKey = sql + JSON.stringify(params);
-        const cached = cache.get(cacheKey);
-        
-        if (cached && (Date.now() - cached.timestamp < ttl)) {
+        const cached = queryCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
             return cached.data;
         }
     }
@@ -435,20 +335,15 @@ const get = async (sql, params = [], useCache = false) => {
                 console.error('Erro SQL:', { sql: sql.substring(0, 100), params, error: err.message });
                 reject(err);
             } else {
-                // Cache inteligente
+                // Adicionar ao cache se solicitado
                 if (useCache && row) {
-                    const cacheLevel = getCacheLevel(sql, params);
-                    const cache = cacheSystem[cacheLevel];
-                    const maxSize = cacheSystem[cacheLevel + 'MaxSize'];
                     const cacheKey = sql + JSON.stringify(params);
-                    
-                    // Eviction strategy: remove oldest when full
-                    if (cache.size >= maxSize) {
-                        const firstKey = cache.keys().next().value;
-                        cache.delete(firstKey);
+                    if (queryCache.size >= MAX_CACHE_SIZE) {
+                        // Remover entrada mais antiga
+                        const firstKey = queryCache.keys().next().value;
+                        queryCache.delete(firstKey);
                     }
-                    
-                    cache.set(cacheKey, { data: row, timestamp: Date.now() });
+                    queryCache.set(cacheKey, { data: row, timestamp: Date.now() });
                 }
                 resolve(row);
             }
@@ -457,16 +352,11 @@ const get = async (sql, params = [], useCache = false) => {
 };
 
 const all = async (sql, params = [], useCache = false) => {
-    // Cache inteligente baseado no tipo de consulta
+    // Verificar cache se solicitado
     if (useCache) {
-        const cacheLevel = getCacheLevel(sql, params);
-        const cache = cacheSystem[cacheLevel];
-        const ttl = cacheSystem[cacheLevel + 'TTL'];
-        
         const cacheKey = sql + JSON.stringify(params);
-        const cached = cache.get(cacheKey);
-        
-        if (cached && (Date.now() - cached.timestamp < ttl)) {
+        const cached = queryCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
             return cached.data;
         }
     }
@@ -479,20 +369,14 @@ const all = async (sql, params = [], useCache = false) => {
                 console.error('Erro SQL:', { sql: sql.substring(0, 100), params, error: err.message });
                 reject(err);
             } else {
-                // Cache inteligente
+                // Adicionar ao cache se solicitado
                 if (useCache && rows) {
-                    const cacheLevel = getCacheLevel(sql, params);
-                    const cache = cacheSystem[cacheLevel];
-                    const maxSize = cacheSystem[cacheLevel + 'MaxSize'];
                     const cacheKey = sql + JSON.stringify(params);
-                    
-                    // Eviction strategy: remove oldest when full
-                    if (cache.size >= maxSize) {
-                        const firstKey = cache.keys().next().value;
-                        cache.delete(firstKey);
+                    if (queryCache.size >= MAX_CACHE_SIZE) {
+                        const firstKey = queryCache.keys().next().value;
+                        queryCache.delete(firstKey);
                     }
-                    
-                    cache.set(cacheKey, { data: rows, timestamp: Date.now() });
+                    queryCache.set(cacheKey, { data: rows, timestamp: Date.now() });
                 }
                 resolve(rows);
             }
@@ -584,40 +468,20 @@ const validateMovimentacao = (data) => {
     return errors;
 };
 
-// Limpar cache quando necessário (sistema hierárquico)
+// Limpar cache quando necessário
 const clearCache = (pattern = null) => {
     if (!pattern) {
-        // Limpar todos os níveis de cache
-        Object.keys(cacheSystem).forEach(level => {
-            if (!level.endsWith('TTL') && !level.endsWith('MaxSize')) {
-                cacheSystem[level].clear();
-            }
-        });
-        dashboardCache.clear();
-        console.log('Sistema de cache hierárquico limpo');
+        queryCache.clear();
+        console.log('Cache de consultas limpo');
     } else {
         let cleared = 0;
-        // Limpar pattern em todos os níveis
-        Object.keys(cacheSystem).forEach(level => {
-            if (!level.endsWith('TTL') && !level.endsWith('MaxSize')) {
-                const cache = cacheSystem[level];
-                for (const key of cache.keys()) {
-                    if (key.includes(pattern)) {
-                        cache.delete(key);
-                        cleared++;
-                    }
-                }
-            }
-        });
-        
-        // Limpar dashboard cache
-        for (const key of dashboardCache.keys()) {
+        for (const key of queryCache.keys()) {
             if (key.includes(pattern)) {
-                dashboardCache.delete(key);
+                queryCache.delete(key);
                 cleared++;
             }
         }
-        console.log(`Cache limpo: ${cleared} entradas removidas para pattern "${pattern}"`);
+        console.log(`Cache limpo: ${cleared} entradas removidas`);
     }
 };
 
@@ -724,6 +588,5 @@ module.exports = {
     clearCache,
     getDbStats,
     createBackup,
-    closePool,
-    getDashboardCached
+    closePool
 };

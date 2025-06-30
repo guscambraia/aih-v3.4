@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const XLSX = require('xlsx');
-const { initDB, run, get, all, runTransaction, validateAIH, validateMovimentacao, clearCache, getDbStats, createBackup, getDashboardCached } = require('./database');
+const { initDB, run, get, all, runTransaction, validateAIH, validateMovimentacao, clearCache, getDbStats, createBackup } = require('./database');
 const { verificarToken, login, cadastrarUsuario, loginAdmin, alterarSenhaAdmin, listarUsuarios, excluirUsuario } = require('./auth');
 const { rateLimitMiddleware, validateInput, clearRateLimit, detectSuspiciousActivity, getSecurityLogs } = require('./middleware');
 
@@ -380,116 +380,99 @@ app.delete('/api/admin/deletar-aih', verificarToken, async (req, res) => {
     }
 });
 
-// Dashboard ultra-otimizado para alto volume
+// Dashboard aprimorado com filtro por competência
 app.get('/api/dashboard', verificarToken, async (req, res) => {
     try {
         // Pegar competência da query ou usar atual
         const competencia = req.query.competencia || getCompetenciaAtual();
-        
-        // Usar Promise.all para consultas paralelas com cache agressivo
-        const [
-            entradasSUS,
-            saidasHospital,
-            finalizadasCompetencia,
-            comPendenciasCompetencia
-        ] = await Promise.all([
-            // 1. Entradas SUS com cache HOT
-            getDashboardCached(`
-                SELECT COUNT(DISTINCT m.aih_id) as count 
-                FROM movimentacoes m
-                WHERE m.tipo = 'entrada_sus' 
-                AND m.competencia = ?
-            `, [competencia]),
-            
-            // 2. Saídas Hospital com cache HOT
-            getDashboardCached(`
-                SELECT COUNT(DISTINCT m.aih_id) as count 
-                FROM movimentacoes m
-                WHERE m.tipo = 'saida_hospital' 
-                AND m.competencia = ?
-            `, [competencia]),
-            
-            // 3. Finalizadas com cache HOT
-            getDashboardCached(`
-                SELECT COUNT(*) as count 
-                FROM aihs 
-                WHERE status IN (1, 4) 
-                AND competencia = ?
-            `, [competencia]),
-            
-            // 4. Com pendências com cache HOT
-            getDashboardCached(`
-                SELECT COUNT(*) as count 
-                FROM aihs 
-                WHERE status IN (2, 3) 
-                AND competencia = ?
-            `, [competencia])
-        ]);
+
+        // 1. AIH em processamento na competência
+        // (entrada_sus - saida_hospital) na competência específica
+        const entradasSUS = await get(`
+            SELECT COUNT(DISTINCT m.aih_id) as count 
+            FROM movimentacoes m
+            WHERE m.tipo = 'entrada_sus' 
+            AND m.competencia = ?
+        `, [competencia]);
+
+        const saidasHospital = await get(`
+            SELECT COUNT(DISTINCT m.aih_id) as count 
+            FROM movimentacoes m
+            WHERE m.tipo = 'saida_hospital' 
+            AND m.competencia = ?
+        `, [competencia]);
 
         const emProcessamentoCompetencia = (entradasSUS.count || 0) - (saidasHospital.count || 0);
 
-        // Consultas restantes em paralelo com cache otimizado
-        const [
-            totalEntradasSUS,
-            totalSaidasHospital,
-            totalFinalizadasGeral,
-            totalAIHsGeral,
-            totalAIHsCompetencia,
-            competenciasDisponiveis,
-            valoresGlosasPeriodo
-        ] = await Promise.all([
-            // Totais gerais com cache WARM (5 min)
-            get(`
-                SELECT COUNT(DISTINCT aih_id) as count 
-                FROM movimentacoes 
-                WHERE tipo = 'entrada_sus'
-            `, [], true),
-            
-            get(`
-                SELECT COUNT(DISTINCT aih_id) as count 
-                FROM movimentacoes 
-                WHERE tipo = 'saida_hospital'
-            `, [], true),
-            
-            get(`
-                SELECT COUNT(*) as count 
-                FROM aihs 
-                WHERE status IN (1, 4)
-            `, [], true),
-            
-            get(`
-                SELECT COUNT(*) as count 
-                FROM aihs
-            `, [], true),
-            
-            // Dados da competência específica com cache HOT
-            getDashboardCached(`
-                SELECT COUNT(*) as count 
-                FROM aihs 
-                WHERE competencia = ?
-            `, [competencia]),
-            
-            // Competências disponíveis com cache COLD (30 min)
-            all(`
-                SELECT DISTINCT competencia 
-                FROM aihs 
-                ORDER BY 
-                    CAST(SUBSTR(competencia, 4, 4) AS INTEGER) DESC,
-                    CAST(SUBSTR(competencia, 1, 2) AS INTEGER) DESC
-            `, [], true),
-            
-            // Valores da competência com cache HOT
-            getDashboardCached(`
-                SELECT 
-                    SUM(valor_inicial) as valor_inicial_total,
-                    SUM(valor_atual) as valor_atual_total,
-                    AVG(valor_inicial - valor_atual) as media_glosa
-                FROM aihs 
-                WHERE competencia = ?
-            `, [competencia])
-        ]);
+        // 2. AIH finalizadas na competência (status 1 e 4)
+        const finalizadasCompetencia = await get(`
+            SELECT COUNT(*) as count 
+            FROM aihs 
+            WHERE status IN (1, 4) 
+            AND competencia = ?
+        `, [competencia]);
+
+        // 3. AIH com pendências/glosas na competência (status 2 e 3)
+        const comPendenciasCompetencia = await get(`
+            SELECT COUNT(*) as count 
+            FROM aihs 
+            WHERE status IN (2, 3) 
+            AND competencia = ?
+        `, [competencia]);
+
+        // 4. Total geral de entradas SUS vs saídas Hospital (desde o início)
+        const totalEntradasSUS = await get(`
+            SELECT COUNT(DISTINCT aih_id) as count 
+            FROM movimentacoes 
+            WHERE tipo = 'entrada_sus'
+        `);
+
+        const totalSaidasHospital = await get(`
+            SELECT COUNT(DISTINCT aih_id) as count 
+            FROM movimentacoes 
+            WHERE tipo = 'saida_hospital'
+        `);
 
         const totalEmProcessamento = (totalEntradasSUS.count || 0) - (totalSaidasHospital.count || 0);
+
+        // 5. Total de AIHs finalizadas desde o início (status 1 e 4)
+        const totalFinalizadasGeral = await get(`
+            SELECT COUNT(*) as count 
+            FROM aihs 
+            WHERE status IN (1, 4)
+        `);
+
+        // 6. Total de AIHs cadastradas desde o início
+        const totalAIHsGeral = await get(`
+            SELECT COUNT(*) as count 
+            FROM aihs
+        `);
+
+        // Dados adicionais para contexto
+        const totalAIHsCompetencia = await get(`
+            SELECT COUNT(*) as count 
+            FROM aihs 
+            WHERE competencia = ?
+        `, [competencia]);
+
+        // Lista de competências disponíveis
+        const competenciasDisponiveis = await all(`
+            SELECT DISTINCT competencia 
+            FROM aihs 
+            ORDER BY 
+                CAST(SUBSTR(competencia, 4, 4) AS INTEGER) DESC,
+                CAST(SUBSTR(competencia, 1, 2) AS INTEGER) DESC
+        `);
+
+        // Estatísticas de valores para a competência
+        const valoresGlosasPeriodo = await get(`
+            SELECT 
+                SUM(valor_inicial) as valor_inicial_total,
+                SUM(valor_atual) as valor_atual_total,
+                AVG(valor_inicial - valor_atual) as media_glosa
+            FROM aihs 
+            WHERE competencia = ?
+        `, [competencia]);
 
         res.json({
             competencia_selecionada: competencia,
@@ -913,19 +896,10 @@ app.delete('/api/tipos-glosa/:id', verificarToken, async (req, res) => {
     }
 });
 
-// Pesquisa avançada otimizada para alto volume
+// Pesquisa avançada
 app.post('/api/pesquisar', verificarToken, async (req, res) => {
     try {
-        const { filtros, pagina = 1, itensPorPagina = 25 } = req.body; // Paginação otimizada
-        const offset = (pagina - 1) * itensPorPagina;
-        
-        // Limitar páginas para evitar sobrecarga
-        const maxPaginas = 100;
-        if (pagina > maxPaginas) {
-            return res.status(400).json({ 
-                error: `Página máxima permitida: ${maxPaginas}. Use filtros mais específicos.` 
-            });
-        }
+        const { filtros } = req.body;
         let sql = `SELECT a.*, COUNT(g.id) as total_glosas 
                    FROM aihs a 
                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1 
@@ -1031,27 +1005,9 @@ app.post('/api/pesquisar', verificarToken, async (req, res) => {
         }
 
         sql += ' GROUP BY a.id ORDER BY a.criado_em DESC';
-        
-        // Contar total de registros (sem LIMIT)
-        const countSql = sql.replace('SELECT a.*, COUNT(g.id) as total_glosas', 'SELECT COUNT(DISTINCT a.id) as total');
-        const totalResult = await get(countSql.replace(/GROUP BY.*ORDER BY.*/, ''), params);
-        const total = totalResult?.total || 0;
-        
-        // Adicionar paginação
-        sql += ` LIMIT ? OFFSET ?`;
-        params.push(parseInt(itensPorPagina), offset);
 
         const resultados = await all(sql, params);
-        
-        res.json({ 
-            resultados,
-            paginacao: {
-                pagina: parseInt(pagina),
-                itensPorPagina: parseInt(itensPorPagina),
-                total: total,
-                totalPaginas: Math.ceil(total / itensPorPagina)
-            }
-        });
+        res.json({ resultados });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
