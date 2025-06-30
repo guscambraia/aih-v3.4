@@ -1544,8 +1544,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     SELECT g.tipo, COUNT(*) as total_ocorrencias, 
                            SUM(g.quantidade) as quantidade_total,
                            GROUP_CONCAT(DISTINCT g.profissional) as profissionais
-                    FROM glosas```python
- g
+                    FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
                     WHERE g.ativa = 1 ${filtroWhere}
                     GROUP BY g.tipo
