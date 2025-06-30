@@ -211,17 +211,17 @@ app.post('/api/validar-senha', verificarToken, async (req, res) => {
     }
 });
 
-// Deletar movimentação (apenas para usuários logados com senha confirmada)
+// Deletar movimentação (para usuários logados com senha confirmada)
 app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) => {
     try {
         console.log('Usuário tentando deletar movimentação:', req.usuario);
         console.log('Tipo de usuário detectado:', req.usuario.tipo);
-        console.log('Verificação de admin:', req.usuario.tipo === 'admin');
         
-        if (req.usuario.tipo !== 'admin') {
-            console.log('Acesso negado - tipo de usuário:', req.usuario.tipo);
+        // Permitir tanto usuários normais quanto administradores
+        if (!req.usuario.tipo || (req.usuario.tipo !== 'admin' && req.usuario.tipo !== 'usuario')) {
+            console.log('Acesso negado - tipo de usuário inválido:', req.usuario.tipo);
             console.log('Usuário completo:', JSON.stringify(req.usuario, null, 2));
-            return res.status(403).json({ error: 'Acesso negado - apenas administradores podem realizar esta operação' });
+            return res.status(403).json({ error: 'Acesso negado - usuário não autenticado corretamente' });
         }
 
         const { movimentacao_id, justificativa } = req.body;
@@ -292,17 +292,17 @@ app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) =
     }
 });
 
-// Deletar AIH completa (apenas para usuários logados com senha confirmada)
+// Deletar AIH completa (para usuários logados com senha confirmada)
 app.delete('/api/admin/deletar-aih', verificarToken, async (req, res) => {
     try {
         console.log('Usuário tentando deletar AIH:', req.usuario);
         console.log('Tipo de usuário detectado:', req.usuario.tipo);
-        console.log('Verificação de admin:', req.usuario.tipo === 'admin');
         
-        if (req.usuario.tipo !== 'admin') {
-            console.log('Acesso negado - tipo de usuário:', req.usuario.tipo);
+        // Permitir tanto usuários normais quanto administradores
+        if (!req.usuario.tipo || (req.usuario.tipo !== 'admin' && req.usuario.tipo !== 'usuario')) {
+            console.log('Acesso negado - tipo de usuário inválido:', req.usuario.tipo);
             console.log('Usuário completo:', JSON.stringify(req.usuario, null, 2));
-            return res.status(403).json({ error: 'Acesso negado - apenas administradores podem realizar esta operação' });
+            return res.status(403).json({ error: 'Acesso negado - usuário não autenticado corretamente' });
         }
 
         const { numero_aih, justificativa } = req.body;

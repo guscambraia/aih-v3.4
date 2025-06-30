@@ -59,9 +59,16 @@ const login = async (nome, senha) => {
         throw new Error('Senha incorreta');
     }
 
+    // Criar objeto de usuário com tipo explícito
+    const usuarioComTipo = { 
+        id: usuario.id, 
+        nome: usuario.nome, 
+        tipo: 'usuario' 
+    };
+
     return {
-        token: gerarToken(usuario),
-        usuario: { id: usuario.id, nome: usuario.nome }
+        token: gerarToken(usuarioComTipo),
+        usuario: { id: usuario.id, nome: usuario.nome, tipo: 'usuario' }
     };
 };
 
