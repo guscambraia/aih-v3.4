@@ -243,7 +243,7 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
         `);
 
         // Estatísticas de valores para a competência
-        const valoresCompetencia = await get(`
+        const valoresGlosasPeriodo = await get(`
             SELECT 
                 SUM(valor_inicial) as valor_inicial_total,
                 SUM(valor_atual) as valor_atual_total,
@@ -271,9 +271,9 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
 
             // Valores financeiros da competência
             valores_competencia: {
-                inicial: valoresCompetencia.valor_inicial_total || 0,
-                atual: valoresCompetencia.valor_atual_total || 0,
-                media_glosa: valoresCompetencia.media_glosa || 0
+                inicial: valoresGlosasPeriodo.valor_inicial_total || 0,
+                atual: valoresGlosasPeriodo.valor_atual_total || 0,
+                media_glosa: valoresGlosasPeriodo.media_glosa || 0
             }
         });
     } catch (err) {
