@@ -2293,8 +2293,8 @@ const formatarValorTabela = (valor, header) => {
         header.includes('Saldo Mensal') || header.includes('Movimentações') || header.includes('movimentacoes') ||
         header.includes('Total Movimentacoes') || header.includes('Total AIHs') || 
         header.includes('Auditadas') || header.includes('auditadas') ||
-        header.includes('Total Glosas') || header.includes('total_glosas') ||
         header.includes('Ocorrencias') || header.includes('total_ocorrencias')) {
+        // Excluir "Total Glosas" da lista de campos de quantidade para que seja tratado como valor monetário
         if (typeof valor === 'number') {
             return valor.toString();
         }
@@ -2302,7 +2302,8 @@ const formatarValorTabela = (valor, header) => {
     }
     
     // Campos de valor monetário
-    if (header.includes('valor') || header.includes('impacto') || header.includes('media')) {
+    if (header.includes('valor') || header.includes('impacto') || header.includes('media') ||
+        header.includes('Total Glosas') || header.includes('total_glosas')) {
         if (typeof valor === 'number') {
             return `R$ ${valor.toFixed(2)}`;
         }
