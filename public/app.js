@@ -670,6 +670,9 @@ const carregarDadosMovimentacao = async () => {
             const listaGlosas = document.getElementById('listaGlosas');
             if (listaGlosas && glosas && glosas.glosas) {
                 if (glosas.glosas.length > 0) {
+                    // Ordenar glosas por data de criação (mais recente primeiro)
+                    const glosasOrdenadas = glosas.glosas.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
+                    
                     listaGlosas.innerHTML = `
                         <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 1.5rem; margin-top: 1rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
@@ -698,28 +701,22 @@ const carregarDadosMovimentacao = async () => {
                                 </div>
                             </div>
                             <div style="background: white; border-radius: 8px; padding: 1rem; border: 1px solid #fbbf24;">
-                                ${glosas.glosas.map((g, index) => `
-                                    <div style="margin-bottom: ${index === glosas.glosas.length - 1 ? '0' : '0.75rem'}; 
-                                                padding: 0.75rem; 
-                                                background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); 
-                                                border-radius: 6px; 
-                                                border-left: 4px solid #f59e0b;
-                                                box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
-                                            <div style="flex: 1; min-width: 200px;">
-                                                <div style="font-weight: 600; color: #92400e; margin-bottom: 0.25rem; font-size: 1rem;">
-                                                    📍 ${g.linha}
-                                                </div>
-                                                <div style="color: #7c2d12; font-weight: 500; margin-bottom: 0.5rem;">
-                                                    🏷️ ${g.tipo}
-                                                </div>
-                                                <div style="color: #64748b; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;">
-                                                    👨‍⚕️ <span style="font-weight: 500;">${g.profissional}</span>
-                                                </div>
-                                            </div>
-                                            <div style="text-align: right; font-size: 0.75rem; color: #92400e; opacity: 0.8;">
-                                                📅 ${new Date(g.criado_em).toLocaleDateString('pt-BR')}
-                                            </div>
+                                ${glosasOrdenadas.map((g, index) => `
+                                    <div style="padding: 0.75rem 0; ${index < glosasOrdenadas.length - 1 ? 'border-bottom: 1px solid #f3f4f6;' : ''} display: flex; justify-content: between; align-items: center; gap: 1rem;">
+                                        <div style="font-size: 0.875rem; color: #6b7280; min-width: 80px; font-weight: 500;">
+                                            ${new Date(g.criado_em).toLocaleDateString('pt-BR')}
+                                        </div>
+                                        <div style="font-weight: 600; color: #92400e; min-width: 100px;">
+                                            ${g.linha}
+                                        </div>
+                                        <div style="color: #374151; font-weight: 500; min-width: 120px;">
+                                            ${g.profissional}
+                                        </div>
+                                        <div style="color: #7c2d12; flex: 1;">
+                                            ${g.tipo}
+                                        </div>
+                                        <div style="text-align: center; font-weight: 600; color: #92400e; min-width: 40px;">
+                                            ${g.quantidade || 1}
                                         </div>
                                     </div>
                                 `).join('')}
