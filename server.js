@@ -84,11 +84,19 @@ const logAcao = async (usuarioId, acao) => {
 // Rotas de autenticação
 app.post('/api/login', async (req, res) => {
     try {
+        console.log('Tentativa de login:', req.body?.nome);
         const { nome, senha } = req.body;
+        
+        if (!nome || !senha) {
+            return res.status(400).json({ error: 'Nome e senha são obrigatórios' });
+        }
+        
         const result = await login(nome, senha);
         await logAcao(result.usuario.id, 'Login');
+        console.log('Login bem-sucedido:', result.usuario.nome);
         res.json(result);
     } catch (err) {
+        console.error('Erro no login:', err.message);
         res.status(401).json({ error: err.message });
     }
 });
@@ -96,10 +104,18 @@ app.post('/api/login', async (req, res) => {
 // Login de administrador
 app.post('/api/admin/login', async (req, res) => {
     try {
+        console.log('Tentativa de login admin:', req.body?.usuario);
         const { usuario, senha } = req.body;
+        
+        if (!usuario || !senha) {
+            return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
+        }
+        
         const result = await loginAdmin(usuario, senha);
+        console.log('Login admin bem-sucedido:', result.admin.usuario);
         res.json(result);
     } catch (err) {
+        console.error('Erro no login admin:', err.message);
         res.status(401).json({ error: err.message });
     }
 });

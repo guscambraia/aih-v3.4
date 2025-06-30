@@ -11,9 +11,38 @@ let state = {
     glosasPendentes: []
 };
 
+// Verificar se há token válido ao carregar a página
+document.addEventListener('DOMContentLoaded', async () => {
+    if (state.token) {
+        try {
+            // Tentar validar o token fazendo uma requisição simples
+            const userType = localStorage.getItem('userType');
+            
+            if (userType === 'admin') {
+                // Para admin, ir direto para tela de gestão
+                mostrarTela('telaGestaoUsuarios');
+                carregarUsuarios();
+            } else {
+                // Para usuário normal, validar token e ir para dashboard
+                await carregarDashboard();
+                mostrarTela('telaPrincipal');
+            }
+        } catch (err) {
+            console.log('Token inválido, redirecionando para login');
+            state.token = null;
+            localStorage.removeItem('token');
+            localStorage.removeItem('userType');
+            mostrarTela('telaLogin');
+        }
+    } else {
+        mostrarTela('telaLogin');
+    }
+});
+
 // API Helper
 const api = async (endpoint, options = {}) => {
     const config = {
+        method: 'GET',
         ...options,
         headers: {
             'Content-Type': 'application/json',
@@ -24,10 +53,20 @@ const api = async (endpoint, options = {}) => {
 
     try {
         const response = await fetch(`/api${endpoint}`, config);
-        const data = await response.json();
+        
+        // Verificar se a resposta é JSON válida
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.error('Resposta não é JSON:', text);
+            throw new Error('Resposta inválida do servidor');
+        }
 
         if (!response.ok) {
-            throw new Error(data.error || 'Erro na requisição');
+            throw new Error(data.error || `Erro HTTP ${response.status}`);
         }
 
         return data;
@@ -127,26 +166,52 @@ const mostrarModal = (titulo, mensagem) => {
 document.getElementById('formLogin').addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    
     try {
-        const nome = document.getElementById('loginUsuario').value;
+        submitButton.textContent = 'Entrando...';
+        submitButton.disabled = true;
+
+        const nome = document.getElementById('loginUsuario').value.trim();
         const senha = document.getElementById('loginSenha').value;
+
+        if (!nome || !senha) {
+            throw new Error('Por favor, preencha todos os campos');
+        }
 
         const result = await api('/login', {
             method: 'POST',
             body: JSON.stringify({ nome, senha })
         });
 
-        state.token = result.token;
-        state.usuario = result.usuario;
-        state.admin = null; // Limpar admin
-        localStorage.setItem('token', result.token);
-        localStorage.setItem('userType', 'user');
+        if (result && result.token && result.usuario) {
+            state.token = result.token;
+            state.usuario = result.usuario;
+            state.admin = null; // Limpar admin
+            localStorage.setItem('token', result.token);
+            localStorage.setItem('userType', 'user');
 
-        document.getElementById('nomeUsuario').textContent = result.usuario.nome;
-        mostrarTela('telaPrincipal');
-        carregarDashboard();
+            // Atualizar interface
+            const nomeUsuarioElement = document.getElementById('nomeUsuario');
+            if (nomeUsuarioElement) {
+                nomeUsuarioElement.textContent = result.usuario.nome;
+            }
+
+            console.log('Login realizado com sucesso:', result.usuario.nome);
+            
+            // Redirecionar para tela principal
+            mostrarTela('telaPrincipal');
+            await carregarDashboard();
+        } else {
+            throw new Error('Resposta inválida do servidor');
+        }
     } catch (err) {
+        console.error('Erro no login:', err);
         alert('Erro no login: ' + err.message);
+    } finally {
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
     }
 });
 
@@ -166,25 +231,45 @@ document.getElementById('linkVoltarLogin').addEventListener('click', (e) => {
 document.getElementById('formLoginAdmin').addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    
     try {
-        const usuario = document.getElementById('adminUsuario').value;
+        submitButton.textContent = 'Entrando...';
+        submitButton.disabled = true;
+
+        const usuario = document.getElementById('adminUsuario').value.trim();
         const senha = document.getElementById('adminSenha').value;
+
+        if (!usuario || !senha) {
+            throw new Error('Por favor, preencha todos os campos');
+        }
 
         const result = await api('/admin/login', {
             method: 'POST',
             body: JSON.stringify({ usuario, senha })
         });
 
-        state.token = result.token;
-        state.admin = result.admin;
-        state.usuario = null; // Limpar usuário normal
-        localStorage.setItem('token', result.token);
-        localStorage.setItem('userType', 'admin');
+        if (result && result.token && result.admin) {
+            state.token = result.token;
+            state.admin = result.admin;
+            state.usuario = null; // Limpar usuário normal
+            localStorage.setItem('token', result.token);
+            localStorage.setItem('userType', 'admin');
 
-        mostrarTela('telaGestaoUsuarios');
-        carregarUsuarios();
+            console.log('Login de admin realizado com sucesso');
+            
+            mostrarTela('telaGestaoUsuarios');
+            await carregarUsuarios();
+        } else {
+            throw new Error('Resposta inválida do servidor');
+        }
     } catch (err) {
+        console.error('Erro no login de administrador:', err);
         alert('Erro no login de administrador: ' + err.message);
+    } finally {
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
     }
 });
 
@@ -204,22 +289,30 @@ const carregarUsuarios = async () => {
         const response = await api('/admin/usuarios');
         const container = document.getElementById('listaUsuarios');
 
-        container.innerHTML = response.usuarios.map(u => `
-            <div class="glosa-item">
-                <div>
-                    <strong>${u.nome}</strong> - Matrícula: ${u.matricula}
-                    <br>
-                    <span style="color: #64748b; font-size: 0.875rem;">
-                        Cadastrado em: ${new Date(u.criado_em).toLocaleDateString('pt-BR')}
-                    </span>
+        if (response && response.usuarios && Array.isArray(response.usuarios)) {
+            container.innerHTML = response.usuarios.map(u => `
+                <div class="glosa-item">
+                    <div>
+                        <strong>${u.nome}</strong> - Matrícula: ${u.matricula}
+                        <br>
+                        <span style="color: #64748b; font-size: 0.875rem;">
+                            Cadastrado em: ${new Date(u.criado_em).toLocaleDateString('pt-BR')}
+                        </span>
+                    </div>
+                    <button onclick="excluirUsuario(${u.id}, '${u.nome}')" class="btn-danger" style="padding: 0.5rem 1rem;">
+                        Excluir
+                    </button>
                 </div>
-                <button onclick="excluirUsuario(${u.id}, '${u.nome}')" class="btn-danger" style="padding: 0.5rem 1rem;">
-                    Excluir
-                </button>
-            </div>
-        `).join('') || '<p>Nenhum usuário cadastrado</p>';
+            `).join('') || '<p>Nenhum usuário cadastrado</p>';
+        } else {
+            container.innerHTML = '<p>Erro ao carregar usuários</p>';
+        }
     } catch (err) {
         console.error('Erro ao carregar usuários:', err);
+        const container = document.getElementById('listaUsuarios');
+        if (container) {
+            container.innerHTML = '<p>Erro ao carregar usuários. Tente novamente.</p>';
+        }
     }
 };
 
