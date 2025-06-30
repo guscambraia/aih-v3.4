@@ -1043,7 +1043,7 @@ app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) =
         console.log('Usuário tentando deletar movimentação:', req.usuario);
         console.log('Tipo de usuário detectado:', req.usuario.tipo);
         console.log('Verificação de admin:', req.usuario.tipo === 'admin');
-        
+
         if (req.usuario.tipo !== 'admin') {
             console.log('Acesso negado - tipo de usuário:', req.usuario.tipo);
             console.log('Usuário completo:', JSON.stringify(req.usuario, null, 2));
@@ -1057,12 +1057,18 @@ app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) =
             return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
         }
 
-        // Verificar senha do administrador
-        const { loginAdmin } = require('./auth');
-        try {
-            await loginAdmin('admin', senha_admin);
-        } catch (err) {
-            return res.status(401).json({ error: 'Senha do administrador incorreta' });
+        // Verificar senha do usuário logado
+        const { get } = require('./database');
+        const bcrypt = require('bcryptjs');
+
+        const usuario = await get('SELECT * FROM usuarios WHERE id = ?', [req.usuario.id]);
+        if (!usuario) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+
+        const senhaValida = await bcrypt.compare(senha_admin, usuario.senha_hash);
+        if (!senhaValida) {
+            return res.status(401).json({ error: 'Senha do usuário incorreta' });
         }
 
         // Buscar AIH
@@ -1117,7 +1123,7 @@ app.delete('/api/admin/deletar-aih', verificarToken, async (req, res) => {
         console.log('Usuário tentando deletar AIH:', req.usuario);
         console.log('Tipo de usuário detectado:', req.usuario.tipo);
         console.log('Verificação de admin:', req.usuario.tipo === 'admin');
-        
+
         if (req.usuario.tipo !== 'admin') {
             console.log('Acesso negado - tipo de usuário:', req.usuario.tipo);
             console.log('Usuário completo:', JSON.stringify(req.usuario, null, 2));
@@ -1131,12 +1137,18 @@ app.delete('/api/admin/deletar-aih', verificarToken, async (req, res) => {
             return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
         }
 
-        // Verificar senha do administrador
-        const { loginAdmin } = require('./auth');
-        try {
-            await loginAdmin('admin', senha_admin);
-        } catch (err) {
-            return res.status(401).json({ error: 'Senha do administrador incorreta' });
+        // Verificar senha do usuário logado
+        const { get } = require('./database');
+        const bcrypt = require('bcryptjs');
+
+        const usuario = await get('SELECT * FROM usuarios WHERE id = ?', [req.usuario.id]);
+        if (!usuario) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+
+        const senhaValida = await bcrypt.compare(senha_admin, usuario.senha_hash);
+        if (!senhaValida) {
+            return res.status(401).json({ error: 'Senha do usuário incorreta' });
         }
 
         // Buscar AIH
@@ -2220,8 +2232,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
         } else if (data_inicio && data_fim) {
             filtroWhere = ' AND DATE(criado_em) BETWEEN ? AND ?';
             params.push(data_inicio, data_fim);
-            nomeArquivo += `-${data_inicio}-a-${data_fim}`;
-        } else if (data_inicio) {
+            nomeArquivo += `-${data_inicio}-a-${data_fim}`;        } else if (data_inicio) {
             filtroWhere = ' AND DATE(criado_em) >= ?';
             params.push(data_inicio);
             nomeArquivo += `-a-partir-${data_inicio}`;
@@ -2425,7 +2436,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     { Tipo: 'Aprovação Direta', Quantidade: aprovacoes.aprovacao_direta, Percentual: ((aprovacoes.aprovacao_direta/aprovacoes.total)*100).toFixed(1) + '%' },
                     { Tipo: 'Aprovação Indireta', Quantidade: aprovacoes.aprovacao_indireta, Percentual: ((aprovacoes.aprovacao_indireta/aprovacoes.total)*100).toFixed(1) + '%' },
                     { Tipo: 'Em Discussão', Quantidade: aprovacoes.em_discussao, Percentual: ((aprovacoes.em_discussao/aprovacoes.total)*100).toFixed(1) + '%' },
-                    { Tipo: 'Finalizada Pós-Discussão', Quantidade: aprovacoes.finalizada_pos_discussao, Percentual: ((aprovacoes.finalizada_pos_discussao/aprovacoes.total)*100).toFixed(1) + '%' }
+                    { Tipo: 'Finalizada Pós-Discussão', Quantidade: aprovacoes.finalizada_pos_discussão, Percentual: ((aprovacoes.finalizada_pos_discussao/aprovacoes.total)*100).toFixed(1) + '%' }
                 ];
                 break;
 

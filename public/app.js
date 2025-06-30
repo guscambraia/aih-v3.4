@@ -2318,7 +2318,7 @@ window.confirmarExclusao = async () => {
     const senhaAdmin = document.getElementById('senhaAdminExclusao').value;
 
     if (!senhaAdmin) {
-        alert('Digite a senha do administrador');
+        alert('Digite sua senha para confirmar a exclusão');
         return;
     }
 
@@ -2382,7 +2382,11 @@ window.confirmarExclusao = async () => {
 
     } catch (err) {
         console.error('Erro na exclusão:', err);
-        alert(`❌ Erro na exclusão: ${err.message}`);
+        if (err.message.includes('Senha do usuário incorreta')) {
+            alert(`❌ Erro na exclusão: Senha incorreta. Digite sua senha pessoal para confirmar a operação.`);
+        } else {
+            alert(`❌ Erro na exclusão: ${err.message}`);
+        }
     }
 };
 
