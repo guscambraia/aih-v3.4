@@ -1924,12 +1924,8 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         m.tipo as tipo_movimentacao,
                         COUNT(*) as total_movimentacoes,
                         COUNT(DISTINCT m.aih_id) as aihs_movimentadas,
-                        AVG(m.valor_conta) as valor_medio,
-                        SUM(m.valor_conta) as valor_total,
-                        COUNT(DISTINCT m.prof_medicina) as prof_medicina_distintos,
-                        COUNT(DISTINCT m.prof_enfermagem) as prof_enfermagem_distintos,
-                        COUNT(DISTINCT m.prof_fisioterapia) as prof_fisio_distintos,
-                        COUNT(DISTINCT m.prof_bucomaxilo) as prof_buco_distintos
+                        AVG(m.valor_conta) as valor_medio_conta,
+                        SUM(m.valor_conta) as valor_total_contas
                     FROM movimentacoes m
                     JOIN aihs a ON m.aih_id = a.id
                     WHERE 1=1 ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
@@ -2752,14 +2748,10 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                             WHEN 'saida_hospital' THEN 'Saída para Auditoria Hospital'
                             ELSE m.tipo
                         END as 'Tipo de Movimentação',
-                        COUNT(*) as 'Total Movimentações',
-                        COUNT(DISTINCT m.aih_id) as 'AIHs Movimentadas',
-                        ROUND(AVG(m.valor_conta), 2) as 'Valor Médio (R$)',
-                        ROUND(SUM(m.valor_conta), 2) as 'Valor Total (R$)',
-                        COUNT(DISTINCT m.prof_medicina) as 'Profissionais Medicina',
-                        COUNT(DISTINCT m.prof_enfermagem) as 'Profissionais Enfermagem',
-                        COUNT(DISTINCT m.prof_fisioterapia) as 'Profissionais Fisioterapia',
-                        COUNT(DISTINCT m.prof_bucomaxilo) as 'Profissionais Bucomaxilo'
+                        COUNT(*) as 'Total de Movimentações (Quantidade)',
+                        COUNT(DISTINCT m.aih_id) as 'AIHs Movimentadas (Quantidade)',
+                        ROUND(AVG(m.valor_conta), 2) as 'Valor Médio das Contas (R$)',
+                        ROUND(SUM(m.valor_conta), 2) as 'Valor Total das Contas (R$)'
                     FROM movimentacoes m
                     JOIN aihs a ON m.aih_id = a.id
                     WHERE 1=1 ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
