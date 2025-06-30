@@ -1705,6 +1705,30 @@ window.exportarResultadosPesquisa = async (formato) => {
     }
 };
 
+// Função para limpar filtros
+const limparFiltros = () => {
+    // Limpar filtros da pesquisa avançada
+    document.getElementById('pesquisaNumeroAIH').value = '';
+    document.getElementById('pesquisaNumeroAtendimento').value = '';
+    document.getElementById('pesquisaCompetencia').value = '';
+    document.getElementById('pesquisaDataInicio').value = '';
+    document.getElementById('pesquisaDataFim').value = '';
+    document.getElementById('pesquisaValorMin').value = '';
+    document.getElementById('pesquisaValorMax').value = '';
+    document.getElementById('pesquisaProfissional').value = '';
+    
+    // Desmarcar todos os checkboxes de status
+    document.querySelectorAll('input[name="status"]').forEach(cb => cb.checked = false);
+    
+    // Limpar resultados se existirem
+    const resultados = document.getElementById('resultadosPesquisa');
+    if (resultados) {
+        resultados.innerHTML = '';
+    }
+    
+    console.log('Filtros limpos');
+};
+
 // Pesquisa avançada
 document.getElementById('formPesquisa').addEventListener('submit', async (e) => {
     e.preventDefault();
