@@ -1248,8 +1248,6 @@ document.getElementById('formMovimentacao').addEventListener('submit', async (e)
             body: JSON.stringify(dados)
         });
 
-        alert('Movimentação registrada com sucesso!');
-
         // Recarregar AIH
         const aih = await api(`/aih/${state.aihAtual.numero_aih}`);
         state.aihAtual = aih;
