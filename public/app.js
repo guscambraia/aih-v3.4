@@ -2285,8 +2285,11 @@ const formatarCabecalho = (header) => {
 const formatarValorTabela = (valor, header) => {
     if (valor === null || valor === undefined) return '-';
     
-    // Campos de quantidade de AIHs (não devem ter R$)
-    if (header.includes('AIHs') || header.includes('Qtd') || header.includes('Quantidade') || header.includes('Saldo Mensal')) {
+    // Campos de quantidade unitária (não devem ter R$ nem texto adicional)
+    if (header.includes('AIHs') || header.includes('Qtd') || header.includes('Quantidade') || 
+        header.includes('Saldo Mensal') || header.includes('Movimentações') || header.includes('movimentacoes') ||
+        header.includes('Total Movimentacoes') || header.includes('Total AIHs') || 
+        header.includes('Auditadas') || header.includes('auditadas')) {
         if (typeof valor === 'number') {
             return valor.toString();
         }
