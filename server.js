@@ -1875,7 +1875,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
 
             case 'valores-por-periodo':
                 // Análise financeira detalhada por período - dados específicos solicitados
-                const dadosGeraisPeriodo = await get(`
+                const dadosGeraisPeriodoRelatorio = await get(`
                     SELECT 
                         COUNT(*) as total_aihs_periodo,
                         SUM(a.valor_inicial) as valor_inicial_periodo,
@@ -1885,7 +1885,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     WHERE 1=1 ${filtroWhere}
                 `, params);
 
-                const dadosGlosasPeriodo = await get(`
+                const dadosGlosasPeriodoRelatorio = await get(`
                     SELECT 
                         COUNT(DISTINCT a.id) as aihs_com_glosas,
                         COUNT(g.id) as total_glosas
@@ -1895,19 +1895,19 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ${filtroWhere}
                 `, params);
 
-                const totalAihsPeriodo = dadosGeraisPeriodo.total_aihs_periodo || 0;
-                const aihsComGlosas = dadosGlosasPeriodo.aihs_com_glosas || 0;
-                const percentualAihsComGlosas = totalAihsPeriodo > 0 ? 
-                    ((aihsComGlosas / totalAihsPeriodo) * 100).toFixed(2) : 0;
+                const totalAihsPeriodoRelatorio = dadosGeraisPeriodoRelatorio.total_aihs_periodo || 0;
+                const aihsComGlosasRelatorio = dadosGlosasPeriodoRelatorio.aihs_com_glosas || 0;
+                const percentualAihsComGlosasRelatorio = totalAihsPeriodoRelatorio > 0 ? 
+                    ((aihsComGlosasRelatorio / totalAihsPeriodoRelatorio) * 100).toFixed(2) : 0;
 
                 resultado = {
-                    total_aihs_periodo: totalAihsPeriodo,
-                    aihs_com_glosas: aihsComGlosas,
-                    total_glosas: dadosGlosasPeriodo.total_glosas || 0,
-                    valor_inicial_periodo: dadosGeraisPeriodo.valor_inicial_periodo || 0,
-                    valor_atual_periodo: dadosGeraisPeriodo.valor_atual_periodo || 0,
-                    valor_total_glosas: dadosGeraisPeriodo.valor_total_glosas || 0,
-                    percentual_aihs_com_glosas: parseFloat(percentualAihsComGlosas)
+                    total_aihs_periodo: totalAihsPeriodoRelatorio,
+                    aihs_com_glosas: aihsComGlosasRelatorio,
+                    total_glosas: dadosGlosasPeriodoRelatorio.total_glosas || 0,
+                    valor_inicial_periodo: dadosGeraisPeriodoRelatorio.valor_inicial_periodo || 0,
+                    valor_atual_periodo: dadosGeraisPeriodoRelatorio.valor_atual_periodo || 0,
+                    valor_total_glosas: dadosGeraisPeriodoRelatorio.valor_total_glosas || 0,
+                    percentual_aihs_com_glosas: parseFloat(percentualAihsComGlosasRelatorio)
                 };
                 break;
 
