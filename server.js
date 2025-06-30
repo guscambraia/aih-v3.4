@@ -40,6 +40,12 @@ app.use((req, res, next) => {
 
 app.use(express.static('public'));
 
+// Log de requisições para debug
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
+});
+
 // Inicializar banco
 initDB();
 
