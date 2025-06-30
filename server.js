@@ -2053,11 +2053,6 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY g.profissional, ocorrencias DESC
                 `, params);
                 break;
-
-            _atual) as glosas_faixa,
-                        AVG(a.valor_inicial) as valor_inicial_medio_faixa,
-                        AVG(a.valor_atual) as valor_atual_medio_faixa
-                    FROM aihs a
                     WHERE 1=1 ${filtroWhere}
                     GROUP BY faixa_valor
                     ORDER BY MIN(a.valor_inicial)
@@ -2603,11 +2598,6 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(*) DESC, SUM(a.valor_inicial - a.valor_atual) DESC
                 `, params);
                 break;
-
-            alor Inicial Faixa (R$)',
-                        ROUND(SUM(a.valor_atual), 2) as 'Valor Atual Faixa (R$)',
-                        ROUND(SUM(a.valor_inicial - a.valor_atual), 2) as 'Glosas Faixa (R$)',
-                        ROUND(AVG(a.valor_inicial), 2) as 'Valor Inicial Médio (R$)',
                         ROUND(AVG(a.valor_atual), 2) as 'Valor Atual Médio (R$)'
                     FROM aihs a
                     WHERE 1=1 ${filtroWhere}
