@@ -9,19 +9,31 @@ let state = {
 
 // Verificar se há token válido ao carregar a página
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM carregado, verificando autenticação...');
+    
     if (state.token) {
         try {
             // Tentar validar o token fazendo uma requisição simples
             const userType = localStorage.getItem('userType');
+            console.log('Tipo de usuário encontrado:', userType);
 
             if (userType === 'admin') {
                 // Para admin, ir direto para tela de gestão
+                console.log('Redirecionando admin para gestão de usuários');
                 mostrarTela('telaGestaoUsuarios');
-                carregarUsuarios();
+                await carregarUsuarios();
             } else {
-                // Para usuário normal, validar token e ir para dashboard
-                await carregarDashboard();
+                // Para usuário normal, ir para dashboard
+                console.log('Redirecionando usuário para dashboard');
                 mostrarTela('telaPrincipal');
+                // Carregar dashboard apenas após mostrar a tela
+                setTimeout(async () => {
+                    try {
+                        await carregarDashboard();
+                    } catch (dashErr) {
+                        console.error('Erro ao carregar dashboard:', dashErr);
+                    }
+                }, 100);
             }
         } catch (err) {
             console.log('Token inválido, redirecionando para login');
@@ -31,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             mostrarTela('telaLogin');
         }
     } else {
+        console.log('Nenhum token encontrado, mostrando tela de login');
         mostrarTela('telaLogin');
     }
 });
@@ -140,7 +153,15 @@ const mostrarTela = (telaId) => {
 
 const voltarTelaPrincipal = () => {
     mostrarTela('telaPrincipal');
-    carregarDashboard();
+    
+    // Carregar dashboard após a navegação
+    setTimeout(async () => {
+        try {
+            await carregarDashboard();
+        } catch (dashErr) {
+            console.error('Erro ao carregar dashboard:', dashErr);
+        }
+    }, 200);
     
     // Limpar campo da AIH se estiver na tela de informar AIH
     setTimeout(() => {
@@ -278,7 +299,15 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
 
             // Redirecionar para tela principal
             mostrarTela('telaPrincipal');
-            await carregarDashboard();
+            
+            // Carregar dashboard após a navegação
+            setTimeout(async () => {
+                try {
+                    await carregarDashboard();
+                } catch (dashErr) {
+                    console.error('Erro ao carregar dashboard após login:', dashErr);
+                }
+            }, 200);
         } else {
             throw new Error('Resposta inválida do servidor');
         }
@@ -526,13 +555,23 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
     
     return debounce(debounceKey, async () => {
         try {
-            // Verificar se os elementos necessários existem
-            const dashboardContainer = document.querySelector('.dashboard');
-            if (!dashboardContainer) {
-                console.error('Dashboard container não encontrado');
+            console.log('Iniciando carregamento do dashboard...');
+            
+            // Verificar se estamos na tela principal
+            const telaPrincipal = document.getElementById('telaPrincipal');
+            if (!telaPrincipal || !telaPrincipal.classList.contains('ativa')) {
+                console.log('Tela principal não está ativa, cancelando carregamento do dashboard');
                 return;
             }
 
+            // Verificar se os elementos necessários existem
+            const dashboardContainer = document.querySelector('.dashboard');
+            if (!dashboardContainer) {
+                console.error('Dashboard container não encontrado na tela principal');
+                return;
+            }
+
+            console.log('Fazendo requisição para o dashboard...');
             // Buscar dados com cache ativo
             const dados = await api(`/dashboard?competencia=${competencia}`, {}, true);
 
@@ -541,6 +580,8 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
                 console.error('Dados do dashboard não recebidos');
                 return;
             }
+
+            console.log('Dados do dashboard recebidos:', dados);
 
         // Criar/atualizar seletor de competência
         let seletorContainer = document.querySelector('.seletor-competencia-container');
@@ -886,12 +927,9 @@ const carregarDadosMovimentacao = async () => {
             `;
         }
 
-        // Configurar event listeners dos botões após carregar todos os dados apenas se não existirem
+        // Configurar event listeners dos botões após carregar todos os dados
         setTimeout(() => {
-            if (!window.eventListenersConfigurados) {
-                configurarEventListenersMovimentacao();
-                window.eventListenersConfigurados = true;
-            }
+            configurarEventListenersMovimentacao();
         }, 300);
 
     } catch (err) {
@@ -904,23 +942,31 @@ const carregarDadosMovimentacao = async () => {
 const configurarEventListenersMovimentacao = () => {
     console.log('Configurando event listeners da movimentação...');
     
-    // Botão cancelar
+    // Botão cancelar - remover listeners antigos primeiro
     const btnCancelar = document.getElementById('btnCancelarMovimentacao');
-    if (btnCancelar && !btnCancelar.hasAttribute('data-listener-configurado')) {
-        btnCancelar.addEventListener('click', voltarTelaAnterior);
-        btnCancelar.setAttribute('data-listener-configurado', 'true');
+    if (btnCancelar) {
+        // Clonar elemento para remover todos os event listeners
+        const newBtnCancelar = btnCancelar.cloneNode(true);
+        btnCancelar.parentNode.replaceChild(newBtnCancelar, btnCancelar);
+        
+        // Adicionar novo listener
+        newBtnCancelar.addEventListener('click', voltarTelaAnterior);
         console.log('Event listener do botão cancelar configurado');
     }
     
-    // Botão gerenciar glosas
+    // Botão gerenciar glosas - remover listeners antigos primeiro
     const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
-    if (btnGerenciarGlosas && !btnGerenciarGlosas.hasAttribute('data-listener-configurado')) {
-        btnGerenciarGlosas.addEventListener('click', () => {
+    if (btnGerenciarGlosas) {
+        // Clonar elemento para remover todos os event listeners
+        const newBtnGerenciarGlosas = btnGerenciarGlosas.cloneNode(true);
+        btnGerenciarGlosas.parentNode.replaceChild(newBtnGerenciarGlosas, btnGerenciarGlosas);
+        
+        // Adicionar novo listener
+        newBtnGerenciarGlosas.addEventListener('click', () => {
             state.telaAnterior = 'telaMovimentacao';
             mostrarTela('telaGlosas');
             carregarGlosas();
         });
-        btnGerenciarGlosas.setAttribute('data-listener-configurado', 'true');
         console.log('Event listener do botão gerenciar glosas configurado');
     }
 };
