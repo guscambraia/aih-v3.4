@@ -1968,6 +1968,12 @@ const carregarRelatorios = () => {
                 <p>Ranking dos tipos mais frequentes</p>
             </div>
 
+            <div class="relatorio-card" onclick="gerarRelatorio('fluxo-movimentacoes')">
+                <div class="relatorio-icon">🔄</div>
+                <h4>Fluxo de Movimentações</h4>
+                <p>Entradas SUS vs Saídas Hospital</p>
+            </div>
+
             <div class="relatorio-card" onclick="mostrarRelatoriosPeriodo()">
                 <div class="relatorio-icon">📅</div>
                 <h4>Relatórios por Período</h4>
@@ -2146,7 +2152,43 @@ const gerarTabelaRelatorio = (dados, tipo) => {
 const gerarRelatorioComplexo = (dados, tipo) => {
     let html = '';
     
-    if (tipo === 'analise-valores-glosas' && dados.resumo_financeiro && dados.glosas_por_impacto) {
+    if (tipo === 'fluxo-movimentacoes' && dados.resumo && dados.fluxo_mensal) {
+        // Relatório de fluxo de movimentações
+        const resumo = dados.resumo;
+        html += `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <div style="background: #e0f2fe; border: 1px solid #0284c7; border-radius: 8px; padding: 1.5rem; text-align: center;">
+                    <h4 style="color: #0369a1; margin: 0 0 0.5rem 0;">📥 Entradas SUS</h4>
+                    <p style="font-size: 2rem; font-weight: bold; color: #0369a1; margin: 0;">${resumo.total_entradas_sus || 0} AIHs</p>
+                    <p style="font-size: 0.875rem; color: #0284c7; margin: 0.5rem 0 0 0;">AIHs que entraram na auditoria</p>
+                </div>
+                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1.5rem; text-align: center;">
+                    <h4 style="color: #92400e; margin: 0 0 0.5rem 0;">📤 Saídas Hospital</h4>
+                    <p style="font-size: 2rem; font-weight: bold; color: #92400e; margin: 0;">${resumo.total_saidas_hospital || 0} AIHs</p>
+                    <p style="font-size: 0.875rem; color: #f59e0b; margin: 0.5rem 0 0 0;">AIHs enviadas para o hospital</p>
+                </div>
+                <div style="background: ${(resumo.diferenca_fluxo || 0) >= 0 ? '#f0fdf4' : '#fef2f2'}; border: 1px solid ${(resumo.diferenca_fluxo || 0) >= 0 ? '#22c55e' : '#ef4444'}; border-radius: 8px; padding: 1.5rem; text-align: center;">
+                    <h4 style="color: ${(resumo.diferenca_fluxo || 0) >= 0 ? '#166534' : '#dc2626'}; margin: 0 0 0.5rem 0;">⚖️ Saldo</h4>
+                    <p style="font-size: 2rem; font-weight: bold; color: ${(resumo.diferenca_fluxo || 0) >= 0 ? '#166534' : '#dc2626'}; margin: 0;">
+                        ${(resumo.diferenca_fluxo || 0) >= 0 ? '+' : ''}${resumo.diferenca_fluxo || 0} AIHs
+                    </p>
+                    <p style="font-size: 0.875rem; color: ${(resumo.diferenca_fluxo || 0) >= 0 ? '#22c55e' : '#ef4444'}; margin: 0.5rem 0 0 0;">
+                        ${(resumo.diferenca_fluxo || 0) >= 0 ? 'Entradas > Saídas' : 'Saídas > Entradas'}
+                    </p>
+                </div>
+                <div style="background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 8px; padding: 1.5rem; text-align: center;">
+                    <h4 style="color: #1d4ed8; margin: 0 0 0.5rem 0;">🔄 Em Processamento</h4>
+                    <p style="font-size: 2rem; font-weight: bold; color: #1d4ed8; margin: 0;">${resumo.aihs_em_processamento || 0} AIHs</p>
+                    <p style="font-size: 0.875rem; color: #3b82f6; margin: 0.5rem 0 0 0;">Atualmente na auditoria SUS</p>
+                </div>
+            </div>
+        `;
+        
+        if (dados.fluxo_mensal && dados.fluxo_mensal.length > 0) {
+            html += `<h3 style="color: #374151; margin: 2rem 0 1rem 0;">📊 Fluxo Mensal Detalhado</h3>`;
+            html += gerarTabelaRelatorio(dados.fluxo_mensal, 'fluxo_mensal');
+        }
+    } else if (tipo === 'analise-valores-glosas' && dados.resumo_financeiro && dados.glosas_por_impacto) {
         // Relatório de análise de valores
         html += `
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
@@ -2243,6 +2285,14 @@ const formatarCabecalho = (header) => {
 const formatarValorTabela = (valor, header) => {
     if (valor === null || valor === undefined) return '-';
     
+    // Campos de quantidade de AIHs (não devem ter R$)
+    if (header.includes('AIHs') || header.includes('Qtd') || header.includes('Quantidade') || header.includes('Saldo Mensal')) {
+        if (typeof valor === 'number') {
+            return valor.toString();
+        }
+        return valor;
+    }
+    
     // Campos de valor monetário
     if (header.includes('valor') || header.includes('impacto') || header.includes('total') || header.includes('media')) {
         if (typeof valor === 'number') {
@@ -2285,7 +2335,12 @@ const getTituloRelatorio = (tipo) => {
         'aprovacoes': 'Relatório de Aprovações',
         'glosas-profissional': 'Glosas por Profissional',
         'aihs-profissional': 'AIHs por Profissional',
-        'tipos-glosa': 'Tipos de Glosa'
+        'tipos-glosa': 'Tipos de Glosa',
+        'fluxo-movimentacoes': 'Fluxo de Movimentações - Entradas SUS vs Saídas Hospital',
+        'estatisticas-periodo': 'Estatísticas Gerais por Período',
+        'valores-glosas-periodo': 'Análise Financeira de Glosas',
+        'tipos-glosa-periodo': 'Tipos de Glosa por Período',
+        'aihs-profissional-periodo': 'Produtividade por Profissional'
     };
     return titulos[tipo] || 'Relatório';
 };
