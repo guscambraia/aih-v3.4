@@ -673,26 +673,45 @@ const carregarDadosMovimentacao = async () => {
                     // Ordenar glosas por data de criação (mais recente primeira)
                     const glosasOrdenadas = glosas.glosas.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
                     
-                    // Apenas o conteúdo das glosas, sem container duplicado
-                    listaGlosas.innerHTML = glosasOrdenadas.map((g, index) => `
-                        <div style="padding: 0.75rem 0; ${index < glosasOrdenadas.length - 1 ? 'border-bottom: 1px solid #f3f4f6;' : ''} display: grid; grid-template-columns: 80px 100px 120px 1fr 40px; gap: 1rem; align-items: center;">
-                            <div style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">
-                                ${new Date(g.criado_em).toLocaleDateString('pt-BR')}
+                    // Cabeçalho das colunas + conteúdo das glosas
+                    listaGlosas.innerHTML = `
+                        <div style="padding: 0.75rem 0; border-bottom: 2px solid #d1d5db; display: grid; grid-template-columns: 80px 100px 120px 1fr 40px; gap: 1rem; align-items: center; background: #f9fafb; margin: -1rem -1rem 1rem -1rem; padding-left: 1rem; padding-right: 1rem;">
+                            <div style="font-size: 0.75rem; color: #374151; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                                Data
                             </div>
-                            <div style="font-weight: 600; color: #92400e;">
-                                ${g.linha}
+                            <div style="font-size: 0.75rem; color: #374151; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                                Linha do Item
                             </div>
-                            <div style="color: #374151; font-weight: 500;">
-                                ${g.profissional}
+                            <div style="font-size: 0.75rem; color: #374151; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                                Profissional
                             </div>
-                            <div style="color: #7c2d12;">
-                                ${g.tipo}
+                            <div style="font-size: 0.75rem; color: #374151; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                                Tipo de Glosa/Pendência
                             </div>
-                            <div style="text-align: center; font-weight: 600; color: #92400e;">
-                                ${g.quantidade || 1}
+                            <div style="font-size: 0.75rem; color: #374151; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">
+                                Quantidade
                             </div>
                         </div>
-                    `).join('');
+                        ${glosasOrdenadas.map((g, index) => `
+                            <div style="padding: 0.75rem 0; ${index < glosasOrdenadas.length - 1 ? 'border-bottom: 1px solid #f3f4f6;' : ''} display: grid; grid-template-columns: 80px 100px 120px 1fr 40px; gap: 1rem; align-items: center;">
+                                <div style="font-size: 0.875rem; color: #6b7280; font-weight: 500;">
+                                    ${new Date(g.criado_em).toLocaleDateString('pt-BR')}
+                                </div>
+                                <div style="font-weight: 600; color: #92400e;">
+                                    ${g.linha}
+                                </div>
+                                <div style="color: #374151; font-weight: 500;">
+                                    ${g.profissional}
+                                </div>
+                                <div style="color: #7c2d12;">
+                                    ${g.tipo}
+                                </div>
+                                <div style="text-align: center; font-weight: 600; color: #92400e;">
+                                    ${g.quantidade || 1}
+                                </div>
+                            </div>
+                        `).join('')}
+                    `;
                 } else {
                     listaGlosas.innerHTML = `
                         <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px; padding: 2rem; text-align: center;">
