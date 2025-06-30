@@ -1005,6 +1005,210 @@ app.post('/api/admin/backup-completo', verificarToken, async (req, res) => {
     }
 });
 
+// Buscar movimentações detalhadas de uma AIH
+app.get('/api/aih/:numero/movimentacoes-detalhadas', verificarToken, async (req, res) => {
+    try {
+        const numeroAIH = req.params.numero;
+
+        // Buscar AIH
+        const aih = await get('SELECT id FROM aihs WHERE numero_aih = ?', [numeroAIH]);
+        if (!aih) {
+            return res.status(404).json({ error: 'AIH não encontrada' });
+        }
+
+        // Buscar movimentações da AIH
+        const movimentacoes = await all(`
+            SELECT 
+                m.*,
+                u.nome as usuario_nome
+            FROM movimentacoes m
+            LEFT JOIN usuarios u ON m.usuario_id = u.id
+            WHERE m.aih_id = ?
+            ORDER BY m.data_movimentacao DESC
+        `, [aih.id]);
+
+        res.json({
+            success: true,
+            movimentacoes: movimentacoes
+        });
+    } catch (err) {
+        console.error('Erro ao buscar movimentações:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Deletar movimentação específica
+app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) => {
+    try {
+        if (req.usuario.tipo !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+
+        const { numero_aih, movimentacao_id, justificativa, senha_admin } = req.body;
+
+        // Validar campos obrigatórios
+        if (!numero_aih || !movimentacao_id || !justificativa || !senha_admin) {
+            return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+        }
+
+        // Verificar senha do administrador
+        const { loginAdmin } = require('./auth');
+        try {
+            await loginAdmin('admin', senha_admin);
+        } catch (err) {
+            return res.status(401).json({ error: 'Senha do administrador incorreta' });
+        }
+
+        // Buscar AIH
+        const aih = await get('SELECT id FROM aihs WHERE numero_aih = ?', [numero_aih]);
+        if (!aih) {
+            return res.status(404).json({ error: 'AIH não encontrada' });
+        }
+
+        // Buscar movimentação
+        const movimentacao = await get('SELECT * FROM movimentacoes WHERE id = ? AND aih_id = ?', [movimentacao_id, aih.id]);
+        if (!movimentacao) {
+            return res.status(404).json({ error: 'Movimentação não encontrada' });
+        }
+
+        // Realizar exclusão em transação
+        const operations = [
+            {
+                sql: 'DELETE FROM movimentacoes WHERE id = ?',
+                params: [movimentacao_id]
+            },
+            {
+                sql: `INSERT INTO logs_operacoes_criticas 
+                      (tipo, usuario, justificativa, detalhes) 
+                      VALUES (?, ?, ?, ?)`,
+                params: [
+                    'DELETE_MOVIMENTACAO',
+                    req.usuario.nome || 'admin',
+                    justificativa,
+                    `AIH: ${numero_aih}, Movimentação ID: ${movimentacao_id}, Tipo: ${movimentacao.tipo}, Data: ${movimentacao.data_movimentacao}`
+                ]
+            }
+        ];
+
+        await runTransaction(operations);
+
+        console.log(`Movimentação ${movimentacao_id} da AIH ${numero_aih} excluída por ${req.usuario.nome}`);
+
+        res.json({
+            success: true,
+            message: 'Movimentação excluída com sucesso'
+        });
+
+    } catch (err) {
+        console.error('Erro ao deletar movimentação:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Deletar AIH completa
+app.delete('/api/admin/deletar-aih', verificarToken, async (req, res) => {
+    try {
+        if (req.usuario.tipo !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+
+        const { numero_aih, justificativa, senha_admin } = req.body;
+
+        // Validar campos obrigatórios
+        if (!numero_aih || !justificativa || !senha_admin) {
+            return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+        }
+
+        // Verificar senha do administrador
+        const { loginAdmin } = require('./auth');
+        try {
+            await loginAdmin('admin', senha_admin);
+        } catch (err) {
+            return res.status(401).json({ error: 'Senha do administrador incorreta' });
+        }
+
+        // Buscar AIH
+        const aih = await get('SELECT * FROM aihs WHERE numero_aih = ?', [numero_aih]);
+        if (!aih) {
+            return res.status(404).json({ error: 'AIH não encontrada' });
+        }
+
+        // Contar dados relacionados para o log
+        const movimentacoes = await get('SELECT COUNT(*) as count FROM movimentacoes WHERE aih_id = ?', [aih.id]);
+        const glosas = await get('SELECT COUNT(*) as count FROM glosas WHERE aih_id = ?', [aih.id]);
+        const atendimentos = await get('SELECT COUNT(*) as count FROM atendimentos WHERE aih_id = ?', [aih.id]);
+
+        // Realizar exclusão em transação (ordem importante para integridade referencial)
+        const operations = [
+            {
+                sql: 'DELETE FROM glosas WHERE aih_id = ?',
+                params: [aih.id]
+            },
+            {
+                sql: 'DELETE FROM movimentacoes WHERE aih_id = ?',
+                params: [aih.id]
+            },
+            {
+                sql: 'DELETE FROM atendimentos WHERE aih_id = ?',
+                params: [aih.id]
+            },
+            {
+                sql: 'DELETE FROM aihs WHERE id = ?',
+                params: [aih.id]
+            },
+            {
+                sql: `INSERT INTO logs_operacoes_criticas 
+                      (tipo, usuario, justificativa, detalhes) 
+                      VALUES (?, ?, ?, ?)`,
+                params: [
+                    'DELETE_AIH',
+                    req.usuario.nome || 'admin',
+                    justificativa,
+                    `AIH: ${numero_aih}, Valor: R$ ${aih.valor_inicial}, Competência: ${aih.competencia}, Movimentações: ${movimentacoes.count}, Glosas: ${glosas.count}, Atendimentos: ${atendimentos.count}`
+                ]
+            }
+        ];
+
+        await runTransaction(operations);
+
+        console.log(`AIH ${numero_aih} excluída completamente por ${req.usuario.nome}`);
+
+        res.json({
+            success: true,
+            message: 'AIH excluída com sucesso'
+        });
+
+    } catch (err) {
+        console.error('Erro ao deletar AIH:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Buscar histórico de operações críticas
+app.get('/api/admin/historico-operacoes', verificarToken, async (req, res) => {
+    try {
+        if (req.usuario.tipo !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+
+        const historico = await all(`
+            SELECT *
+            FROM logs_operacoes_criticas
+            ORDER BY data_operacao DESC
+            LIMIT 100
+        `);
+
+        res.json({
+            success: true,
+            historico: historico
+        });
+
+    } catch (err) {
+        console.error('Erro ao buscar histórico:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Export completo de todos os dados da base
 app.get('/api/export/:formato', verificarToken, async (req, res) => {
     try {
