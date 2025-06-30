@@ -792,7 +792,8 @@ const mostrarInfoAIH = (aih) => {
                                     </span>
                                 </td>
                                 <td><span class="status-badge status-${mov.status_aih}">${getStatusDescricao(mov.status_aih)}</span></td>
-                                <td>R$ ${(mov.valor_conta || 0).toFixed(2)}</td>
+                                <td>```text
+R$ ${(mov.valor_conta || 0).toFixed(2)}</td>
                                 <td style="font-size: 0.875rem;">${profissionais.join(' | ') || '-'}</td>
                             </tr>
                         `;
@@ -2021,12 +2022,41 @@ document.getElementById('btnGerenciarGlosas')?.addEventListener('click', () => {
     carregarGlosas();
 });
 
+// Função para validar profissionais obrigatórios
+const validarProfissionaisObrigatorios = () => {
+    const profEnfermagem = document.getElementById('movProfEnfermagem').value.trim();
+    const profMedicina = document.getElementById('movProfMedicina').value.trim();
+    const profBucomaxilo = document.getElementById('movProfBucomaxilo').value.trim();
+
+    const erros = [];
+
+    // Validação 1: Enfermagem é SEMPRE obrigatória
+    if (!profEnfermagem) {
+        erros.push('• Profissional de Enfermagem é obrigatório');
+    }
+
+    // Validação 2: Pelo menos um entre Medicina ou Bucomaxilo deve ser selecionado
+    if (!profMedicina && !profBucomaxilo) {
+        erros.push('• É necessário selecionar pelo menos um profissional de Medicina OU Cirurgião Bucomaxilo');
+    }
+
+    return erros;
+};
+
 // Formulário de movimentação
 document.getElementById('formMovimentacao')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     if (!state.aihAtual) {
         alert('Nenhuma AIH selecionada');
+        return;
+    }
+
+    // Validar profissionais obrigatórios
+    const errosValidacao = validarProfissionaisObrigatorios();
+    if (errosValidacao.length > 0) {
+        const mensagemErro = `❌ Profissionais Auditores Obrigatórios não preenchidos:\n\n${errosValidacao.join('\n')}\n\n📋 Regra: Enfermagem é SEMPRE obrigatório + pelo menos um entre Medicina ou Cirurgião Bucomaxilo.\n\n🔬 Fisioterapia é opcional.`;
+        alert(mensagemErro);
         return;
     }
 

@@ -505,6 +505,28 @@ app.post('/api/aih/:id/movimentacao', verificarToken, async (req, res) => {
             prof_medicina, prof_enfermagem, prof_fisioterapia, prof_bucomaxilo, observacoes
         } = req.body;
 
+        // Validação de profissionais obrigatórios
+        const errosValidacao = [];
+
+        // Enfermagem é SEMPRE obrigatória
+        if (!prof_enfermagem || prof_enfermagem.trim() === '') {
+            errosValidacao.push('Profissional de Enfermagem é obrigatório');
+        }
+
+        // Pelo menos um entre Medicina ou Bucomaxilo deve ser preenchido
+        const temMedicina = prof_medicina && prof_medicina.trim() !== '';
+        const temBucomaxilo = prof_bucomaxilo && prof_bucomaxilo.trim() !== '';
+
+        if (!temMedicina && !temBucomaxilo) {
+            errosValidacao.push('É necessário informar pelo menos um profissional de Medicina ou Cirurgião Bucomaxilo');
+        }
+
+        if (errosValidacao.length > 0) {
+            return res.status(400).json({ 
+                error: `Profissionais obrigatórios não informados: ${errosValidacao.join('; ')}` 
+            });
+        }
+
         // Validar se o tipo está correto conforme a sequência
         const ultimaMovimentacao = await get(
             'SELECT tipo FROM movimentacoes WHERE aih_id = ? ORDER BY data_movimentacao DESC LIMIT 1',
