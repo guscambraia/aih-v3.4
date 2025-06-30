@@ -2273,27 +2273,10 @@ window.carregarLogsExclusao = async () => {
                 </div>
             `;
         } else {
-            // Ordenar logs por data (mais recente primeiro)
+            // Ordenar logs por data (mais recente primeira)
             logs.sort((a, b) => new Date(b.data_exclusao) - new Date(a.data_exclusao));
 
             container.innerHTML = `
-                <div style="margin-bottom: 1rem; padding: 1rem; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #6366f1;">
-                    <h4 style="color: #1e40af; margin: 0 0 0.5rem 0;">📊 Resumo dos Logs</h4>
-                    <p style="color: #1e40af; margin: 0; font-size: 0.9rem;">
-                        Total de exclusões registradas: <strong>${logs.length}</strong> | 
-                        Últimas 24h: <strong>${logs.filter(log => {
-                            const dataLog = new Date(log.data_exclusao);
-                            const agora = new Date();
-                            return (agora - dataLog) < (24 * 60 * 60 * 1000);
-                        }).length}</strong> | 
-                        Esta semana: <strong>${logs.filter(log => {
-                            const dataLog = new Date(log.data_exclusao);
-                            const agora = new Date();
-                            return (agora - dataLog) < (7 * 24 * 60 * 60 * 1000);
-                        }).length}</strong>
-                    </p>
-                </div>
-
                 <!-- Cabeçalho da tabela -->
                 <div style="background: #e0e7ff; padding: 1rem; border-radius: 8px 8px 0 0; display: grid; grid-template-columns: 100px 120px 120px 150px 1fr 100px; gap: 1rem; align-items: center; font-weight: 600; color: #3730a3; font-size: 0.875rem;">
                     <div>ID</div>
