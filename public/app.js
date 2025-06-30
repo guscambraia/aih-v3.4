@@ -613,31 +613,6 @@ const carregarDadosMovimentacao = async () => {
             });
         }
 
-        // Pré-selecionar profissionais anteriores se existirem
-        if (state.aihAtual && state.aihAtual.id && state.aihAtual.movimentacoes && state.aihAtual.movimentacoes.length > 0) {
-            const ultimaMovimentacao = state.aihAtual.movimentacoes[0]; // Primeira no array (mais recente)
-            
-            if (ultimaMovimentacao.prof_medicina) {
-                const selectMedicina = document.getElementById('movProfMedicina');
-                if (selectMedicina) selectMedicina.value = ultimaMovimentacao.prof_medicina;
-            }
-            
-            if (ultimaMovimentacao.prof_enfermagem) {
-                const selectEnfermagem = document.getElementById('movProfEnfermagem');
-                if (selectEnfermagem) selectEnfermagem.value = ultimaMovimentacao.prof_enfermagem;
-            }
-            
-            if (ultimaMovimentacao.prof_fisioterapia) {
-                const selectFisioterapia = document.getElementById('movProfFisioterapia');
-                if (selectFisioterapia) selectFisioterapia.value = ultimaMovimentacao.prof_fisioterapia;
-            }
-            
-            if (ultimaMovimentacao.prof_bucomaxilo) {
-                const selectBucomaxilo = document.getElementById('movProfBucomaxilo');
-                if (selectBucomaxilo) selectBucomaxilo.value = ultimaMovimentacao.prof_bucomaxilo;
-            }
-        }
-
         // Carregar glosas atuais se existirem
         if (state.aihAtual && state.aihAtual.id) {
             const glosas = await api(`/aih/${state.aihAtual.id}/glosas`);
@@ -645,98 +620,30 @@ const carregarDadosMovimentacao = async () => {
             const listaGlosas = document.getElementById('listaGlosas');
             if (listaGlosas && glosas && glosas.glosas) {
                 if (glosas.glosas.length > 0) {
-                    // Armazenar glosas para exportação
-                    state.glosasPendentes = glosas.glosas;
-                    
                     listaGlosas.innerHTML = `
-                        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
-                                <h5 style="color: #92400e; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                                    ⚠️ Glosas/Pendências Ativas
-                                    <span style="background: #f59e0b; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: bold;">
-                                        ${glosas.glosas.length}
+                        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 1rem;">
+                            <h5 style="color: #92400e; margin-bottom: 0.5rem;">
+                                ⚠️ Glosas Ativas (${glosas.glosas.length})
+                            </h5>
+                            ${glosas.glosas.map(g => `
+                                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px;">
+                                    <strong>${g.linha}</strong> - ${g.tipo}
+                                    <span style="color: #64748b; font-size: 0.875rem; margin-left: 1rem;">
+                                        Por: ${g.profissional}
                                     </span>
-                                </h5>
-                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                    <button onclick="exportarGlosasAIH('csv')" 
-                                            style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
-                                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
-                                                   transition: all 0.2s ease;"
-                                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
-                                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                                        📄 CSV
-                                    </button>
-                                    <button onclick="exportarGlosasAIH('excel')" 
-                                            style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); 
-                                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
-                                                   transition: all 0.2s ease;"
-                                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
-                                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                                        📊 Excel
-                                    </button>
                                 </div>
-                            </div>
-                            <div style="display: grid; gap: 0.75rem;">
-                                ${glosas.glosas.map((g, index) => `
-                                    <div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid #f59e0b; display: flex; justify-content: space-between; align-items: start;">
-                                        <div style="flex: 1;">
-                                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                                <span style="background: #f59e0b; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
-                                                    ${index + 1}
-                                                </span>
-                                                <strong style="color: #92400e; font-size: 1rem;">${g.linha}</strong>
-                                            </div>
-                                            <div style="margin-bottom: 0.5rem;">
-                                                <span style="color: #374151; font-weight: 500;">Tipo:</span>
-                                                <span style="background: #fef3c7; color: #92400e; padding: 0.25rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; font-size: 0.875rem;">
-                                                    ${g.tipo}
-                                                </span>
-                                            </div>
-                                            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                                                <span style="color: #64748b; font-size: 0.875rem;">
-                                                    👨‍⚕️ Profissional:
-                                                </span>
-                                                <span style="background: #e0f2fe; color: #0369a1; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; font-weight: 500;">
-                                                    ${g.profissional}
-                                                </span>
-                                                ${g.quantidade > 1 ? `
-                                                    <span style="color: #64748b; font-size: 0.875rem;">
-                                                        📊 Qtd: <strong>${g.quantidade}</strong>
-                                                    </span>
-                                                ` : ''}
-                                            </div>
-                                        </div>
-                                        <div style="text-align: right; color: #64748b; font-size: 0.75rem; margin-left: 1rem;">
-                                            📅 ${new Date(g.criado_em).toLocaleDateString('pt-BR', {
-                                                day: '2-digit',
-                                                month: '2-digit', 
-                                                year: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
+                            `).join('')}
                         </div>
                     `;
                 } else {
-                    state.glosasPendentes = [];
                     listaGlosas.innerHTML = `
-                        <div style="background: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; padding: 1.5rem; text-align: center;">
-                            <div style="color: #16a34a; margin-bottom: 0.5rem;">
-                                ✅ <strong>Nenhuma glosa/pendência ativa</strong>
-                            </div>
-                            <p style="color: #15803d; font-size: 0.875rem; margin: 0;">
-                                Esta AIH não possui glosas ou pendências no momento
-                            </p>
-                        </div>
+                        <p style="color: #64748b; font-style: italic;">
+                            Nenhuma glosa ativa para esta AIH
+                        </p>
                     `;
                 }
             }
-        }</old_str>
+        }
 
         // Mostrar status atual da AIH
         const statusAtualDiv = document.getElementById('statusAtualAIH');
@@ -2114,51 +2021,12 @@ document.getElementById('btnGerenciarGlosas')?.addEventListener('click', () => {
     carregarGlosas();
 });
 
-// Validar profissionais obrigatórios
-const validarProfissionaisObrigatorios = () => {
-    const profEnfermagem = document.getElementById('movProfEnfermagem').value;
-    const profMedicina = document.getElementById('movProfMedicina').value;
-    const profBucomaxilo = document.getElementById('movProfBucomaxilo').value;
-
-    const erros = [];
-
-    // Enfermagem é sempre obrigatório
-    if (!profEnfermagem) {
-        erros.push('❌ Profissional de Enfermagem é obrigatório');
-    }
-
-    // Medicina OU Bucomaxilo é obrigatório (pelo menos um)
-    if (!profMedicina && !profBucomaxilo) {
-        erros.push('❌ É necessário selecionar pelo menos um profissional: Medicina OU Cirurgião Bucomaxilo');
-    }
-
-    return erros;
-};
-
 // Formulário de movimentação
 document.getElementById('formMovimentacao')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     if (!state.aihAtual) {
         alert('Nenhuma AIH selecionada');
-        return;
-    }
-
-    // Validar profissionais obrigatórios
-    const errosValidacao = validarProfissionaisObrigatorios();
-    if (errosValidacao.length > 0) {
-        const mensagemErro = [
-            '⚠️ CAMPOS OBRIGATÓRIOS NÃO PREENCHIDOS:',
-            '',
-            ...errosValidacao,
-            '',
-            '📋 REGRAS:',
-            '• Enfermagem: SEMPRE obrigatório',
-            '• Medicina OU Bucomaxilo: Pelo menos um deve ser selecionado',
-            '• Fisioterapia: Opcional'
-        ].join('\n');
-
-        alert(mensagemErro);
         return;
     }
 
@@ -2193,7 +2061,7 @@ document.getElementById('formMovimentacao')?.addEventListener('submit', async (e
         console.error('Erro ao salvar movimentação:', err);
         alert('Erro ao salvar movimentação: ' + err.message);
     }
-});</old_str>
+});
 
 // Formulário para adicionar nova glosa
 document.getElementById('formNovaGlosa')?.addEventListener('submit', async (e) => {
@@ -2243,86 +2111,7 @@ window.removerGlosa = async (id) => {
     }
 };
 
-// Exportar glosas da AIH atual
-window.exportarGlosasAIH = async (formato) => {
-    if (!state.aihAtual || !state.glosasPendentes || state.glosasPendentes.length === 0) {
-        alert('Nenhuma glosa/pendência disponível para exportação');
-        return;
-    }
-
-    try {
-        // Criar dados formatados para exportação
-        const dadosExportacao = state.glosasPendentes.map((glosa, index) => ({
-            'Sequência': index + 1,
-            'AIH': state.aihAtual.numero_aih,
-            'Linha': glosa.linha,
-            'Tipo de Glosa/Pendência': glosa.tipo,
-            'Profissional Responsável': glosa.profissional,
-            'Quantidade': glosa.quantidade || 1,
-            'Status': 'Ativa',
-            'Data de Criação': new Date(glosa.criado_em).toLocaleDateString('pt-BR'),
-            'Hora de Criação': new Date(glosa.criado_em).toLocaleTimeString('pt-BR')
-        }));
-
-        const dataAtual = new Date().toISOString().split('T')[0];
-        const nomeArquivo = `glosas-pendencias-AIH-${state.aihAtual.numero_aih}-${dataAtual}`;
-
-        if (formato === 'csv') {
-            // Gerar CSV
-            const cabecalhos = Object.keys(dadosExportacao[0]);
-            const linhasCsv = [
-                cabecalhos.join(','),
-                ...dadosExportacao.map(linha => 
-                    cabecalhos.map(cabecalho => `"${linha[cabecalho]}"`).join(',')
-                )
-            ];
-
-            const csvContent = '\ufeff' + linhasCsv.join('\n'); // BOM para UTF-8
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `${nomeArquivo}.csv`;
-            link.click();
-
-            URL.revokeObjectURL(link.href);
-
-        } else if (formato === 'excel') {
-            // Para Excel, usar a API do servidor
-            const response = await fetch('/api/export/excel', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${state.token}`
-                },
-                body: JSON.stringify({
-                    dados: dadosExportacao,
-                    titulo: `Glosas/Pendências - AIH ${state.aihAtual.numero_aih}`,
-                    tipo: 'glosas-pendencias'
-                })
-            });
-
-            if (response.ok) {
-                const blob = await response.blob();
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `${nomeArquivo}.xls`;
-                link.click();
-                URL.revokeObjectURL(link.href);
-            } else {
-                throw new Error('Erro ao gerar arquivo Excel');
-            }
-        }
-
-        alert(`Exportação de glosas/pendências realizada com sucesso em formato ${formato.toUpperCase()}!`);
-
-    } catch (err) {
-        console.error('Erro na exportação de glosas:', err);
-        alert('Erro ao exportar glosas: ' + err.message);
-    }
-};
-
 // Salvar glosas e voltar
 document.getElementById('btnSalvarGlosas')?.addEventListener('click', () => {
     voltarTelaAnterior();
-});</old_str>
+});
