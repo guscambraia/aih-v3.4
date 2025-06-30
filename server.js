@@ -1040,8 +1040,11 @@ app.get('/api/aih/:numero/movimentacoes-detalhadas', verificarToken, async (req,
 // Deletar movimentação específica
 app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) => {
     try {
+        console.log('Usuário tentando deletar movimentação:', req.usuario);
+        
         if (req.usuario.tipo !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado' });
+            console.log('Acesso negado - tipo de usuário:', req.usuario.tipo);
+            return res.status(403).json({ error: 'Acesso negado - apenas administradores podem realizar esta operação' });
         }
 
         const { numero_aih, movimentacao_id, justificativa, senha_admin } = req.body;
@@ -1108,8 +1111,11 @@ app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) =
 // Deletar AIH completa
 app.delete('/api/admin/deletar-aih', verificarToken, async (req, res) => {
     try {
+        console.log('Usuário tentando deletar AIH:', req.usuario);
+        
         if (req.usuario.tipo !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado' });
+            console.log('Acesso negado - tipo de usuário:', req.usuario.tipo);
+            return res.status(403).json({ error: 'Acesso negado - apenas administradores podem realizar esta operação' });
         }
 
         const { numero_aih, justificativa, senha_admin } = req.body;

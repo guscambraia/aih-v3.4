@@ -2347,10 +2347,22 @@ window.confirmarExclusao = async () => {
             };
         }
 
-        const response = await api(endpoint, {
+        // Fazer requisição com fetch diretamente para garantir que os headers sejam enviados corretamente
+        const response = await fetch(`/api${endpoint}`, {
             method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${state.token}`
+            },
             body: JSON.stringify(dados)
         });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Erro HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
 
         alert(`✅ ${dadosExclusaoAtual.tipo === 'movimentacao' ? 'Movimentação' : 'AIH'} excluída com sucesso!\n\nOperação registrada nos logs do sistema.`);
 
