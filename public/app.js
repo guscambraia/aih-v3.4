@@ -1980,49 +1980,274 @@ const carregarRelatorios = () => {
 // Gerar relatório
 window.gerarRelatorio = async (tipo) => {
     try {
+        // Resetar sistema de relatórios
+        sistemaRelatorios = {
+            tipoAtual: tipo,
+            dadosAtuais: null,
+            filtrosAtuais: {},
+            paginaAtual: 1,
+            itensPorPagina: 50,
+            totalPaginas: 1,
+            totalRegistros: 0
+        };
+
         const response = await api(`/relatorios/${tipo}`, {
             method: 'POST',
-            body: JSON.stringify({})
+            body: JSON.stringify({
+                pagina: 1,
+                itens_por_pagina: 50
+            })
         });
 
-        exibirRelatorio(tipo, response.resultado);
+        exibirRelatorio(tipo, response.resultado, response.filtros);
     } catch (err) {
         alert('Erro ao gerar relatório: ' + err.message);
     }
 };
 
-// Exibir relatório
-const exibirRelatorio = (tipo, dados) => {
+// Variável global para controle de relatórios
+let sistemaRelatorios = {
+    tipoAtual: null,
+    dadosAtuais: null,
+    filtrosAtuais: {},
+    paginaAtual: 1,
+    itensPorPagina: 50,
+    totalPaginas: 1,
+    totalRegistros: 0
+};
+
+// Exibir relatório com paginação
+const exibirRelatorio = (tipo, dados, filtros = {}) => {
     const container = document.getElementById('resultadoRelatorio');
     let html = `<h3>📊 ${getTituloRelatorio(tipo)}</h3>`;
 
-    if (Array.isArray(dados)) {
+    // Atualizar sistema de relatórios
+    sistemaRelatorios.tipoAtual = tipo;
+    sistemaRelatorios.dadosAtuais = dados;
+    sistemaRelatorios.filtrosAtuais = filtros;
+
+    // Verificar se é um relatório com paginação
+    if (dados && typeof dados === 'object' && dados.dados && dados.total_registros !== undefined) {
+        sistemaRelatorios.paginaAtual = dados.pagina_atual || 1;
+        sistemaRelatorios.totalPaginas = dados.total_paginas || 1;
+        sistemaRelatorios.totalRegistros = dados.total_registros || 0;
+
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <span style="color: #6b7280; font-size: 0.9rem;">
+                        Mostrando ${dados.dados.length} de ${sistemaRelatorios.totalRegistros} registros
+                        (Página ${sistemaRelatorios.paginaAtual} de ${sistemaRelatorios.totalPaginas})
+                    </span>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <select onchange="alterarItensPorPaginaRelatorio(this.value)" style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;">
+                        <option value="25" ${sistemaRelatorios.itensPorPagina === 25 ? 'selected' : ''}>25 por página</option>
+                        <option value="50" ${sistemaRelatorios.itensPorPagina === 50 ? 'selected' : ''}>50 por página</option>
+                        <option value="100" ${sistemaRelatorios.itensPorPagina === 100 ? 'selected' : ''}>100 por página</option>
+                        <option value="200" ${sistemaRelatorios.itensPorPagina === 200 ? 'selected' : ''}>200 por página</option>
+                    </select>
+                    <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
+                        📊 Exportar Excel
+                    </button>
+                </div>
+            </div>
+
+            ${gerarControlesPaginacaoRelatorio()}
+
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <thead>
+                        <tr style="background: #f1f5f9;">
+                            ${Object.keys(dados.dados[0] || {}).map(key => 
+                                `<th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">${key}</th>`
+                            ).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${dados.dados.map((item, index) => `
+                            <tr style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='white'">
+                                ${Object.values(item).map(value => `<td style="padding: 1rem; color: #374151;">${value || 'N/A'}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+
+            ${sistemaRelatorios.totalPaginas > 1 ? `
+                <div style="margin-top: 1rem;">
+                    ${gerarControlesPaginacaoRelatorio()}
+                </div>
+            ` : ''}
+        `;
+    } else if (Array.isArray(dados)) {
+        // Relatórios simples sem paginação
         html += `
             <div style="margin-bottom: 1rem;">
                 <button onclick="exportarRelatorio('${tipo}')" class="btn-success">
                     📊 Exportar Excel
                 </button>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        ${Object.keys(dados[0] || {}).map(key => `<th>${key}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-                    ${dados.map(item => `
-                        <tr>
-                            ${Object.values(item).map(value => `<td>${value}</td>`).join('')}
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <thead>
+                        <tr style="background: #f1f5f9;">
+                            ${Object.keys(dados[0] || {}).map(key => 
+                                `<th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">${key}</th>`
+                            ).join('')}
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        ${dados.map((item, index) => `
+                            <tr style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='white'">
+                                ${Object.values(item).map(value => `<td style="padding: 1rem; color: #374151;">${value || 'N/A'}</td>`).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
+    } else if (typeof dados === 'object') {
+        // Relatórios complexos com múltiplas seções
+        html += `
+            <div style="margin-bottom: 1rem;">
+                <button onclick="exportarRelatorio('${tipo}')" class="btn-success">
+                    📊 Exportar Excel
+                </button>
+            </div>
+        `;
+
+        Object.entries(dados).forEach(([secao, dadosSecao]) => {
+            if (Array.isArray(dadosSecao) && dadosSecao.length > 0) {
+                html += `
+                    <div style="margin-bottom: 2rem;">
+                        <h4 style="color: #374151; margin-bottom: 1rem;">${formatarTituloSecao(secao)}</h4>
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                <thead>
+                                    <tr style="background: #f1f5f9;">
+                                        ${Object.keys(dadosSecao[0] || {}).map(key => 
+                                            `<th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">${key}</th>`
+                                        ).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${dadosSecao.map((item, index) => `
+                                        <tr style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='white'">
+                                            ${Object.values(item).map(value => `<td style="padding: 1rem; color: #374151;">${value || 'N/A'}</td>`).join('')}
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+        });
     } else {
         html += `<pre>${JSON.stringify(dados, null, 2)}</pre>`;
     }
 
     container.innerHTML = html;
+};
+
+// Formatar título da seção
+const formatarTituloSecao = (secao) => {
+    const titulos = {
+        'resumo_financeiro': '💰 Resumo Financeiro',
+        'glosas_por_impacto': '📊 Glosas por Impacto',
+        'resumo_geral': '📈 Resumo Geral',
+        'distribuicao_por_faixa': '📊 Distribuição por Faixa de Valor',
+        'resumo': '📋 Resumo Geral',
+        'fluxo_mensal': '📅 Fluxo Mensal',
+        'dados': '📊 Dados'
+    };
+    return titulos[secao] || secao.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
+
+// Gerar controles de paginação para relatórios
+const gerarControlesPaginacaoRelatorio = () => {
+    if (sistemaRelatorios.totalPaginas <= 1) return '';
+
+    let controles = `
+        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap;">
+            <button onclick="irParaPaginaRelatorio(1)" ${sistemaRelatorios.paginaAtual === 1 ? 'disabled' : ''} 
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; background: ${sistemaRelatorios.paginaAtual === 1 ? '#f9fafb' : 'white'}; color: ${sistemaRelatorios.paginaAtual === 1 ? '#9ca3af' : '#374151'}; border-radius: 4px; cursor: ${sistemaRelatorios.paginaAtual === 1 ? 'not-allowed' : 'pointer'};">
+                ⏮️ Primeira
+            </button>
+            
+            <button onclick="irParaPaginaRelatorio(${sistemaRelatorios.paginaAtual - 1})" ${sistemaRelatorios.paginaAtual === 1 ? 'disabled' : ''} 
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; background: ${sistemaRelatorios.paginaAtual === 1 ? '#f9fafb' : 'white'}; color: ${sistemaRelatorios.paginaAtual === 1 ? '#9ca3af' : '#374151'}; border-radius: 4px; cursor: ${sistemaRelatorios.paginaAtual === 1 ? 'not-allowed' : 'pointer'};">
+                ⏪ Anterior
+            </button>
+    `;
+
+    // Páginas numeradas
+    let inicioRange = Math.max(1, sistemaRelatorios.paginaAtual - 2);
+    let fimRange = Math.min(sistemaRelatorios.totalPaginas, sistemaRelatorios.paginaAtual + 2);
+
+    for (let i = inicioRange; i <= fimRange; i++) {
+        controles += `
+            <button onclick="irParaPaginaRelatorio(${i})" 
+                    style="padding: 0.5rem 0.75rem; border: 1px solid ${i === sistemaRelatorios.paginaAtual ? '#3b82f6' : '#d1d5db'}; 
+                           background: ${i === sistemaRelatorios.paginaAtual ? '#3b82f6' : 'white'}; 
+                           color: ${i === sistemaRelatorios.paginaAtual ? 'white' : '#374151'}; 
+                           border-radius: 4px; cursor: pointer; font-weight: ${i === sistemaRelatorios.paginaAtual ? '600' : '400'};">
+                ${i}
+            </button>
+        `;
+    }
+
+    controles += `
+            <button onclick="irParaPaginaRelatorio(${sistemaRelatorios.paginaAtual + 1})" ${sistemaRelatorios.paginaAtual === sistemaRelatorios.totalPaginas ? 'disabled' : ''} 
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; background: ${sistemaRelatorios.paginaAtual === sistemaRelatorios.totalPaginas ? '#f9fafb' : 'white'}; color: ${sistemaRelatorios.paginaAtual === sistemaRelatorios.totalPaginas ? '#9ca3af' : '#374151'}; border-radius: 4px; cursor: ${sistemaRelatorios.paginaAtual === sistemaRelatorios.totalPaginas ? 'not-allowed' : 'pointer'};">
+                Próxima ⏩
+            </button>
+            
+            <button onclick="irParaPaginaRelatorio(${sistemaRelatorios.totalPaginas})" ${sistemaRelatorios.paginaAtual === sistemaRelatorios.totalPaginas ? 'disabled' : ''} 
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; background: ${sistemaRelatorios.paginaAtual === sistemaRelatorios.totalPaginas ? '#f9fafb' : 'white'}; color: ${sistemaRelatorios.paginaAtual === sistemaRelatorios.totalPaginas ? '#9ca3af' : '#374151'}; border-radius: 4px; cursor: ${sistemaRelatorios.paginaAtual === sistemaRelatorios.totalPaginas ? 'not-allowed' : 'pointer'};">
+                Última ⏭️
+            </button>
+        </div>
+    `;
+
+    return controles;
+};
+
+// Funções de controle de paginação para relatórios
+window.alterarItensPorPaginaRelatorio = (novoValor) => {
+    sistemaRelatorios.itensPorPagina = parseInt(novoValor);
+    sistemaRelatorios.paginaAtual = 1;
+    recarregarRelatorioAtual();
+};
+
+window.irParaPaginaRelatorio = (pagina) => {
+    if (pagina >= 1 && pagina <= sistemaRelatorios.totalPaginas) {
+        sistemaRelatorios.paginaAtual = pagina;
+        recarregarRelatorioAtual();
+    }
+};
+
+// Recarregar relatório atual
+const recarregarRelatorioAtual = async () => {
+    if (!sistemaRelatorios.tipoAtual) return;
+
+    try {
+        const filtros = {
+            ...sistemaRelatorios.filtrosAtuais,
+            pagina: sistemaRelatorios.paginaAtual,
+            itens_por_pagina: sistemaRelatorios.itensPorPagina
+        };
+
+        const response = await api(`/relatorios/${sistemaRelatorios.tipoAtual}`, {
+            method: 'POST',
+            body: JSON.stringify(filtros)
+        });
+
+        exibirRelatorio(sistemaRelatorios.tipoAtual, response.resultado, response.filtros);
+    } catch (err) {
+        alert('Erro ao recarregar relatório: ' + err.message);
+    }
 };
 
 // Obter título do relatório
@@ -2092,12 +2317,25 @@ window.gerarRelatorioPeriodo = async (tipo) => {
         const dataFim = document.getElementById('dataFimPeriodo').value;
         const competencia = document.getElementById('competenciaPeriodo').value;
 
+        // Resetar sistema de relatórios
+        sistemaRelatorios = {
+            tipoAtual: tipo,
+            dadosAtuais: null,
+            filtrosAtuais: { data_inicio: dataInicio, data_fim: dataFim, competencia: competencia },
+            paginaAtual: 1,
+            itensPorPagina: 50,
+            totalPaginas: 1,
+            totalRegistros: 0
+        };
+
         const response = await api(`/relatorios/${tipo}`, {
             method: 'POST',
             body: JSON.stringify({
                 data_inicio: dataInicio,
                 data_fim: dataFim,
-                competencia: competencia
+                competencia: competencia,
+                pagina: 1,
+                itens_por_pagina: 50
             })
         });
 
