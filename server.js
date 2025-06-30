@@ -1796,30 +1796,39 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 // Análise detalhada de produtividade dos auditores
                 resultado = await all(`
                     SELECT 
-                        CASE 
-                            WHEN m.prof_medicina IS NOT NULL THEN m.prof_medicina
-                            WHEN m.prof_enfermagem IS NOT NULL THEN m.prof_enfermagem
-                            WHEN m.prof_fisioterapia IS NOT NULL THEN m.prof_fisioterapia
-                            WHEN m.prof_bucomaxilo IS NOT NULL THEN m.prof_bucomaxilo
-                        END as profissional,
-                        CASE 
-                            WHEN m.prof_medicina IS NOT NULL THEN 'Medicina'
-                            WHEN m.prof_enfermagem IS NOT NULL THEN 'Enfermagem'
-                            WHEN m.prof_fisioterapia IS NOT NULL THEN 'Fisioterapia'
-                            WHEN m.prof_bucomaxilo IS NOT NULL THEN 'Bucomaxilo'
-                        END as especialidade,
-                        COUNT(DISTINCT m.aih_id) as aihs_auditadas,
-                        COUNT(*) as movimentacoes_realizadas,
-                        AVG(m.valor_conta) as valor_medio_auditado,
-                        COUNT(DISTINCT g.id) as glosas_identificadas
-                    FROM movimentacoes m
-                    JOIN aihs a ON m.aih_id = a.id
-                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
-                    WHERE (m.prof_medicina IS NOT NULL OR m.prof_enfermagem IS NOT NULL 
-                           OR m.prof_fisioterapia IS NOT NULL OR m.prof_bucomaxilo IS NOT NULL)
-                    ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
-                    GROUP BY profissional, especialidade
-                    ORDER BY aihs_auditadas DESC
+                        p.nome as profissional,
+                        p.especialidade,
+                        COALESCE(COUNT(DISTINCT CASE 
+                            WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN m.aih_id
+                        END), 0) as aihs_auditadas,
+                        COALESCE(COUNT(DISTINCT g.id), 0) as glosas_identificadas,
+                        COALESCE(COUNT(CASE 
+                            WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN 1
+                            WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN 1
+                            WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN 1
+                            WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN 1
+                        END), 0) as movimentacoes_realizadas,
+                        COALESCE(AVG(CASE 
+                            WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN m.valor_conta
+                            WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN m.valor_conta
+                            WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN m.valor_conta
+                            WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN m.valor_conta
+                        END), 0) as valor_medio_auditado
+                    FROM profissionais p
+                    LEFT JOIN movimentacoes m ON (
+                        (p.especialidade = 'Medicina' AND m.prof_medicina = p.nome) OR
+                        (p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome) OR
+                        (p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome) OR
+                        (p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome)
+                    )
+                    LEFT JOIN aihs a ON m.aih_id = a.id
+                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1 AND g.profissional = p.nome
+                    WHERE 1=1 ${filtroWhere.replace('competencia', 'COALESCE(m.competencia, "")').replace('criado_em', 'COALESCE(m.data_movimentacao, "")')}
+                    GROUP BY p.id, p.nome, p.especialidade
+                    ORDER BY aihs_auditadas DESC, glosas_identificadas DESC
                 `, params);
                 break;
 
@@ -2713,30 +2722,44 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
             case 'produtividade-auditores':
                 dados = await all(`
                     SELECT 
-                        CASE 
-                            WHEN m.prof_medicina IS NOT NULL THEN m.prof_medicina
-                            WHEN m.prof_enfermagem IS NOT NULL THEN m.prof_enfermagem
-                            WHEN m.prof_fisioterapia IS NOT NULL THEN m.prof_fisioterapia
-                            WHEN m.prof_bucomaxilo IS NOT NULL THEN m.prof_bucomaxilo
-                        END as 'Profissional',
-                        CASE 
-                            WHEN m.prof_medicina IS NOT NULL THEN 'Medicina'
-                            WHEN m.prof_enfermagem IS NOT NULL THEN 'Enfermagem'
-                            WHEN m.prof_fisioterapia IS NOT NULL THEN 'Fisioterapia'
-                            WHEN m.prof_bucomaxilo IS NOT NULL THEN 'Bucomaxilo'
-                        END as 'Especialidade',
-                        COUNT(DISTINCT m.aih_id) as 'AIHs Auditadas',
-                        COUNT(*) as 'Movimentações Realizadas',
-                        ROUND(AVG(m.valor_conta), 2) as 'Valor Médio Auditado (R$)',
-                        COUNT(DISTINCT g.id) as 'Glosas Identificadas'
-                    FROM movimentacoes m
-                    JOIN aihs a ON m.aih_id = a.id
-                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
-                    WHERE (m.prof_medicina IS NOT NULL OR m.prof_enfermagem IS NOT NULL 
-                           OR m.prof_fisioterapia IS NOT NULL OR m.prof_bucomaxilo IS NOT NULL)
-                    ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
-                    GROUP BY Profissional, Especialidade
-                    ORDER BY COUNT(DISTINCT m.aih_id) DESC
+                        p.nome as 'Profissional',
+                        p.especialidade as 'Especialidade',
+                        COALESCE(COUNT(DISTINCT CASE 
+                            WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN m.aih_id
+                        END), 0) as 'AIHs Auditadas (Quantidade)',
+                        COALESCE(COUNT(DISTINCT g.id), 0) as 'Glosas Identificadas (Quantidade)',
+                        COALESCE(COUNT(CASE 
+                            WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN 1
+                            WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN 1
+                            WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN 1
+                            WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN 1
+                        END), 0) as 'Movimentações Realizadas (Quantidade)',
+                        COALESCE(ROUND(AVG(CASE 
+                            WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN m.valor_conta
+                            WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN m.valor_conta
+                            WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN m.valor_conta
+                            WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN m.valor_conta
+                        END), 2), 0) as 'Valor Médio Auditado (R$)'
+                    FROM profissionais p
+                    LEFT JOIN movimentacoes m ON (
+                        (p.especialidade = 'Medicina' AND m.prof_medicina = p.nome) OR
+                        (p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome) OR
+                        (p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome) OR
+                        (p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome)
+                    )
+                    LEFT JOIN aihs a ON m.aih_id = a.id
+                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1 AND g.profissional = p.nome
+                    WHERE 1=1 ${filtroWhere.replace('competencia', 'COALESCE(m.competencia, "")').replace('criado_em', 'COALESCE(m.data_movimentacao, "")')}
+                    GROUP BY p.id, p.nome, p.especialidade
+                    ORDER BY COALESCE(COUNT(DISTINCT CASE 
+                        WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN m.aih_id
+                        WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN m.aih_id
+                        WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN m.aih_id
+                        WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN m.aih_id
+                    END), 0) DESC, COALESCE(COUNT(DISTINCT g.id), 0) DESC
                 `, params);
                 break;
 
