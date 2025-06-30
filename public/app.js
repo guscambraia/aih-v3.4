@@ -1,4 +1,3 @@
-
 // Estado da aplicação
 let state = {
     token: localStorage.getItem('token'),
@@ -14,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             // Tentar validar o token fazendo uma requisição simples
             const userType = localStorage.getItem('userType');
-            
+
             if (userType === 'admin') {
                 // Para admin, ir direto para tela de gestão
                 mostrarTela('telaGestaoUsuarios');
@@ -50,7 +49,7 @@ const api = async (endpoint, options = {}) => {
 
     try {
         const response = await fetch(`/api${endpoint}`, config);
-        
+
         // Verificar se a resposta é JSON válida
         let data;
         const contentType = response.headers.get('content-type');
@@ -165,7 +164,7 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
 
     const submitButton = e.target.querySelector('button[type="submit"]');
     const originalText = submitButton.textContent;
-    
+
     try {
         submitButton.textContent = 'Entrando...';
         submitButton.disabled = true;
@@ -196,7 +195,7 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
             }
 
             console.log('Login realizado com sucesso:', result.usuario.nome);
-            
+
             // Redirecionar para tela principal
             mostrarTela('telaPrincipal');
             await carregarDashboard();
@@ -230,7 +229,7 @@ document.getElementById('formLoginAdmin').addEventListener('submit', async (e) =
 
     const submitButton = e.target.querySelector('button[type="submit"]');
     const originalText = submitButton.textContent;
-    
+
     try {
         submitButton.textContent = 'Entrando...';
         submitButton.disabled = true;
@@ -255,7 +254,7 @@ document.getElementById('formLoginAdmin').addEventListener('submit', async (e) =
             localStorage.setItem('userType', 'admin');
 
             console.log('Login de admin realizado com sucesso');
-            
+
             mostrarTela('telaGestaoUsuarios');
             await carregarUsuarios();
         } else {
@@ -583,7 +582,7 @@ const carregarDadosMovimentacao = async () => {
     try {
         // Carregar profissionais para os selects
         const profissionais = await api('/profissionais');
-        
+
         if (profissionais && profissionais.profissionais) {
             const especialidades = {
                 'Medicina': 'movProfMedicina',
@@ -591,7 +590,7 @@ const carregarDadosMovimentacao = async () => {
                 'Fisioterapia': 'movProfFisioterapia',
                 'Bucomaxilo': 'movProfBucomaxilo'
             };
-            
+
             // Limpar e preencher selects de profissionais
             Object.entries(especialidades).forEach(([especialidade, selectId]) => {
                 const select = document.getElementById(selectId);
@@ -600,7 +599,7 @@ const carregarDadosMovimentacao = async () => {
                     const primeiraOpcao = select.querySelector('option');
                     const opcaoInicial = primeiraOpcao ? primeiraOpcao.outerHTML : `<option value="">Selecione - ${especialidade}</option>`;
                     select.innerHTML = opcaoInicial;
-                    
+
                     // Adicionar profissionais da especialidade
                     profissionais.profissionais
                         .filter(p => p.especialidade === especialidade)
@@ -613,11 +612,11 @@ const carregarDadosMovimentacao = async () => {
                 }
             });
         }
-        
+
         // Carregar glosas atuais se existirem
         if (state.aihAtual && state.aihAtual.id) {
             const glosas = await api(`/aih/${state.aihAtual.id}/glosas`);
-            
+
             const listaGlosas = document.getElementById('listaGlosas');
             if (listaGlosas && glosas && glosas.glosas) {
                 if (glosas.glosas.length > 0) {
@@ -645,7 +644,7 @@ const carregarDadosMovimentacao = async () => {
                 }
             }
         }
-        
+
         // Mostrar status atual da AIH
         const statusAtualDiv = document.getElementById('statusAtualAIH');
         if (statusAtualDiv && state.aihAtual) {
@@ -660,7 +659,7 @@ const carregarDadosMovimentacao = async () => {
                 </div>
             `;
         }
-        
+
         // Mostrar lembrete sobre status
         const lembreteDiv = document.getElementById('lembreteStatus');
         if (lembreteDiv) {
@@ -676,7 +675,7 @@ const carregarDadosMovimentacao = async () => {
                 </div>
             `;
         }
-        
+
     } catch (err) {
         console.error('Erro ao carregar dados da movimentação:', err);
         alert('Erro ao carregar dados: ' + err.message);
@@ -1043,7 +1042,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mes = String(hoje.getMonth() + 1).padStart(2, '0');
     const ano = hoje.getFullYear();
     const competenciaAtual = `${mes}/${ano}`;
-    
+
     const campoCadastroCompetencia = document.getElementById('cadastroCompetencia');
     if (campoCadastroCompetencia && !campoCadastroCompetencia.value) {
         campoCadastroCompetencia.value = competenciaAtual;
@@ -1057,7 +1056,7 @@ window.fazerBackup = async () => {
         link.href = '/api/backup';
         link.download = `backup-aih-${new Date().toISOString().split('T')[0]}.db`;
         link.click();
-        
+
         document.getElementById('modal').classList.remove('ativo');
         alert('Backup iniciado! O download começará em instantes.');
     } catch (err) {
@@ -1071,7 +1070,7 @@ window.exportarDados = async (formato) => {
         link.href = `/api/export/${formato}`;
         link.download = `export-aih-${new Date().toISOString().split('T')[0]}.${formato === 'excel' ? 'xls' : formato}`;
         link.click();
-        
+
         document.getElementById('modal').classList.remove('ativo');
         alert(`Exportação ${formato.toUpperCase()} iniciada! O download começará em instantes.`);
     } catch (err) {
@@ -1082,7 +1081,7 @@ window.exportarDados = async (formato) => {
 // Busca rápida por AIH
 window.buscarPorAIH = async () => {
     const numeroAIH = document.getElementById('buscaRapidaAIH').value.trim();
-    
+
     if (!numeroAIH) {
         alert('Por favor, digite o número da AIH');
         return;
@@ -1097,7 +1096,7 @@ window.buscarPorAIH = async () => {
     try {
         const aih = await api(`/aih/${numeroAIH}`);
         state.aihAtual = aih;
-        
+
         if (aih.status === 1 || aih.status === 4) {
             const continuar = await mostrarModal(
                 'AIH Finalizada',
@@ -1137,7 +1136,7 @@ window.buscarPorAIH = async () => {
 // Busca por número de atendimento
 window.buscarPorAtendimento = async () => {
     const numeroAtendimento = document.getElementById('buscaRapidaAtendimento').value.trim();
-    
+
     if (!numeroAtendimento) {
         alert('Por favor, digite o número do atendimento');
         return;
@@ -1192,12 +1191,12 @@ window.buscarPorAtendimento = async () => {
 // Função para exibir resultados da pesquisa
 const exibirResultadosPesquisa = (resultados) => {
     const container = document.getElementById('resultadosPesquisa');
-    
+
     if (!container) {
         console.error('Container de resultados não encontrado');
         return;
     }
-    
+
     if (!resultados || resultados.length === 0) {
         container.innerHTML = `
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 2rem; text-align: center; margin-top: 2rem;">
@@ -1291,7 +1290,7 @@ document.getElementById('btnRelatorios').addEventListener('click', () => {
 // Carregar opções de relatórios
 const carregarRelatorios = () => {
     const container = document.getElementById('opcoesRelatorios');
-    
+
     container.innerHTML = `
         <div class="relatorios-grid">
             <div class="relatorio-card" onclick="gerarRelatorio('acessos')">
@@ -1299,31 +1298,31 @@ const carregarRelatorios = () => {
                 <h4>Relatório de Acessos</h4>
                 <p>Usuários e frequência de acessos</p>
             </div>
-            
+
             <div class="relatorio-card" onclick="gerarRelatorio('aprovacoes')">
                 <div class="relatorio-icon">✅</div>
                 <h4>Relatório de Aprovações</h4>
                 <p>Distribuição por status de aprovação</p>
             </div>
-            
+
             <div class="relatorio-card" onclick="gerarRelatorio('glosas-profissional')">
                 <div class="relatorio-icon">⚠️</div>
                 <h4>Glosas por Profissional</h4>
                 <p>Glosas identificadas por auditor</p>
             </div>
-            
+
             <div class="relatorio-card" onclick="gerarRelatorio('aihs-profissional')">
                 <div class="relatorio-icon">🏥</div>
                 <h4>AIHs por Profissional</h4>
                 <p>Produtividade por auditor</p>
             </div>
-            
+
             <div class="relatorio-card" onclick="gerarRelatorio('tipos-glosa')">
                 <div class="relatorio-icon">📊</div>
                 <h4>Tipos de Glosa</h4>
                 <p>Ranking dos tipos mais frequentes</p>
             </div>
-            
+
             <div class="relatorio-card" onclick="mostrarRelatoriosPeriodo()">
                 <div class="relatorio-icon">📅</div>
                 <h4>Relatórios por Período</h4>
@@ -1340,7 +1339,7 @@ window.gerarRelatorio = async (tipo) => {
             method: 'POST',
             body: JSON.stringify({})
         });
-        
+
         exibirRelatorio(tipo, response.resultado);
     } catch (err) {
         alert('Erro ao gerar relatório: ' + err.message);
@@ -1351,7 +1350,7 @@ window.gerarRelatorio = async (tipo) => {
 const exibirRelatorio = (tipo, dados) => {
     const container = document.getElementById('resultadoRelatorio');
     let html = `<h3>📊 ${getTituloRelatorio(tipo)}</h3>`;
-    
+
     if (Array.isArray(dados)) {
         html += `
             <div style="margin-bottom: 1rem;">
@@ -1377,7 +1376,7 @@ const exibirRelatorio = (tipo, dados) => {
     } else {
         html += `<pre>${JSON.stringify(dados, null, 2)}</pre>`;
     }
-    
+
     container.innerHTML = html;
 };
 
@@ -1404,7 +1403,7 @@ window.exportarRelatorio = (tipo) => {
 // Mostrar relatórios com filtro de período
 window.mostrarRelatoriosPeriodo = () => {
     const container = document.getElementById('resultadoRelatorio');
-    
+
     container.innerHTML = `
         <h3>📅 Relatórios por Período</h3>
         <div class="filtros-periodo">
@@ -1421,7 +1420,7 @@ window.mostrarRelatoriosPeriodo = () => {
                 <input type="text" id="competenciaPeriodo" placeholder="MM/AAAA">
             </div>
         </div>
-        
+
         <div class="relatorios-periodo-grid">
             <button onclick="gerarRelatorioPeriodo('estatisticas-periodo')" class="relatorio-periodo-btn">
                 📊 Estatísticas Gerais
@@ -1436,7 +1435,7 @@ window.mostrarRelatoriosPeriodo = () => {
                 👨‍⚕️ Produtividade Profissionais
             </button>
         </div>
-        
+
         <div id="resultadoRelatorioPeriodo"></div>
     `;
 };
@@ -1447,7 +1446,7 @@ window.gerarRelatorioPeriodo = async (tipo) => {
         const dataInicio = document.getElementById('dataInicioPeriodo').value;
         const dataFim = document.getElementById('dataFimPeriodo').value;
         const competencia = document.getElementById('competenciaPeriodo').value;
-        
+
         const response = await api(`/relatorios/${tipo}`, {
             method: 'POST',
             body: JSON.stringify({
@@ -1456,7 +1455,7 @@ window.gerarRelatorioPeriodo = async (tipo) => {
                 competencia: competencia
             })
         });
-        
+
         exibirRelatorioPeriodo(tipo, response.resultado, { dataInicio, dataFim, competencia });
     } catch (err) {
         alert('Erro ao gerar relatório: ' + err.message);
@@ -1476,7 +1475,7 @@ const exibirRelatorioPeriodo = (tipo, dados, filtros) => {
             </button>
         </div>
     `;
-    
+
     if (Array.isArray(dados)) {
         html += `
             <table>
@@ -1497,7 +1496,7 @@ const exibirRelatorioPeriodo = (tipo, dados, filtros) => {
     } else {
         html += `<pre>${JSON.stringify(dados, null, 2)}</pre>`;
     }
-    
+
     container.innerHTML = html;
 };
 
@@ -1507,12 +1506,12 @@ window.exportarRelatorioPeriodo = (tipo, filtros) => {
     form.method = 'POST';
     form.action = `/api/relatorios/${tipo}/export`;
     form.style.display = 'none';
-    
+
     const input = document.createElement('input');
     input.type = 'hidden';
     input.name = 'data';
     input.value = JSON.stringify(filtros);
-    
+
     form.appendChild(input);
     document.body.appendChild(form);
     form.submit();
@@ -1522,14 +1521,14 @@ window.exportarRelatorioPeriodo = (tipo, filtros) => {
 // Função para carregar glosas
 const carregarGlosas = async () => {
     if (!state.aihAtual) return;
-    
+
     try {
         const [glosas, tipos, profissionais] = await Promise.all([
             api(`/aih/${state.aihAtual.id}/glosas`),
             api('/tipos-glosa'),
             api('/profissionais')
         ]);
-        
+
         // Atualizar glosas atuais
         const container = document.getElementById('glosasAtuais');
         if (container && glosas.glosas) {
@@ -1547,7 +1546,7 @@ const carregarGlosas = async () => {
                 `).join('') : '<p>Nenhuma glosa ativa</p>'}
             `;
         }
-        
+
         // Preencher select de tipos de glosa
         const tipoSelect = document.getElementById('glosaTipo');
         if (tipoSelect && tipos.tipos) {
@@ -1559,7 +1558,7 @@ const carregarGlosas = async () => {
                 tipoSelect.appendChild(option);
             });
         }
-        
+
         // Preencher select de profissionais
         const profSelect = document.getElementById('glosaProfissional');
         if (profSelect && profissionais.profissionais) {
@@ -1571,7 +1570,7 @@ const carregarGlosas = async () => {
                 profSelect.appendChild(option);
             });
         }
-        
+
     } catch (err) {
         console.error('Erro ao carregar glosas:', err);
     }
@@ -1585,21 +1584,21 @@ window.limparFiltros = () => {
         'pesquisaDataFim', 'pesquisaCompetencia', 'pesquisaValorMin', 
         'pesquisaValorMax', 'pesquisaProfissional'
     ];
-    
+
     campos.forEach(campoId => {
         const campo = document.getElementById(campoId);
         if (campo) campo.value = '';
     });
-    
+
     // Desmarcar todos os checkboxes de status
     document.querySelectorAll('input[name="status"]').forEach(cb => cb.checked = false);
-    
+
     // Limpar resultados
     const container = document.getElementById('resultadosPesquisa');
     if (container) {
         container.innerHTML = '';
     }
-    
+
     alert('Filtros limpos com sucesso!');
 };
 
@@ -1619,10 +1618,10 @@ window.limparResultados = () => {
     if (container) {
         container.innerHTML = '';
     }
-    
+
     // Limpar resultados armazenados
     window.ultimosResultadosPesquisa = null;
-    
+
     // Também limpar os campos de busca rápida
     document.getElementById('buscaRapidaAIH').value = '';
     document.getElementById('buscaRapidaAtendimento').value = '';
@@ -1649,7 +1648,7 @@ window.exportarResultadosPesquisa = async (formato) => {
         }));
 
         const dataAtual = new Date().toISOString().split('T')[0];
-        
+
         if (formato === 'csv') {
             // Gerar CSV
             const cabecalhos = Object.keys(dadosExportacao[0]);
@@ -1659,17 +1658,17 @@ window.exportarResultadosPesquisa = async (formato) => {
                     cabecalhos.map(cabecalho => `"${linha[cabecalho]}"`).join(',')
                 )
             ];
-            
+
             const csvContent = '\ufeff' + linhasCsv.join('\n'); // BOM para UTF-8
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            
+
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = `resultados-pesquisa-${dataAtual}.csv`;
             link.click();
-            
+
             URL.revokeObjectURL(link.href);
-            
+
         } else if (formato === 'excel') {
             // Para Excel, vamos usar a API do servidor
             const response = await fetch('/api/export/excel', {
@@ -1698,7 +1697,7 @@ window.exportarResultadosPesquisa = async (formato) => {
         }
 
         alert(`Exportação ${formato.toUpperCase()} realizada com sucesso!`);
-        
+
     } catch (err) {
         console.error('Erro na exportação:', err);
         alert('Erro ao exportar resultados: ' + err.message);
@@ -1716,23 +1715,23 @@ const limparFiltros = () => {
     document.getElementById('pesquisaValorMin').value = '';
     document.getElementById('pesquisaValorMax').value = '';
     document.getElementById('pesquisaProfissional').value = '';
-    
+
     // Desmarcar todos os checkboxes de status
     document.querySelectorAll('input[name="status"]').forEach(cb => cb.checked = false);
-    
+
     // Limpar resultados se existirem
     const resultados = document.getElementById('resultadosPesquisa');
     if (resultados) {
         resultados.innerHTML = '';
     }
-    
+
     console.log('Filtros limpos');
 };
 
 // Pesquisa avançada
 document.getElementById('formPesquisa').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     const filtros = {
         status: Array.from(document.querySelectorAll('input[name="status"]:checked')).map(cb => parseInt(cb.value)),
         competencia: document.getElementById('pesquisaCompetencia').value,
@@ -1744,20 +1743,20 @@ document.getElementById('formPesquisa').addEventListener('submit', async (e) => 
         numero_atendimento: document.getElementById('pesquisaNumeroAtendimento').value,
         profissional: document.getElementById('pesquisaProfissional').value
     };
-    
+
     // Remover filtros vazios
     Object.keys(filtros).forEach(key => {
         if (!filtros[key] || (Array.isArray(filtros[key]) && filtros[key].length === 0)) {
             delete filtros[key];
         }
     });
-    
+
     try {
         const response = await api('/pesquisar', {
             method: 'POST',
             body: JSON.stringify({ filtros })
         });
-        
+
         exibirResultadosPesquisa(response.resultados);
     } catch (err) {
         alert('Erro na pesquisa: ' + err.message);
@@ -1770,7 +1769,7 @@ window.exportarHistoricoMovimentacoes = async (formato) => {
         alert('Nenhuma AIH selecionada');
         return;
     }
-    
+
     try {
         // Mostrar indicador de carregamento
         const botoes = document.querySelectorAll('button[onclick*="exportarHistoricoMovimentacoes"]');
@@ -1792,7 +1791,7 @@ window.exportarHistoricoMovimentacoes = async (formato) => {
 
         // Criar blob com o conteúdo da resposta
         const blob = await response.blob();
-        
+
         // Determinar o nome do arquivo e tipo MIME
         let fileName, mimeType;
         if (formato === 'csv') {
@@ -1810,17 +1809,17 @@ window.exportarHistoricoMovimentacoes = async (formato) => {
         const link = document.createElement('a');
         link.href = url;
         link.download = fileName;
-        
+
         // Adicionar ao DOM temporariamente e clicar
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         // Limpar URL do blob
         window.URL.revokeObjectURL(url);
-        
+
         alert(`Histórico exportado com sucesso em formato ${formato.toUpperCase()}!`);
-        
+
     } catch (err) {
         console.error('Erro ao exportar histórico:', err);
         alert(`Erro ao exportar histórico: ${err.message}`);
@@ -1845,7 +1844,7 @@ const carregarProfissionais = async () => {
     try {
         const response = await api('/profissionais');
         const container = document.getElementById('listaProfissionais');
-        
+
         if (response && response.profissionais) {
             container.innerHTML = response.profissionais.map(prof => `
                 <div class="glosa-item">
@@ -1865,7 +1864,7 @@ const carregarTiposGlosaConfig = async () => {
     try {
         const response = await api('/tipos-glosa');
         const container = document.getElementById('listaTiposGlosa');
-        
+
         if (response && response.tipos) {
             container.innerHTML = response.tipos.map(tipo => `
                 <div class="glosa-item">
@@ -1889,26 +1888,26 @@ document.getElementById('btnNovaMovimentacao').addEventListener('click', async (
     try {
         // Buscar próxima movimentação possível
         const proximaMovimentacao = await api(`/aih/${state.aihAtual.id}/proxima-movimentacao`);
-        
+
         // Definir tela anterior
         state.telaAnterior = 'telaInfoAIH';
-        
+
         // Ir para tela de movimentação
         mostrarTela('telaMovimentacao');
-        
+
         // Carregar dados da movimentação
         await carregarDadosMovimentacao();
-        
+
         // Configurar campos com base na próxima movimentação
         if (proximaMovimentacao) {
             const tipoSelect = document.getElementById('movTipo');
             const explicacaoDiv = document.getElementById('explicacaoMovimentacao');
-            
+
             if (tipoSelect) {
                 tipoSelect.value = proximaMovimentacao.proximo_tipo;
                 tipoSelect.disabled = true; // Bloquear alteração
             }
-            
+
             if (explicacaoDiv) {
                 explicacaoDiv.innerHTML = `
                     <div style="background: #e0f2fe; border: 1px solid #0284c7; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
@@ -1922,19 +1921,19 @@ document.getElementById('btnNovaMovimentacao').addEventListener('click', async (
                 `;
             }
         }
-        
+
         // Preencher competência padrão
         const competenciaField = document.getElementById('movCompetencia');
         if (competenciaField && !competenciaField.value) {
             competenciaField.value = getCompetenciaAtual();
         }
-        
+
         // Preencher valor atual da AIH
         const valorField = document.getElementById('movValor');
         if (valorField && state.aihAtual.valor_atual) {
             valorField.value = state.aihAtual.valor_atual;
         }
-        
+
     } catch (err) {
         console.error('Erro ao iniciar nova movimentação:', err);
         alert('Erro ao iniciar nova movimentação: ' + err.message);
@@ -1944,7 +1943,7 @@ document.getElementById('btnNovaMovimentacao').addEventListener('click', async (
 // Event listeners para configurações
 document.getElementById('formNovoProfissional').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     try {
         const dados = {
             nome: document.getElementById('profNome').value,
@@ -1966,7 +1965,7 @@ document.getElementById('formNovoProfissional').addEventListener('submit', async
 
 document.getElementById('formNovoTipoGlosa').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     try {
         const dados = {
             descricao: document.getElementById('tipoGlosaDescricao').value
@@ -2025,12 +2024,12 @@ document.getElementById('btnGerenciarGlosas')?.addEventListener('click', () => {
 // Formulário de movimentação
 document.getElementById('formMovimentacao')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
+
     if (!state.aihAtual) {
         alert('Nenhuma AIH selecionada');
         return;
     }
-    
+
     try {
         const dados = {
             tipo: document.getElementById('movTipo').value,
@@ -2043,23 +2042,76 @@ document.getElementById('formMovimentacao')?.addEventListener('submit', async (e
             prof_bucomaxilo: document.getElementById('movProfBucomaxilo').value || null,
             observacoes: document.getElementById('movObservacoes').value || null
         };
-        
+
         await api(`/aih/${state.aihAtual.id}/movimentacao`, {
             method: 'POST',
             body: JSON.stringify(dados)
         });
-        
+
         alert('Movimentação salva com sucesso!');
-        
+
         // Recarregar AIH atualizada
         const aihAtualizada = await api(`/aih/${state.aihAtual.numero_aih}`);
         state.aihAtual = aihAtualizada;
-        
+
         // Voltar para informações da AIH
         mostrarInfoAIH(aihAtualizada);
-        
+
     } catch (err) {
         console.error('Erro ao salvar movimentação:', err);
         alert('Erro ao salvar movimentação: ' + err.message);
     }
+});
+
+// Formulário para adicionar nova glosa
+document.getElementById('formNovaGlosa')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if (!state.aihAtual || !state.aihAtual.id) {
+        alert('Nenhuma AIH selecionada');
+        return;
+    }
+
+    try {
+        const dados = {
+            linha: document.getElementById('glosaLinha').value,
+            tipo: document.getElementById('glosaTipo').value,
+            profissional: document.getElementById('glosaProfissional').value,
+            quantidade: parseInt(document.getElementById('glosaQuantidade').value) || 1
+        };
+
+        await api(`/aih/${state.aihAtual.id}/glosas`, {
+            method: 'POST',
+            body: JSON.stringify(dados)
+        });
+
+        alert('Glosa adicionada com sucesso!');
+        document.getElementById('formNovaGlosa').reset();
+        carregarGlosas();
+    } catch (err) {
+        alert('Erro ao adicionar glosa: ' + err.message);
+    }
+});
+
+// Remover glosa
+window.removerGlosa = async (id) => {
+    const confirmar = await mostrarModal(
+        'Remover Glosa',
+        'Tem certeza que deseja remover esta glosa/pendência?'
+    );
+
+    if (!confirmar) return;
+
+    try {
+        await api(`/glosas/${id}`, { method: 'DELETE' });
+        alert('Glosa removida com sucesso!');
+        carregarGlosas();
+    } catch (err) {
+        alert('Erro ao remover glosa: ' + err.message);
+    }
+};
+
+// Salvar glosas e voltar
+document.getElementById('btnSalvarGlosas')?.addEventListener('click', () => {
+    voltarTelaAnterior();
 });

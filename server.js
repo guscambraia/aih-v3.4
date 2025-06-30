@@ -564,12 +564,23 @@ app.get('/api/aih/:id/glosas', verificarToken, async (req, res) => {
 app.post('/api/aih/:id/glosas', verificarToken, async (req, res) => {
     try {
         const { linha, tipo, profissional, quantidade } = req.body;
+        
+        // Validar dados obrigatórios
+        if (!linha || !tipo || !profissional) {
+            return res.status(400).json({ error: 'Linha, tipo e profissional são obrigatórios' });
+        }
+        
         const result = await run(
             'INSERT INTO glosas (aih_id, linha, tipo, profissional, quantidade) VALUES (?, ?, ?, ?, ?)',
             [req.params.id, linha, tipo, profissional, quantidade || 1]
         );
+        
+        // Log da ação
+        await logAcao(req.usuario.id, `Adicionou glosa na AIH ID ${req.params.id}: ${linha} - ${tipo}`);
+        
         res.json({ success: true, id: result.id });
     } catch (err) {
+        console.error('Erro ao adicionar glosa:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -577,8 +588,13 @@ app.post('/api/aih/:id/glosas', verificarToken, async (req, res) => {
 app.delete('/api/glosas/:id', verificarToken, async (req, res) => {
     try {
         await run('UPDATE glosas SET ativa = 0 WHERE id = ?', [req.params.id]);
+        
+        // Log da ação
+        await logAcao(req.usuario.id, `Removeu glosa ID ${req.params.id}`);
+        
         res.json({ success: true });
     } catch (err) {
+        console.error('Erro ao remover glosa:', err);
         res.status(500).json({ error: err.message });
     }
 });

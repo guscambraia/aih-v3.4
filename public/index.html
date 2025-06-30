@@ -349,25 +349,54 @@
         <div id="telaPendencias" class="tela">
             <header>
                 <button class="btn-voltar" onclick="voltarTelaAnterior()">← Voltar</button>
-                <h2>Gerenciar Pendências/Glosas</h2>
+                <h2>⚠️ Gerenciar Pendências/Glosas</h2>
             </header>
             <div class="container">
-                <div id="glosasAtuais"></div>
+                <!-- Glosas Atuais -->
+                <div class="config-section">
+                    <h3>📋 Glosas/Pendências Atuais</h3>
+                    <div id="glosasAtuais"></div>
+                </div>
 
-                <h3>Adicionar Nova Pendência/Glosa</h3>
-                <form id="formNovaGlosa">
-                    <input type="text" id="glosaLinha" placeholder="Linha da pendência/glosa" required>
-                    <select id="glosaTipo" required>
-                        <option value="">Selecione o tipo de pendência/glosa</option>
-                    </select>
-                    <select id="glosaProfissional" required>
-                        <option value="">Selecione o profissional</option>
-                    </select>
-                    <input type="number" id="glosaQuantidade" placeholder="Quantidade" min="1" value="1" required>
-                    <button type="submit">Adicionar Pendência/Glosa</button>
-                </form>
+                <!-- Formulário para Adicionar Nova Glosa -->
+                <div class="config-section">
+                    <h3>➕ Adicionar Nova Pendência/Glosa</h3>
+                    <form id="formNovaGlosa" style="display: grid; gap: 1rem;">
+                        <div>
+                            <label>📍 Linha da Pendência/Glosa:</label>
+                            <input type="text" id="glosaLinha" placeholder="Ex: Linha 10, Item 5, etc." required style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
+                        </div>
+                        
+                        <div>
+                            <label>🏷️ Tipo de Pendência/Glosa:</label>
+                            <select id="glosaTipo" required style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
+                                <option value="">Selecione o tipo de pendência/glosa</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label>👨‍⚕️ Profissional Responsável:</label>
+                            <select id="glosaProfissional" required style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
+                                <option value="">Selecione o profissional</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label>📊 Quantidade:</label>
+                            <input type="number" id="glosaQuantidade" placeholder="Quantidade" min="1" value="1" required style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
+                        </div>
+                        
+                        <button type="submit" class="btn-primary" style="padding: 1rem; font-size: 1rem;">
+                            ➕ Adicionar Pendência/Glosa
+                        </button>
+                    </form>
+                </div>
 
-                <button id="btnSalvarGlosas" class="btn-primary">Salvar Pendências e Voltar</button>
+                <div style="margin-top: 2rem; text-align: center;">
+                    <button id="btnSalvarGlosas" class="btn-success" style="padding: 1rem 2rem; font-size: 1.1rem;">
+                        💾 Salvar Pendências e Voltar
+                    </button>
+                </div>
             </div>
         </div>
 
