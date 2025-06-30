@@ -2049,7 +2049,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         SUM(a.valor_inicial - a.valor_atual) as impacto_financeiro
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere}
+                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'g.criado_em')}
                     GROUP BY g.profissional, g.tipo
                     ORDER BY g.profissional, ocorrencias DESC
                 `, params);
