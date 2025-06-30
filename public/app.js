@@ -940,18 +940,18 @@ const carregarDadosMovimentacao = async () => {
         // Depois, aplicar pré-seleção se houver dados da última movimentação
         if (profissionaisPreSelecionados) {
             console.log('🔄 Aplicando pré-seleção de profissionais:', profissionaisPreSelecionados);
-            
+
             // Usar setTimeout para garantir que os selects foram renderizados
             setTimeout(() => {
                 especialidades.forEach(esp => {
                     const select = document.getElementById(esp.id);
                     const valorPreSelecionado = profissionaisPreSelecionados[esp.campo];
-                    
+
                     if (select && valorPreSelecionado && valorPreSelecionado.trim() !== '') {
                         // Procurar a opção com o valor correspondente
                         const opcoes = select.querySelectorAll('option');
                         let encontrou = false;
-                        
+
                         for (const opcao of opcoes) {
                             if (opcao.value === valorPreSelecionado) {
                                 opcao.selected = true;
@@ -960,7 +960,7 @@ const carregarDadosMovimentacao = async () => {
                                 break;
                             }
                         }
-                        
+
                         if (!encontrou) {
                             console.log(`⚠️ Profissional não encontrado para pré-seleção: ${esp.id} = ${valorPreSelecionado}`);
                         }
@@ -1275,7 +1275,7 @@ document.getElementById('btnCancelarMovimentacao').addEventListener('click', asy
                 // Último recurso: voltar ao dashboard
                 mostrarTela('telaPrincipal');
                 carregarDashboard();
-                
+
                 // Limpar estado apenas se voltando ao dashboard
                 state.telaAnterior = null;
                 state.aihAtual = null;
@@ -1296,7 +1296,7 @@ document.getElementById('btnCancelarMovimentacao').addEventListener('click', asy
 // Busca rápida por AIH
 window.buscarPorAIH = async () => {
     const numeroAIH = document.getElementById('buscaRapidaAIH').value.trim();
-    
+
     if (!numeroAIH) {
         alert('Por favor, digite o número da AIH');
         return;
@@ -1332,7 +1332,7 @@ window.buscarPorAIH = async () => {
 // Busca rápida por atendimento
 window.buscarPorAtendimento = async () => {
     const numeroAtendimento = document.getElementById('buscaRapidaAtendimento').value.trim();
-    
+
     if (!numeroAtendimento) {
         alert('Por favor, digite o número do atendimento');
         return;
@@ -1375,7 +1375,7 @@ window.buscarPorAtendimento = async () => {
                 <p style="color: #047857; margin-bottom: 1.5rem;">
                     O atendimento "${numeroAtendimento}" foi encontrado nas seguintes AIHs:
                 </p>
-                
+
                 <div style="display: grid; gap: 1rem;">
                     ${response.resultados.map(r => `
                         <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
@@ -1415,12 +1415,12 @@ window.buscarPorAtendimento = async () => {
 window.limparFiltros = () => {
     document.getElementById('formPesquisa').reset();
     document.getElementById('resultadosPesquisa').innerHTML = '';
-    
+
     // Limpar também os checkboxes
     document.querySelectorAll('#formPesquisa input[type="checkbox"]').forEach(cb => {
         cb.checked = false;
     });
-    
+
     // Limpar busca rápida
     document.getElementById('buscaRapidaAIH').value = '';
     document.getElementById('buscaRapidaAtendimento').value = '';
@@ -1717,545 +1717,174 @@ document.getElementById('formNovoTipoGlosa').addEventListener('submit', async (e
     }
 });
 
-// Relatórios
-document.getElementById('btnRelatorios').addEventListener('click', () => {
-    mostrarTela('telaRelatorios');
-    document.getElementById('resultadoRelatorio').innerHTML = '';
-});
-
+// Relatórios Avançados
 window.gerarRelatorio = async (tipo) => {
     try {
-        // Capturar filtros de período
-        const dataInicio = document.getElementById('relatorioDataInicio')?.value || '';
-        const dataFim = document.getElementById('relatorioDataFim')?.value || '';
-        const competencia = document.getElementById('relatorioCompetencia')?.value || '';
+        // Coletar filtros de período se existirem
+        const filtros = coletarFiltrosRelatorio();
 
-        const filtros = {
-            data_inicio: dataInicio,
-            data_fim: dataFim,
-            competencia: competencia
-        };
-
-        // Usar POST para enviar filtros
-        const response = await api(`/relatorios/${tipo}`, {
+        const response = await api(`/relatorios/${tipo}`, { 
             method: 'POST',
             body: JSON.stringify(filtros)
         });
-
-        const container = document.getElementById('resultadoRelatorio');
-
-        // Mostrar período selecionado
-        let periodoTexto = '';
-        if (competencia) {
-            periodoTexto = `Competência: ${competencia}`;
-        } else if (dataInicio && dataFim) {
-            periodoTexto = `Período: ${new Date(dataInicio).toLocaleDateString('pt-BR')} a ${new Date(dataFim).toLocaleDateString('pt-BR')}`;
-        } else if (dataInicio) {
-            periodoTexto = `A partir de: ${new Date(dataInicio).toLocaleDateString('pt-BR')}`;
-        } else if (dataFim) {
-            periodoTexto = `Até: ${new Date(dataFim).toLocaleDateString('pt-BR')}`;
-        } else {
-            periodoTexto = 'Todos os períodos';
-        }
-
-        let conteudo = '';
-
-        switch(tipo) {
-            case 'tipos-glosa-periodo':
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>
-                            📊 Tipos de Glosa Mais Comuns - ${periodoTexto}
-                            <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
-                                Exportar Excel
-                            </button>
-                        </h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Tipo de Glosa</th>
-                                    <th>Total de Ocorrências</th>
-                                    <th>Quantidade Total</th>
-                                    <th>Profissionais Envolvidos</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${response.resultado.map(r => `
-                                    <tr>
-                                        <td>${r.tipo}</td>
-                                        <td>${r.total_ocorrencias}</td>
-                                        <td>${r.quantidade_total}</td>
-                                        <td style="font-size: 0.875rem;">${r.profissionais.split(',').slice(0, 3).join(', ')}${r.profissionais.split(',').length > 3 ? '...' : ''}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                break;
-
-            case 'aihs-profissional-periodo':
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>
-                            🏥 AIHs Auditadas por Profissional - ${periodoTexto}
-                            <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
-                                Exportar Excel
-                            </button>
-                        </h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Profissional</th>
-                                    <th>Especialidade</th>
-                                    <th>AIHs Auditadas</th>
-                                    <th>Total Movimentações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${response.resultado.map(r => `
-                                    <tr>
-                                        <td>${r.profissional}</td>
-                                        <td>${r.especialidade}</td>
-                                        <td>${r.total_aihs_auditadas}</td>
-                                        <td>${r.total_movimentacoes}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                break;
-
-            case 'glosas-profissional-periodo':
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>
-                            📋 Glosas por Profissional - ${periodoTexto}
-                            <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
-                                Exportar Excel
-                            </button>
-                        </h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Profissional</th>
-                                    <th>Total Glosas</th>
-                                    <th>Quantidade Total</th>
-                                    <th>Tipos Diferentes</th>
-                                    <th>Principais Tipos</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${response.resultado.map(r => `
-                                    <tr>
-                                        <td>${r.profissional}</td>
-                                        <td>${r.total_glosas}</td>
-                                        <td>${r.quantidade_total}</td>
-                                        <td>${r.tipos_diferentes}</td>
-                                        <td style="font-size: 0.875rem;">${r.tipos_glosa.split(',').slice(0, 2).join(', ')}${r.tipos_glosa.split(',').length > 2 ? '...' : ''}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                break;
-
-            case 'valores-glosas-periodo':
-                const dados = response.resultado;
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>
-                            💰 Análise Financeira de Glosas - ${periodoTexto}
-                            <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
-                                Exportar Excel
-                            </button>
-                        </h3>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
-                            <div class="stat-card">
-                                <h4>Total AIHs com Glosas</h4>
-                                <p class="stat-number">${dados.aihs_com_glosas || 0}</p>
-                                <p class="stat-subtitle">${dados.percentual_aihs_com_glosas}% do total</p>
-                            </div>
-                            <div class="stat-card">
-                                <h4>Valor Total de Glosas</h4>
-                                <p class="stat-number">R$ ${(dados.total_glosas || 0).toFixed(2)}</p>
-                                <p class="stat-subtitle">Diferença entre inicial e atual</p>
-                            </div>
-                            <div class="stat-card">
-                                <h4>Média por AIH com Glosa</h4>
-                                <p class="stat-number">R$ ${(dados.media_glosa_por_aih || 0).toFixed(2)}</p>
-                                <p class="stat-subtitle">Valor médio de glosa</p>
-                            </div>
-                            <div class="stat-card">
-                                <h4>Maior Glosa</h4>
-                                <p class="stat-number">R$ ${(dados.maior_glosa || 0).toFixed(2)}</p>
-                                <p class="stat-subtitle">Menor: R$ ${(dados.menor_glosa || 0).toFixed(2)}</p>
-                            </div>
-                        </div>
-                        <div style="margin-top: 2rem; background: #f8fafc; padding: 1.5rem; border-radius: 8px;">
-                            <h4>Resumo Financeiro</h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <strong>Valor Inicial Total:</strong><br>
-                                    R$ ${(dados.valor_inicial_total || 0).toFixed(2)}
-                                </div>
-                                <div>
-                                    <strong>Valor Atual Total:</strong><br>
-                                    R$ ${(dados.valor_atual_total || 0).toFixed(2)}
-                                </div>
-                                <div>
-                                    <strong>Total de AIHs no Período:</strong><br>
-                                    ${dados.total_aihs_periodo || 0}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                break;
-
-            case 'estatisticas-periodo':
-                const stats = response.resultado;
-                const totalStats = stats.total_aihs || 1;
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>
-                            📈 Estatísticas do Período - ${periodoTexto}
-                            <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
-                                Exportar Excel
-                            </button>
-                        </h3>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
-                            <div class="stat-card">
-                                <h4>Total de AIHs</h4>
-                                <p class="stat-number">${stats.total_aihs}</p>
-                                <p class="stat-subtitle">No período selecionado</p>
-                            </div>
-                            <div class="stat-card success">
-                                <h4>Aprovação Direta</h4>
-                                <p class="stat-number">${stats.aprovacao_direta}</p>
-                                <p class="stat-subtitle">${((stats.aprovacao_direta/totalStats)*100).toFixed(1)}%</p>
-                            </div>
-                            <div class="stat-card warning">
-                                <h4>Em Discussão</h4>
-                                <p class="stat-number">${stats.em_discussao}</p>
-                                <p class="stat-subtitle">${((stats.em_discussao/totalStats)*100).toFixed(1)}%</p>
-                            </div>
-                            <div class="stat-card info">
-                                <h4>Total de Glosas</h4>
-                                <p class="stat-number">${stats.total_glosas}</p>
-                                <p class="stat-subtitle">${stats.percentual_glosas}% das AIHs</p>
-                            </div>
-                        </div>
-                        <div style="margin-top: 2rem;">
-                            <h4>Movimentações no Período</h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
-                                <div class="info-card">
-                                    <h5>Total de Movimentações</h5>
-                                    <p style="font-size: 1.5rem; font-weight: bold;">${stats.total_movimentacoes}</p>
-                                </div>
-                                <div class="info-card">
-                                    <h5>Entradas SUS</h5>
-                                    <p style="font-size: 1.5rem; font-weight: bold; color: #059669;">${stats.entradas_sus}</p>
-                                </div>
-                                <div class="info-card">
-                                    <h5>Saídas Hospital</h5>
-                                    <p style="font-size: 1.5rem; font-weight: bold; color: #dc2626;">${stats.saidas_hospital}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div style="margin-top: 2rem; background: #f8fafc; padding: 1.5rem; border-radius: 8px;">
-                            <h4>Resumo Financeiro</h4>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
-                                <div>
-                                    <strong>Valor Médio Inicial:</strong><br>
-                                    R$ ${(stats.valor_medio_inicial || 0).toFixed(2)}
-                                </div>
-                                <div>
-                                    <strong>Valor Médio Atual:</strong><br>
-                                    R$ ${(stats.valor_medio_atual || 0).toFixed(2)}
-                                </div>
-                                <div>
-                                    <strong>Diferença Total:</strong><br>
-                                    <span style="color: #dc2626;">R$ ${(stats.diferenca_valores || 0).toFixed(2)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                break;
-
-            // Manter relatórios existentes
-            case 'acessos':
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>
-                            👥 Relatório de Acessos ao Sistema
-                            <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
-                                Exportar Excel
-                            </button>
-                        </h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Usuário</th>
-                                    <th>Total de Acessos</th>
-                                    <th>Último Acesso</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${response.resultado.map(r => `
-                                    <tr>
-                                        <td>${r.nome}</td>
-                                        <td>${r.total_acessos}</td>
-                                        <td>${new Date(r.ultimo_acesso).toLocaleString('pt-BR')}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                break;
-
-            case 'glosas-profissional':
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>
-                            📋 Glosas por Profissional
-                            <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
-                                Exportar Excel
-                            </button>
-                        </h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Profissional</th>
-                                    <th>Total de Glosas</th>
-                                    <th>Quantidade de Itens</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${response.resultado.map(r => `
-                                    <tr>
-                                        <td>${r.profissional}</td>
-                                        <td>${r.total_glosas}</td>
-                                        <td>${r.total_itens}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                break;
-
-            case 'aihs-profissional':
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>
-                            🏥 AIHs Auditadas por Profissional
-                            <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
-                                Exportar Excel
-                            </button>
-                        </h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Profissional</th>
-                                    <th>Total de AIHs</th>
-                                    <th>Total de Movimentações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${response.resultado.map(r => `
-                                    <tr>
-                                        <td>${r.profissional}</td>
-                                        <td>${r.total_aihs}</td>
-                                        <td>${r.total_movimentacoes}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                break;
-
-            case 'aprovacoes':
-                const dadosAprov = response.resultado[0];
-                const totalAprov = dadosAprov.total || 1;
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>
-                            ✅ Estatísticas de Aprovações
-                            <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
-                                Exportar Excel
-                            </button>
-                        </h3>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
-                            <div class="stat-card">
-                                <h4>Aprovação Direta</h4>
-                                <p class="stat-number">${dadosAprov.aprovacao_direta}</p>
-                                <p class="stat-subtitle">${((dadosAprov.aprovacao_direta/totalAprov)*100).toFixed(1)}%</p>
-                            </div>
-                            <div class="stat-card">
-                                <h4>Aprovação Indireta</h4>
-                                <p class="stat-number">${dadosAprov.aprovacao_indireta}</p>
-                                <p class="stat-subtitle">${((dadosAprov.aprovacao_indireta/totalAprov)*100).toFixed(1)}%</p>
-                            </div>
-                            <div class="stat-card">
-                                <h4>Em Discussão</h4>
-                                <p class="stat-number">${dadosAprov.em_discussao}</p>
-                                <p class="stat-subtitle">${((dadosAprov.em_discussao/totalAprov)*100).toFixed(1)}%</p>
-                            </div>
-                            <div class="stat-card">
-                                <h4>Finalizada Pós-Discussão</h4>
-                                <p class="stat-number">${dadosAprov.finalizada_pos_discussao}</p>
-                                <p class="stat-subtitle">${((dadosAprov.finalizada_pos_discussao/totalAprov)*100).toFixed(1)}%</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                break;
-
-            case 'tipos-glosa':
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>
-                            📊 Tipos de Glosa Mais Frequentes
-                            <button onclick="exportarRelatorio('${tipo}')" class="btn-success" style="font-size: 0.875rem;">
-                                Exportar Excel
-                            </button>
-                        </h3>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Tipo de Glosa</th>
-                                    <th>Total de Ocorrências</th>
-                                    <th>Quantidade Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${response.resultado.map(r => `
-                                    <tr>
-                                        <td>${r.tipo}</td>
-                                        <td>${r.total}</td>
-                                        <td>${r.quantidade_total}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                break;
-
-            case 'analise-preditiva':
-                const pred = response.resultado;
-                conteudo = `
-                    <div class="relatorio-content">
-                        <h3>🔮 Análise Preditiva</h3>
-                        <div style="display: grid; gap: 1.5rem; margin-top: 1.5rem;">
-                            <div class="info-card">
-                                <h4>Tempo Médio de Processamento</h4>
-                                <p style="font-size: 2rem; font-weight: bold; color: var(--primary);">
-                                    ${pred.tempo_medio_processamento} dias
-                                </p>
-                                <p style="color: #64748b;">Média de dias para finalizar AIHs</p>
-                            </div>
-
-                            <div class="info-card">
-                                <h4>Valor Médio de Glosas</h4>
-                                <p style="font-size: 2rem; font-weight: bold; color: var(--danger);">
-                                    R$ ${pred.valor_medio_glosa.toFixed(2)}
-                                </p>
-                                <p style="color: #64748b;">Valor médio perdido por AIH com glosa</p>
-                            </div>
-
-                            <div class="info-card">
-                                <h4>Tendência de Glosas (Últimos 6 meses)</h4>
-                                <div style="display: flex; gap: 1rem; align-items: flex-end; height: 100px; margin-top: 1rem;">
-                                    ${pred.tendencia_glosas.map(t => `
-                                        <div style="flex: 1; background: var(--primary); height: ${(t.total/Math.max(...pred.tendencia_glosas.map(x => x.total)))*100}px;
-                                                    border-radius: 4px 4px 0 0; position: relative;">
-                                            <span style="position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
-                                                         font-size: 0.75rem; color: #64748b; white-space: nowrap;">
-                                                ${t.mes}
-                                            </span>
-                                            <span style="position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
-                                                         font-size: 0.875rem; font-weight: 600; color: var(--primary);">
-                                                ${t.total}
-                                            </span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-
-                            <div class="info-card">
-                                <h4>Previsão</h4>
-                                <p>${pred.previsao}</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                break;
-        }
-
-        container.innerHTML = conteudo;
-        container.scrollIntoView({ behavior: 'smooth' });
-
+        exibirRelatorio(tipo, response.resultado, filtros);
     } catch (err) {
         alert('Erro ao gerar relatório: ' + err.message);
     }
 };
 
-window.limparFiltrosRelatorio = () => {
-    document.getElementById('relatorioDataInicio').value = '';
-    document.getElementById('relatorioDataFim').value = '';
-    document.getElementById('relatorioCompetencia').value = '';
-    document.getElementById('resultadoRelatorio').innerHTML = '';
+window.coletarFiltrosRelatorio = () => {
+    const dataInicio = document.getElementById('relatorioDataInicio')?.value;
+    const dataFim = document.getElementById('relatorioDataFim')?.value;
+    const competencia = document.getElementById('relatorioCompetencia')?.value;
+
+    return {
+        data_inicio: dataInicio || null,
+        data_fim: dataFim || null,
+        competencia: competencia || null
+    };
+};
+
+window.exibirRelatorio = (tipo, dados, filtros = {}) => {
+    const container = document.getElementById('resultadoRelatorio');
+
+    // Título com informações de filtro
+    let tituloFiltro = '';
+    if (filtros.competencia) {
+        tituloFiltro = ` - Competência: ${filtros.competencia}`;
+    } else if (filtros.data_inicio && filtros.data_fim) {
+        tituloFiltro = ` - Período: ${filtros.data_inicio} a ${filtros.data_fim}`;
+    } else if (filtros.data_inicio) {
+        tituloFiltro = ` - A partir de: ${filtros.data_inicio}`;
+    } else if (filtros.data_fim) {
+        tituloFiltro = ` - Até: ${filtros.data_fim}`;
+    }
+
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3>${getNomeRelatorio(tipo)}${tituloFiltro}</h3>
+            <button onclick="exportarRelatorio('${tipo}')" class="btn-secondary" style="padding: 0.5rem 1rem;">
+                📊 Exportar Excel
+            </button>
+        </div>
+    `;
+
+    if (Array.isArray(dados) && dados.length > 0) {
+        html += `
+            <div style="overflow-x: auto;">
+                <table class="tabela-relatorio">
+                    <thead>
+                        <tr>
+                            ${Object.keys(dados[0]).map(key => `<th>${formatarCabecalho(key)}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${dados.map(item => `
+                            <tr>
+                                ${Object.entries(item).map(([key, value]) => 
+                                    `<td>${formatarValorRelatorio(key, value)}</td>`
+                                ).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else if (typeof dados === 'object' && dados !== null) {
+        // Exibir objeto como cards informativos
+        html += `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                ${Object.entries(dados).map(([key, value]) => `
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #1f2937;">${formatarCabecalho(key)}</h4>
+                        <p style="margin: 0; font-size: 1.25rem; font-weight: bold; color: #059669;">
+                            ${formatarValorRelatorio(key, value)}
+                        </p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        html += `
+            <div style="text-align: center; padding: 2rem; background: #f3f4f6; border-radius: 8px;">
+                <p style="color: #6b7280;">Nenhum dado encontrado para este relatório.</p>
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
+};
+
+window.getNomeRelatorio = (tipo) => {
+    const nomes = {
+        'fluxo-movimentacoes': 'Fluxo de Movimentações por Período',
+        'produtividade-auditores': 'Produtividade dos Auditores',
+        'analise-valores-glosas': 'Análise de Valores e Glosas',
+        'performance-competencias': 'Performance por Competências',
+        'ranking-glosas-frequentes': 'Ranking de Glosas Mais Frequentes',
+        'analise-temporal-cadastros': 'Análise Temporal de Cadastros',
+        'comparativo-auditorias': 'Comparativo entre Auditorias',
+        'detalhamento-status': 'Detalhamento por Status',
+        'analise-financeira': 'Análise Financeira Detalhada',
+        'eficiencia-processamento': 'Eficiência de Processamento',
+        'cruzamento-profissional-glosas': 'Cruzamento Profissional x Glosas',
+        'distribuicao-valores': 'Distribuição de Valores',
+        'tipos-glosa-periodo': 'Tipos de Glosa por Período',
+        'aihs-profissional-periodo': 'AIHs por Profissional (Período)',
+        'glosas-profissional-periodo': 'Glosas por Profissional (Período)',
+        'valores-glosas-periodo': 'Valores e Glosas (Período)',
+        'estatisticas-periodo': 'Estatísticas Gerais (Período)',
+        'acessos': 'Relatório de Acessos',
+        'glosas-profissional': 'Glosas por Profissional',
+        'aihs-profissional': 'AIHs por Profissional',
+        'aprovacoes': 'Relatório de Aprovações',
+        'tipos-glosa': 'Tipos de Glosa',
+        'analise-preditiva': 'Análise Preditiva'
+    };
+    return nomes[tipo] || tipo;
+};
+
+window.formatarCabecalho = (key) => {
+    return key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+};
+
+window.formatarValorRelatorio = (key, value) => {
+    if (value === null || value === undefined) return '-';
+
+    // Formatação para valores monetários
+    if (key.toLowerCase().includes('valor') || key.toLowerCase().includes('glosa') || 
+        key.toLowerCase().includes('inicial') || key.toLowerCase().includes('atual') ||
+        key.toLowerCase().includes('media') || key.toLowerCase().includes('total')) {
+        if (typeof value === 'number') {
+            return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+    }
+
+    // Formatação para percentuais
+    if (key.toLowerCase().includes('percentual') || key.toLowerCase().includes('percent')) {
+        return `${value}%`;
+    }
+
+    // Formatação para números
+    if (typeof value === 'number' && !key.toLowerCase().includes('id')) {
+        return value.toLocaleString('pt-BR');
+    }
+
+    return value;
 };
 
 window.exportarRelatorio = async (tipo) => {
     try {
-        // Capturar filtros de período para relatórios filtrados
-        const dataInicio = document.getElementById('relatorioDataInicio')?.value || '';
-        const dataFim = document.getElementById('relatorioDataFim')?.value || '';
-        const competencia = document.getElementById('relatorioCompetencia')?.value || '';
+        const filtros = coletarFiltrosRelatorio();
 
-        const filtros = {
-            data_inicio: dataInicio,
-            data_fim: dataFim,
-            competencia: competencia
-        };
-
-        // Verificar se é um relatório que suporta filtros por período
-        const relatoriosComFiltros = [
-            'tipos-glosa-periodo', 
-            'aihs-profissional-periodo', 
-            'glosas-profissional-periodo', 
-            'valores-glosas-periodo', 
-            'estatisticas-periodo'
-        ];
-
-        let response;
-
-        if (relatoriosComFiltros.includes(tipo)) {
-            // Usar POST para relatórios com filtros
-            response = await fetch(`/api/relatorios/${tipo}/export`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${state.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(filtros)
-            });
-        } else {
-            // Usar GET para relatórios sem filtros (compatibilidade)
-            response = await fetch(`/api/relatorios/${tipo}/export`, {
-                headers: {
-                    'Authorization': `Bearer ${state.token}`
-                }
-            });
-        }
+        const response = await fetch(`/api/relatorios/${tipo}/export`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${state.token}`
+            },
+            body: JSON.stringify(filtros)
+        });
 
         if (!response.ok) {
             throw new Error('Erro ao exportar relatório');
@@ -2264,24 +1893,29 @@ window.exportarRelatorio = async (tipo) => {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-
-        // Nome do arquivo com período se aplicável
-        let nomeArquivo = `relatorio-${tipo}-${new Date().toISOString().split('T')[0]}`;
-        if (competencia) {
-            nomeArquivo += `-${competencia.replace('/', '-')}`;
-        } else if (dataInicio && dataFim) {
-            nomeArquivo += `-${dataInicio}-a-${dataFim}`;
-        }
-        nomeArquivo += '.xls';
-
+        a.style.display = 'none';
         a.href = url;
-        a.download = nomeArquivo;
+        a.download = `relatorio-${tipo}-${new Date().toISOString().split('T')[0]}.xls`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+
+        alert('Relatório exportado com sucesso!');
     } catch (err) {
         alert('Erro ao exportar relatório: ' + err.message);
+    }
+};
+
+window.limparFiltrosRelatorio = () => {
+    document.getElementById('relatorioDataInicio').value = '';
+    document.getElementById('relatorioDataFim').value = '';
+    document.getElementById('relatorioCompetencia').value = '';
+
+    // Limpar resultado se existir
+    const container = document.getElementById('resultadoRelatorio');
+    if (container.innerHTML.trim()) {
+        container.innerHTML = '<p style="text-align: center; color: #6b7280;">Filtros limpos. Selecione um relatório para gerar.</p>';
     }
 };
 
@@ -2300,7 +1934,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Preencher competência padrão nos formulários
-    const camposCompetencia = ['cadastroCompetencia', 'movCompetencia', 'pesquisaCompetencia'];
+    const camposCompetencia = ['cadastroCompetencia', 'movCompetencia', 'pesquisaCompetencia', 'relatorioCompetencia'];
     camposCompetencia.forEach(id => {
         const campo = document.getElementById(id);
         if (campo && !campo.value) {
