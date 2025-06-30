@@ -2054,24 +2054,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 `, params);
                 break;
 
-            case 'distribuicao-valores':
-                // Distribuição detalhada de valores
-                resultado = await all(`
-                    SELECT 
-                        CASE 
-                            WHEN a.valor_inicial <= 500 THEN '≤ R$ 500'
-                            WHEN a.valor_inicial <= 1000 THEN 'R$ 501-1.000'
-                            WHEN a.valor_inicial <= 2000 THEN 'R$ 1.001-2.000'
-                            WHEN a.valor_inicial <= 5000 THEN 'R$ 2.001-5.000'
-                            WHEN a.valor_inicial <= 10000 THEN 'R$ 5.001-10.000'
-                            WHEN a.valor_inicial <= 20000 THEN 'R$ 10.001-20.000'
-                            ELSE '> R$ 20.000'
-                        END as faixa_valor,
-                        COUNT(*) as quantidade_aihs,
-                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs WHERE 1=1 ${filtroWhere})), 2) as percentual,
-                        SUM(a.valor_inicial) as valor_inicial_faixa,
-                        SUM(a.valor_atual) as valor_atual_faixa,
-                        SUM(a.valor_inicial - a.valor_atual) as glosas_faixa,
+            _atual) as glosas_faixa,
                         AVG(a.valor_inicial) as valor_inicial_medio_faixa,
                         AVG(a.valor_atual) as valor_atual_medio_faixa
                     FROM aihs a
@@ -2621,21 +2604,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 `, params);
                 break;
 
-            case 'distribuicao-valores':
-                dados = await all(`
-                    SELECT 
-                        CASE 
-                            WHEN a.valor_inicial <= 500 THEN '≤ R$ 500'
-                            WHEN a.valor_inicial <= 1000 THEN 'R$ 501-1.000'
-                            WHEN a.valor_inicial <= 2000 THEN 'R$ 1.001-2.000'
-                            WHEN a.valor_inicial <= 5000 THEN 'R$ 2.001-5.000'
-                            WHEN a.valor_inicial <= 10000 THEN 'R$ 5.001-10.000'
-                            WHEN a.valor_inicial <= 20000 THEN 'R$ 10.001-20.000'
-                            ELSE '> R$ 20.000'
-                        END as 'Faixa de Valor',
-                        COUNT(*) as 'Quantidade AIHs',
-                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs WHERE 1=1 ${filtroWhere})), 2) as 'Percentual (%)',
-                        ROUND(SUM(a.valor_inicial), 2) as 'Valor Inicial Faixa (R$)',
+            alor Inicial Faixa (R$)',
                         ROUND(SUM(a.valor_atual), 2) as 'Valor Atual Faixa (R$)',
                         ROUND(SUM(a.valor_inicial - a.valor_atual), 2) as 'Glosas Faixa (R$)',
                         ROUND(AVG(a.valor_inicial), 2) as 'Valor Inicial Médio (R$)',
