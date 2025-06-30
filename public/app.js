@@ -111,8 +111,10 @@ const voltarTelaAnterior = () => {
             }
             // Se voltando para tela de informações AIH, recarregar AIH atualizada
             else if (telaDestino === 'telaInfoAIH' && state.aihAtual) {
+                console.log('Recarregando AIH atualizada com glosas...');
                 api(`/aih/${state.aihAtual.numero_aih}`)
                     .then(aih => {
+                        console.log('AIH recarregada com sucesso, glosas:', aih.glosas);
                         state.aihAtual = aih;
                         mostrarInfoAIH(aih);
                     })
@@ -2236,14 +2238,24 @@ const configurarEventListenersMovimentacao = () => {
             const novoBtnCancelar = document.getElementById('btnCancelarMovimentacao');
             
             // Configurar event listener principal
-            novoBtnCancelar.addEventListener('click', (e) => {
+            novoBtnCancelar.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('Botão cancelar clicado - voltando para tela anterior');
                 
                 // Voltar para tela de informações da AIH
                 if (state.aihAtual) {
-                    mostrarInfoAIH(state.aihAtual);
+                    try {
+                        // Recarregar AIH atualizada antes de mostrar
+                        const aihAtualizada = await api(`/aih/${state.aihAtual.numero_aih}`);
+                        state.aihAtual = aihAtualizada;
+                        mostrarInfoAIH(aihAtualizada);
+                        console.log('AIH recarregada ao cancelar movimentação');
+                    } catch (err) {
+                        console.error('Erro ao recarregar AIH:', err);
+                        // Se der erro, mostrar a AIH atual mesmo
+                        mostrarInfoAIH(state.aihAtual);
+                    }
                 } else {
                     voltarTelaPrincipal();
                 }
@@ -2404,7 +2416,7 @@ window.removerGlosa = async (id) => {
 };
 
 // Salvar glosas e voltar
-document.getElementById('btnSalvarGlosas')?.addEventListener('click', () => {
+document.getElementById('btnSalvarGlosas')?.addEventListener('click', async () => {
     console.log('Salvando glosas e voltando...');
     
     // Se veio da tela de movimentação, voltar para lá
@@ -2419,6 +2431,19 @@ document.getElementById('btnSalvarGlosas')?.addEventListener('click', () => {
                 configurarEventListenersMovimentacao();
             }, 300);
         }, 150);
+    } else if (state.telaAnterior === 'telaInfoAIH' && state.aihAtual) {
+        // Se voltando para tela de informações, recarregar AIH com glosas atualizadas
+        console.log('Voltando para tela de informações da AIH e recarregando glosas...');
+        try {
+            const aihAtualizada = await api(`/aih/${state.aihAtual.numero_aih}`);
+            state.aihAtual = aihAtualizada;
+            mostrarInfoAIH(aihAtualizada);
+            console.log('Glosas atualizadas na tela de informações');
+        } catch (err) {
+            console.error('Erro ao recarregar AIH:', err);
+            // Se der erro, usar função padrão
+            voltarTelaAnterior();
+        }
     } else {
         // Caso contrário, usar função padrão
         voltarTelaAnterior();
