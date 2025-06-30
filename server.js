@@ -960,12 +960,12 @@ app.post('/api/admin/backup-completo', verificarToken, async (req, res) => {
     }
 });
 
-// Export melhorado com mais opções
+// Export completo de todos os dados da base
 app.get('/api/export/:formato', verificarToken, async (req, res) => {
     try {
-        console.log(`Iniciando exportação em formato: ${req.params.formato}`);
+        console.log(`Iniciando exportação completa em formato: ${req.params.formato}`);
         
-        // Buscar todos os dados com informações completas
+        // Buscar TODOS os dados da base de dados
         const aihs = await all(`
             SELECT a.*, 
                    COUNT(DISTINCT g.id) as total_glosas,
@@ -981,26 +981,72 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
             ORDER BY a.criado_em DESC
         `);
 
-        if (aihs.length === 0) {
-            return res.status(404).json({ error: 'Nenhum dado encontrado para exportação' });
-        }
+        // Buscar todas as movimentações
+        const movimentacoes = await all(`
+            SELECT m.*, u.nome as usuario_nome, a.numero_aih
+            FROM movimentacoes m
+            LEFT JOIN usuarios u ON m.usuario_id = u.id
+            LEFT JOIN aihs a ON m.aih_id = a.id
+            ORDER BY m.data_movimentacao DESC
+        `);
 
-        const nomeBase = `export-aih-completo-${new Date().toISOString().split('T')[0]}`;
+        // Buscar todas as glosas ativas
+        const glosas = await all(`
+            SELECT g.*, a.numero_aih
+            FROM glosas g
+            LEFT JOIN aihs a ON g.aih_id = a.id
+            WHERE g.ativa = 1
+            ORDER BY g.criado_em DESC
+        `);
+
+        // Buscar todos os usuários
+        const usuarios = await all(`
+            SELECT id, nome, matricula, criado_em
+            FROM usuarios
+            ORDER BY criado_em DESC
+        `);
+
+        // Buscar todos os profissionais
+        const profissionais = await all(`
+            SELECT * FROM profissionais
+            ORDER BY nome
+        `);
+
+        // Buscar tipos de glosa
+        const tiposGlosa = await all(`
+            SELECT * FROM tipos_glosa
+            ORDER BY descricao
+        `);
+
+        const nomeBase = `export-completo-aih-${new Date().toISOString().split('T')[0]}`;
 
         if (req.params.formato === 'json') {
-            // Export JSON estruturado
+            // Export JSON estruturado completo
             const dadosCompletos = {
                 metadata: {
                     exportado_em: new Date().toISOString(),
-                    total_registros: aihs.length,
                     usuario_export: req.usuario.nome,
-                    versao_sistema: '2.0'
+                    versao_sistema: '2.0',
+                    total_aihs: aihs.length,
+                    total_movimentacoes: movimentacoes.length,
+                    total_glosas_ativas: glosas.length,
+                    total_usuarios: usuarios.length,
+                    total_profissionais: profissionais.length
                 },
                 aihs: aihs.map(a => ({
                     ...a,
                     atendimentos: a.atendimentos ? a.atendimentos.split(', ') : [],
                     status_descricao: getStatusExcel(a.status)
-                }))
+                })),
+                movimentacoes: movimentacoes.map(m => ({
+                    ...m,
+                    tipo_descricao: m.tipo === 'entrada_sus' ? 'Entrada na Auditoria SUS' : 'Saída para Auditoria Hospital',
+                    status_descricao: getStatusExcel(m.status_aih)
+                })),
+                glosas: glosas,
+                usuarios: usuarios,
+                profissionais: profissionais,
+                tipos_glosa: tiposGlosa
             };
 
             res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -1008,62 +1054,24 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
             res.setHeader('Cache-Control', 'no-cache');
             return res.json(dadosCompletos);
 
-        } else if (req.params.formato === 'csv') {
-            // CSV com codificação UTF-8 e BOM
-            const cabecalhos = [
-                'Numero_AIH',
-                'Valor_Inicial', 
-                'Valor_Atual',
-                'Diferenca_Valor',
-                'Status_Codigo',
-                'Status_Descricao',
-                'Competencia',
-                'Total_Glosas',
-                'Total_Movimentacoes',
-                'Atendimentos',
-                'Usuario_Cadastro',
-                'Data_Criacao'
-            ];
-
-            const linhas = aihs.map(a => {
-                const diferenca = (a.valor_inicial || 0) - (a.valor_atual || 0);
-                return [
-                    `"${a.numero_aih || ''}"`,
-                    `"${(a.valor_inicial || 0).toFixed(2)}"`,
-                    `"${(a.valor_atual || 0).toFixed(2)}"`,
-                    `"${diferenca.toFixed(2)}"`,
-                    `"${a.status || ''}"`,
-                    `"${getStatusExcel(a.status)}"`,
-                    `"${a.competencia || ''}"`,
-                    `"${a.total_glosas || 0}"`,
-                    `"${a.total_movimentacoes || 0}"`,
-                    `"${(a.atendimentos || '').replace(/"/g, '""')}"`,
-                    `"${(a.usuario_cadastro_nome || '').replace(/"/g, '""')}"`,
-                    `"${new Date(a.criado_em).toLocaleString('pt-BR')}"`
-                ].join(',');
-            });
-
-            const csv = [cabecalhos.join(','), ...linhas].join('\n');
-
-            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-            res.setHeader('Content-Disposition', `attachment; filename="${nomeBase}.csv"`);
-            res.setHeader('Cache-Control', 'no-cache');
-            return res.send('\ufeff' + csv); // BOM para UTF-8
-
         } else if (req.params.formato === 'excel') {
-            // Excel com formatação e múltiplas abas
-            const dadosFormatados = aihs.map((a, index) => {
+            // Excel com múltiplas abas para todos os dados
+            const workbook = XLSX.utils.book_new();
+
+            // Aba 1: AIHs
+            const dadosAIHs = aihs.map((a, index) => {
                 const diferenca = (a.valor_inicial || 0) - (a.valor_atual || 0);
                 return {
-                    'Nº': index + 1,
+                    'ID': a.id,
                     'Número AIH': a.numero_aih || '',
                     'Valor Inicial': a.valor_inicial || 0,
                     'Valor Atual': a.valor_atual || 0,
                     'Diferença (Glosas)': diferenca,
                     'Percentual Glosa': a.valor_inicial > 0 ? ((diferenca / a.valor_inicial) * 100).toFixed(2) + '%' : '0%',
-                    'Status': getStatusExcel(a.status),
+                    'Status Código': a.status,
+                    'Status Descrição': getStatusExcel(a.status),
                     'Competência': a.competencia || '',
-                    'Total Glosas/Pendências': a.total_glosas || 0,
+                    'Total Glosas': a.total_glosas || 0,
                     'Total Movimentações': a.total_movimentacoes || 0,
                     'Atendimentos': a.atendimentos || '',
                     'Usuário Cadastro': a.usuario_cadastro_nome || '',
@@ -1071,62 +1079,102 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
                     'Hora Criação': new Date(a.criado_em).toLocaleTimeString('pt-BR')
                 };
             });
+            const wsAIHs = XLSX.utils.json_to_sheet(dadosAIHs);
+            XLSX.utils.book_append_sheet(workbook, wsAIHs, 'AIHs');
 
-            // Criar workbook com múltiplas abas
-            const workbook = XLSX.utils.book_new();
+            // Aba 2: Movimentações
+            const dadosMovimentacoes = movimentacoes.map(m => ({
+                'ID': m.id,
+                'AIH ID': m.aih_id,
+                'Número AIH': m.numero_aih || '',
+                'Tipo': m.tipo === 'entrada_sus' ? 'Entrada SUS' : 'Saída Hospital',
+                'Data/Hora': new Date(m.data_movimentacao).toLocaleString('pt-BR'),
+                'Usuário': m.usuario_nome || '',
+                'Valor Conta': m.valor_conta || 0,
+                'Competência': m.competencia || '',
+                'Prof. Medicina': m.prof_medicina || '',
+                'Prof. Enfermagem': m.prof_enfermagem || '',
+                'Prof. Fisioterapia': m.prof_fisioterapia || '',
+                'Prof. Bucomaxilo': m.prof_bucomaxilo || '',
+                'Status AIH': getStatusExcel(m.status_aih),
+                'Observações': m.observacoes || ''
+            }));
+            const wsMovimentacoes = XLSX.utils.json_to_sheet(dadosMovimentacoes);
+            XLSX.utils.book_append_sheet(workbook, wsMovimentacoes, 'Movimentações');
 
-            // Aba principal - Dados completos
-            const worksheet = XLSX.utils.json_to_sheet(dadosFormatados);
-            
-            // Configurar largura das colunas
-            worksheet['!cols'] = [
-                { wch: 5 },   // Nº
-                { wch: 15 },  // Número AIH
-                { wch: 12 },  // Valor Inicial
-                { wch: 12 },  // Valor Atual
-                { wch: 15 },  // Diferença
-                { wch: 12 },  // Percentual
-                { wch: 25 },  // Status
-                { wch: 12 },  // Competência
-                { wch: 12 },  // Total Glosas
-                { wch: 15 },  // Total Movimentações
-                { wch: 30 },  // Atendimentos
-                { wch: 20 },  // Usuário
-                { wch: 12 },  // Data
-                { wch: 12 }   // Hora
-            ];
+            // Aba 3: Glosas
+            const dadosGlosas = glosas.map(g => ({
+                'ID': g.id,
+                'AIH ID': g.aih_id,
+                'Número AIH': g.numero_aih || '',
+                'Linha': g.linha,
+                'Tipo': g.tipo,
+                'Profissional': g.profissional,
+                'Quantidade': g.quantidade || 1,
+                'Ativa': g.ativa ? 'Sim' : 'Não',
+                'Data Criação': new Date(g.criado_em).toLocaleDateString('pt-BR'),
+                'Hora Criação': new Date(g.criado_em).toLocaleTimeString('pt-BR')
+            }));
+            const wsGlosas = XLSX.utils.json_to_sheet(dadosGlosas);
+            XLSX.utils.book_append_sheet(workbook, wsGlosas, 'Glosas');
 
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'AIHs Completo');
+            // Aba 4: Usuários
+            const dadosUsuarios = usuarios.map(u => ({
+                'ID': u.id,
+                'Nome': u.nome,
+                'Matrícula': u.matricula || '',
+                'Data Criação': new Date(u.criado_em).toLocaleDateString('pt-BR'),
+                'Hora Criação': new Date(u.criado_em).toLocaleTimeString('pt-BR')
+            }));
+            const wsUsuarios = XLSX.utils.json_to_sheet(dadosUsuarios);
+            XLSX.utils.book_append_sheet(workbook, wsUsuarios, 'Usuários');
 
-            // Aba resumo - Estatísticas
+            // Aba 5: Profissionais
+            if (profissionais.length > 0) {
+                const wsProfissionais = XLSX.utils.json_to_sheet(profissionais);
+                XLSX.utils.book_append_sheet(workbook, wsProfissionais, 'Profissionais');
+            }
+
+            // Aba 6: Tipos de Glosa
+            if (tiposGlosa.length > 0) {
+                const wsTiposGlosa = XLSX.utils.json_to_sheet(tiposGlosa);
+                XLSX.utils.book_append_sheet(workbook, wsTiposGlosa, 'Tipos de Glosa');
+            }
+
+            // Aba 7: Resumo Estatísticas
             const resumo = {
                 'Total de AIHs': aihs.length,
+                'Total de Movimentações': movimentacoes.length,
+                'Total de Glosas Ativas': glosas.length,
+                'Total de Usuários': usuarios.length,
+                'Total de Profissionais': profissionais.length,
                 'Valor Total Inicial': aihs.reduce((sum, a) => sum + (a.valor_inicial || 0), 0).toFixed(2),
                 'Valor Total Atual': aihs.reduce((sum, a) => sum + (a.valor_atual || 0), 0).toFixed(2),
-                'Total de Glosas': aihs.reduce((sum, a) => sum + (a.total_glosas || 0), 0),
+                'Total de Perdas (Glosas)': (aihs.reduce((sum, a) => sum + (a.valor_inicial || 0), 0) - aihs.reduce((sum, a) => sum + (a.valor_atual || 0), 0)).toFixed(2),
                 'AIHs com Glosas': aihs.filter(a => a.total_glosas > 0).length,
+                'Percentual AIHs com Glosas': aihs.length > 0 ? ((aihs.filter(a => a.total_glosas > 0).length / aihs.length) * 100).toFixed(2) + '%' : '0%',
                 'Status 1 (Aprovação Direta)': aihs.filter(a => a.status === 1).length,
                 'Status 2 (Aprovação Indireta)': aihs.filter(a => a.status === 2).length,
                 'Status 3 (Em Discussão)': aihs.filter(a => a.status === 3).length,
-                'Status 4 (Finalizada Pós-Discussão)': aihs.filter(a => a.status === 4).length
+                'Status 4 (Finalizada Pós-Discussão)': aihs.filter(a => a.status === 4).length,
+                'Data/Hora Exportação': new Date().toLocaleString('pt-BR')
             };
+            const wsResumo = XLSX.utils.json_to_sheet([resumo]);
+            XLSX.utils.book_append_sheet(workbook, wsResumo, 'Resumo Estatísticas');
 
-            const worksheetResumo = XLSX.utils.json_to_sheet([resumo]);
-            XLSX.utils.book_append_sheet(workbook, worksheetResumo, 'Resumo Estatísticas');
+            const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-            const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
-
-            res.setHeader('Content-Type', 'application/vnd.ms-excel');
-            res.setHeader('Content-Disposition', `attachment; filename="${nomeBase}.xls"`);
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="${nomeBase}.xlsx"`);
             res.setHeader('Cache-Control', 'no-cache');
             return res.send(buffer);
 
         } else {
-            return res.status(400).json({ error: 'Formato não suportado. Use: json, csv ou excel' });
+            return res.status(400).json({ error: 'Formato não suportado. Use: json ou excel' });
         }
 
     } catch (err) {
-        console.error('Erro na exportação:', err);
+        console.error('Erro na exportação completa:', err);
         return res.status(500).json({ error: 'Erro interno ao exportar dados: ' + err.message });
     }
 });

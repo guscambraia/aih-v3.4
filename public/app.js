@@ -88,13 +88,13 @@ const voltarTelaPrincipal = () => {
 const voltarTelaAnterior = () => {
     try {
         console.log('Voltando para tela anterior:', state.telaAnterior);
-        
+
         if (state.telaAnterior) {
             const telaDestino = state.telaAnterior;
-            
+
             // Limpar tela anterior para evitar loops
             state.telaAnterior = null;
-            
+
             mostrarTela(telaDestino);
 
             // Se voltando para tela de movimentação, recarregar dados para atualizar glosas
@@ -932,7 +932,7 @@ const mostrarInfoAIH = (aih) => {
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- Cabeçalho das colunas -->
                 <div style="padding: 0.75rem 0; border-bottom: 2px solid #f59e0b; display: grid; grid-template-columns: 100px 120px 1fr 80px 100px; gap: 1rem; align-items: center; background: #fbbf24; margin: -1.5rem -1.5rem 1rem -1.5rem; padding-left: 1.5rem; padding-right: 1.5rem;">
                     <div style="font-size: 0.75rem; color: #92400e; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
@@ -986,11 +986,11 @@ const carregarProfissionaisPesquisa = async () => {
     try {
         const response = await api('/profissionais');
         const selectProfissional = document.getElementById('pesquisaProfissional');
-        
+
         if (response && response.profissionais && selectProfissional) {
             // Limpar opções existentes exceto a primeira
             selectProfissional.innerHTML = '<option value="">Todos os profissionais</option>';
-            
+
             // Adicionar profissionais
             response.profissionais.forEach(prof => {
                 const option = document.createElement('option');
@@ -998,7 +998,7 @@ const carregarProfissionaisPesquisa = async () => {
                 option.textContent = `${prof.nome} (${prof.especialidade})`;
                 selectProfissional.appendChild(option);
             });
-            
+
             console.log('Profissionais carregados na pesquisa:', response.profissionais.length);
         }
     } catch (err) {
@@ -1026,7 +1026,7 @@ document.getElementById('btnBackup').addEventListener('click', async () => {
     modalContent.innerHTML = `
         <h3>🗄️ Backup e Exportação</h3>
         <p style="margin-bottom: 2rem; color: #64748b;">Escolha o formato desejado para backup ou exportação dos dados:</p>
-        
+
         <div style="display: grid; gap: 1rem; margin-top: 1rem;">
             <button onclick="fazerBackup()" 
                     style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
@@ -1042,7 +1042,7 @@ document.getElementById('btnBackup').addEventListener('click', async () => {
                     <span style="font-size: 0.875rem; opacity: 0.9;">Arquivo SQLite (.db) - Backup integral do sistema</span>
                 </div>
             </button>
-            
+
             <button onclick="exportarDados('excel')" 
                     style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
                            color: white; border: none; border-radius: 8px; cursor: pointer;
@@ -1057,7 +1057,7 @@ document.getElementById('btnBackup').addEventListener('click', async () => {
                     <span style="font-size: 0.875rem; opacity: 0.9;">Planilha Excel com múltiplas abas e estatísticas</span>
                 </div>
             </button>
-            
+
             <button onclick="exportarDados('csv')" 
                     style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
                            color: white; border: none; border-radius: 8px; cursor: pointer;
@@ -1072,8 +1072,8 @@ document.getElementById('btnBackup').addEventListener('click', async () => {
                     <span style="font-size: 0.875rem; opacity: 0.9;">Formato planilha compatível com Excel e LibreOffice</span>
                 </div>
             </button>
+
             
-            <button onclick="exportarDados('json')" 
                     style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); 
                            color: white; border: none; border-radius: 8px; cursor: pointer;
                            padding: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 1rem;
@@ -1082,12 +1082,12 @@ document.getElementById('btnBackup').addEventListener('click', async () => {
                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <span style="font-size: 2rem;">🔧</span>
                 <div style="text-align: left;">
-                    <strong>Exportar JSON</strong>
+                    <strong>Exportar JSON Completo</strong>
                     <br>
-                    <span style="font-size: 0.875rem; opacity: 0.9;">Dados estruturados para integração com outros sistemas</span>
+                    <span style="font-size: 0.875rem; opacity: 0.9;">Todos os dados estruturados: AIHs, Movimentações, Glosas, Usuários e Metadados</span>
                 </div>
             </button>
-            
+
             <button onclick="document.getElementById('modal').classList.remove('ativo')" 
                     style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); 
                            color: white; border: none; border-radius: 8px; cursor: pointer;
@@ -1096,7 +1096,7 @@ document.getElementById('btnBackup').addEventListener('click', async () => {
                 ❌ Cancelar
             </button>
         </div>
-        
+
         <div style="margin-top: 2rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border-left: 4px solid #0284c7;">
             <h4 style="color: #0284c7; margin: 0 0 0.5rem 0; font-size: 0.9rem;">ℹ️ Informações sobre os formatos:</h4>
             <ul style="margin: 0; padding-left: 1.5rem; color: #64748b; font-size: 0.85rem;">
@@ -1281,7 +1281,7 @@ window.fazerBackup = async () => {
         // Mostrar indicador de carregamento
         const modal = document.getElementById('modal');
         const modalContent = modal.querySelector('.modal-content');
-        
+
         modalContent.innerHTML = `
             <h3>💾 Fazendo Backup...</h3>
             <p>Aguarde enquanto o backup do banco de dados é criado...</p>
@@ -1308,7 +1308,7 @@ window.fazerBackup = async () => {
         const link = document.createElement('a');
         link.href = url;
         link.download = `backup-aih-${new Date().toISOString().split('T')[0]}.db`;
-        
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1329,7 +1329,7 @@ window.exportarDados = async (formato) => {
         // Mostrar indicador de carregamento
         const modal = document.getElementById('modal');
         const modalContent = modal.querySelector('.modal-content');
-        
+
         const formatoNome = {
             'csv': 'CSV (Planilha)',
             'json': 'JSON (Dados Estruturados)',
@@ -1378,14 +1378,14 @@ window.exportarDados = async (formato) => {
         const link = document.createElement('a');
         link.href = url;
         link.download = fileName;
-        
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
 
         modal.classList.remove('ativo');
-        
+
         const descricaoFormato = {
             'csv': 'O arquivo CSV pode ser aberto no Excel, LibreOffice ou Google Sheets.',
             'json': 'O arquivo JSON contém dados estruturados ideais para integração com outros sistemas.',
@@ -1445,7 +1445,7 @@ window.buscarPorAIH = async () => {
             } else {
                 document.getElementById('buscaRapidaAIH').value = '';
             }
-        } else {
+        } else{
             alert('Erro ao buscar AIH: ' + err.message);
             console.error('Erro detalhado:', err);
         }
@@ -2442,26 +2442,26 @@ window.cancelarMovimentacao = () => {
 // Event listeners para os botões na tela de movimentação
 const configurarEventListenersMovimentacao = () => {
     console.log('Configurando event listeners da movimentação...');
-    
+
     // Aguardar um pouco para garantir que os elementos estejam no DOM
     setTimeout(() => {
         const btnCancelar = document.getElementById('btnCancelarMovimentacao');
         const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
-        
+
         if (btnCancelar) {
             // Limpar todos os event listeners existentes
             btnCancelar.onclick = null;
             btnCancelar.replaceWith(btnCancelar.cloneNode(true));
-            
+
             // Referenciar o novo elemento
             const novoBtnCancelar = document.getElementById('btnCancelarMovimentacao');
-            
+
             // Configurar event listener principal
             novoBtnCancelar.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('Botão cancelar clicado - voltando para tela anterior');
-                
+
                 // Voltar para tela de informações da AIH
                 if (state.aihAtual) {
                     try {
@@ -2479,7 +2479,7 @@ const configurarEventListenersMovimentacao = () => {
                     voltarTelaPrincipal();
                 }
             });
-            
+
             console.log('Event listener do botão cancelar configurado');
         } else {
             console.warn('Botão cancelar não encontrado');
@@ -2489,22 +2489,22 @@ const configurarEventListenersMovimentacao = () => {
             // Limpar todos os event listeners existentes
             btnGerenciarGlosas.onclick = null;
             btnGerenciarGlosas.replaceWith(btnGerenciarGlosas.cloneNode(true));
-            
+
             // Referenciar o novo elemento
             const novoBtnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
-            
+
             // Configurar event listener principal
             novoBtnGerenciarGlosas.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('Botão gerenciar glosas clicado');
-                
+
                 // Definir tela anterior antes de navegar
                 state.telaAnterior = 'telaMovimentacao';
                 mostrarTela('telaPendencias');
                 carregarGlosas();
             });
-            
+
             console.log('Event listener do botão gerenciar glosas configurado');
         } else {
             console.warn('Botão gerenciar glosas não encontrado');
@@ -2637,12 +2637,12 @@ window.removerGlosa = async (id) => {
 // Salvar glosas e voltar
 document.getElementById('btnSalvarGlosas')?.addEventListener('click', async () => {
     console.log('Salvando glosas e voltando...');
-    
+
     // Se veio da tela de movimentação, voltar para lá
     if (state.telaAnterior === 'telaMovimentacao') {
         console.log('Voltando para tela de movimentação...');
         mostrarTela('telaMovimentacao');
-        
+
         // Recarregar dados da movimentação para mostrar glosas atualizadas
         setTimeout(() => {
             carregarDadosMovimentacao();
