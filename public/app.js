@@ -907,21 +907,70 @@ const mostrarInfoAIH = (aih) => {
 
         ${aih.glosas.length > 0 ? `
             <div style="margin-top: 2rem; background: #fef3c7; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #f59e0b;">
-                <h4 style="color: #92400e; margin-bottom: 1rem;">
-                    ⚠️ Glosas Ativas (${aih.glosas.length})
-                </h4>
-                <div style="display: grid; gap: 0.75rem;">
-                    ${aih.glosas.map(g => `
-                        <div style="background: white; padding: 1rem; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>${g.linha}</strong> - ${g.tipo}
-                                <span style="color: #64748b; font-size: 0.875rem; margin-left: 1rem;">
-                                    Por: ${g.profissional}
-                                </span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                    <h4 style="color: #92400e; margin: 0;">
+                        ⚠️ Glosas Ativas (${aih.glosas.length})
+                    </h4>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button onclick="exportarGlosasAIH('csv')" 
+                                style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
+                                       color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
+                                       cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
+                                       transition: all 0.2s ease; min-width: 80px; justify-content: center;"
+                                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            📄 CSV
+                        </button>
+                        <button onclick="exportarGlosasAIH('excel')" 
+                                style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); 
+                                       color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
+                                       cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
+                                       transition: all 0.2s ease; min-width: 100px; justify-content: center;"
+                                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            📊 Excel
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Cabeçalho das colunas -->
+                <div style="padding: 0.75rem 0; border-bottom: 2px solid #f59e0b; display: grid; grid-template-columns: 100px 120px 1fr 80px 100px; gap: 1rem; align-items: center; background: #fbbf24; margin: -1.5rem -1.5rem 1rem -1.5rem; padding-left: 1.5rem; padding-right: 1.5rem;">
+                    <div style="font-size: 0.75rem; color: #92400e; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Linha Item
+                    </div>
+                    <div style="font-size: 0.75rem; color: #92400e; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Profissional
+                    </div>
+                    <div style="font-size: 0.75rem; color: #92400e; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Tipo de Glosa/Pendência
+                    </div>
+                    <div style="font-size: 0.75rem; color: #92400e; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">
+                        Quantidade
+                    </div>
+                    <div style="font-size: 0.75rem; color: #92400e; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">
+                        Data
+                    </div>
+                </div>
+
+                <!-- Dados das glosas -->
+                <div style="display: grid; gap: 0.5rem;">
+                    ${aih.glosas.map((g, index) => `
+                        <div style="background: white; padding: 1rem; border-radius: 8px; display: grid; grid-template-columns: 100px 120px 1fr 80px 100px; gap: 1rem; align-items: center; border: 1px solid #fbbf24;">
+                            <div style="font-weight: 600; color: #92400e; font-size: 0.875rem;">
+                                ${g.linha}
                             </div>
-                            <span style="font-size: 0.75rem; color: #92400e;">
+                            <div style="color: #374151; font-weight: 500; font-size: 0.875rem;">
+                                ${g.profissional}
+                            </div>
+                            <div style="color: #7c2d12; font-size: 0.875rem;">
+                                ${g.tipo}
+                            </div>
+                            <div style="text-align: center; font-weight: 600; color: #92400e;">
+                                ${g.quantidade || 1}
+                            </div>
+                            <div style="text-align: center; font-size: 0.75rem; color: #92400e;">
                                 ${new Date(g.criado_em).toLocaleDateString('pt-BR')}
-                            </span>
+                            </div>
                         </div>
                     `).join('')}
                 </div>
