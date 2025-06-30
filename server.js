@@ -1844,10 +1844,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         COUNT(g.id) as total_glosas,
                         SUM(a.valor_inicial) as valor_inicial_total,
                         SUM(a.valor_atual) as valor_atual_total,
-                        SUM(a.valor_inicial - a.valor_atual) as valor_total_glosas,
-                        AVG(a.valor_inicial - a.valor_atual) as media_glosa_por_aih,
-                        MIN(a.valor_inicial - a.valor_atual) as menor_impacto,
-                        MAX(a.valor_inicial - a.valor_atual) as maior_impacto
+                        SUM(a.valor_inicial - a.valor_atual) as valor_total_glosas
                     FROM aihs a
                     LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
                     WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
@@ -2634,10 +2631,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                         COUNT(g.id) as total_glosas,
                         SUM(a.valor_inicial) as valor_inicial_total,
                         SUM(a.valor_atual) as valor_atual_total,
-                        SUM(a.valor_inicial - a.valor_atual) as valor_total_glosas,
-                        AVG(a.valor_inicial - a.valor_atual) as media_glosa_por_aih,
-                        MIN(a.valor_inicial - a.valor_atual) as menor_impacto,
-                        MAX(a.valor_inicial - a.valor_atual) as maior_impacto
+                        SUM(a.valor_inicial - a.valor_atual) as valor_total_glosas
                     FROM aihs a
                     LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
                     WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
@@ -2649,10 +2643,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     'Total de Glosas': analiseValoresCompleta.total_glosas || 0,
                     'Valor Inicial Total': `R$ ${(analiseValoresCompleta.valor_inicial_total || 0).toFixed(2)}`,
                     'Valor Atual Total': `R$ ${(analiseValoresCompleta.valor_atual_total || 0).toFixed(2)}`,
-                    'Valor Total Glosas': `R$ ${(analiseValoresCompleta.valor_total_glosas || 0).toFixed(2)}`,
-                    'Média Glosa por AIH': `R$ ${(analiseValoresCompleta.media_glosa_por_aih || 0).toFixed(2)}`,
-                    'Menor Impacto': `R$ ${(analiseValoresCompleta.menor_impacto || 0).toFixed(2)}`,
-                    'Maior Impacto': `R$ ${(analiseValoresCompleta.maior_impacto || 0).toFixed(2)}`
+                    'Valor Total Glosas': `R$ ${(analiseValoresCompleta.valor_total_glosas || 0).toFixed(2)}`
                 }];
                 break;
 
