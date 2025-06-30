@@ -1851,7 +1851,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     FROM aihs a
                     LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
                     WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
-                    ${filtroWhere}
+                    ${filtroWhere.replace('criado_em', 'a.criado_em')}
                 `, params);
 
                 const glosasFrequentes = await all(`
@@ -1862,7 +1862,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         AVG(a.valor_inicial - a.valor_atual) as impacto_medio
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere}
+                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                     GROUP BY g.tipo
                     ORDER BY impacto_financeiro DESC
                 `, params);
