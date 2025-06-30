@@ -1,12 +1,22 @@
 
 const rateLimit = {};
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutos
-const MAX_REQUESTS = 100; // requests por janela
+const MAX_REQUESTS = 500; // requests por janela (aumentado para desenvolvimento)
 
 // Rate limiting simples
 const rateLimitMiddleware = (req, res, next) => {
-    const ip = req.ip || req.connection.remoteAddress;
+    const ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
     const now = Date.now();
+    
+    // Exempletar IPs locais e de desenvolvimento
+    const exemptIPs = ['127.0.0.1', '::1', 'localhost'];
+    const isLocal = exemptIPs.some(exemptIP => ip.includes(exemptIP)) || 
+                   ip.startsWith('192.168.') || 
+                   ip.startsWith('10.');
+    
+    if (isLocal && process.env.NODE_ENV !== 'production') {
+        return next();
+    }
     
     if (!rateLimit[ip]) {
         rateLimit[ip] = { count: 1, resetTime: now + RATE_LIMIT_WINDOW };
@@ -19,8 +29,10 @@ const rateLimitMiddleware = (req, res, next) => {
     }
     
     if (rateLimit[ip].count >= MAX_REQUESTS) {
+        console.log(`Rate limit excedido para IP: ${ip} (${rateLimit[ip].count}/${MAX_REQUESTS})`);
         return res.status(429).json({ 
-            error: 'Muitas requisições. Tente novamente em alguns minutos.' 
+            error: 'Muitas requisições. Tente novamente em alguns minutos.',
+            resetTime: Math.ceil((rateLimit[ip].resetTime - now) / 1000 / 60) // minutos restantes
         });
     }
     
@@ -53,6 +65,17 @@ const validateInput = (req, res, next) => {
     next();
 };
 
+// Função para limpar rate limit (útil para desenvolvimento)
+const clearRateLimit = (ip = null) => {
+    if (ip) {
+        delete rateLimit[ip];
+        console.log(`Rate limit limpo para IP: ${ip}`);
+    } else {
+        Object.keys(rateLimit).forEach(key => delete rateLimit[key]);
+        console.log('Rate limit limpo para todos os IPs');
+    }
+};
+
 // Limpeza periódica do rate limit
 setInterval(() => {
     const now = Date.now();
@@ -63,4 +86,4 @@ setInterval(() => {
     }
 }, RATE_LIMIT_WINDOW);
 
-module.exports = { rateLimitMiddleware, validateInput };
+module.exports = { rateLimitMiddleware, validateInput, clearRateLimit };

@@ -4,7 +4,7 @@ const path = require('path');
 const XLSX = require('xlsx');
 const { initDB, run, get, all } = require('./database');
 const { verificarToken, login, cadastrarUsuario, loginAdmin, alterarSenhaAdmin, listarUsuarios, excluirUsuario } = require('./auth');
-const { rateLimitMiddleware, validateInput } = require('./middleware');
+const { rateLimitMiddleware, validateInput, clearRateLimit } = require('./middleware');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -645,6 +645,20 @@ app.delete('/api/profissionais/:id', verificarToken, async (req, res) => {
     try {
         await run('DELETE FROM profissionais WHERE id = ?', [req.params.id]);
         res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Limpar rate limit (apenas para desenvolvimento)
+app.post('/api/admin/clear-rate-limit', verificarToken, (req, res) => {
+    try {
+        if (req.usuario.tipo !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+        const { ip } = req.body;
+        clearRateLimit(ip);
+        res.json({ success: true, message: 'Rate limit limpo com sucesso' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
