@@ -1837,13 +1837,11 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 break;
 
             case 'analise-valores-glosas':
-                // Análise financeira detalhada das glosas
+                // Análise financeira detalhada das glosas - apenas 3 métricas principais
                 const analiseValoresGlosas = await get(`
                     SELECT 
                         COUNT(DISTINCT a.id) as aihs_com_glosas,
                         COUNT(g.id) as total_glosas,
-                        SUM(a.valor_inicial) as valor_inicial_total,
-                        SUM(a.valor_atual) as valor_atual_total,
                         SUM(a.valor_inicial - a.valor_atual) as valor_total_glosas
                     FROM aihs a
                     LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
@@ -1851,22 +1849,8 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ${filtroWhere.replace('criado_em', 'a.criado_em')}
                 `, params);
 
-                const glosasFrequentes = await all(`
-                    SELECT 
-                        g.tipo,
-                        COUNT(*) as ocorrencias,
-                        SUM(a.valor_inicial - a.valor_atual) as impacto_financeiro,
-                        AVG(a.valor_inicial - a.valor_atual) as impacto_medio
-                    FROM glosas g
-                    JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
-                    GROUP BY g.tipo
-                    ORDER BY impacto_financeiro DESC
-                `, params);
-
                 resultado = {
-                    resumo_financeiro: analiseValoresGlosas,
-                    glosas_por_impacto: glosasFrequentes
+                    resumo_financeiro: analiseValoresGlosas
                 };
                 break;
 

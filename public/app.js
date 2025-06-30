@@ -2189,7 +2189,7 @@ const gerarRelatorioComplexo = (dados, tipo) => {
             html += gerarTabelaRelatorio(dados.fluxo_mensal, 'fluxo_mensal');
         }
     } else if (tipo === 'analise-valores-glosas' && dados.resumo_financeiro) {
-        // Relatório de análise de valores - apenas resumo financeiro
+        // Relatório de análise de valores - apenas 3 cards principais
         html += `
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
                 <div style="background: #e0f2fe; border: 1px solid #0284c7; border-radius: 12px; padding: 2rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
