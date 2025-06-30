@@ -92,16 +92,26 @@ const api = async (endpoint, options = {}, useCache = false) => {
         // Verificar se a resposta é JSON válida
         let data;
         const contentType = response.headers.get('content-type');
+        
         if (contentType && contentType.includes('application/json')) {
-            data = await response.json();
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                console.error('Erro ao parsear JSON:', jsonError);
+                const text = await response.text();
+                console.error('Resposta recebida:', text);
+                throw new Error('Resposta JSON inválida do servidor');
+            }
         } else {
             const text = await response.text();
             console.error('Resposta não é JSON:', text);
-            throw new Error('Resposta inválida do servidor');
+            throw new Error('Resposta inválida do servidor - não é JSON');
         }
 
         if (!response.ok) {
-            throw new Error(data.error || `Erro HTTP ${response.status}`);
+            const errorMessage = data && data.error ? data.error : `Erro HTTP ${response.status}`;
+            console.error('Erro da API:', errorMessage, data);
+            throw new Error(errorMessage);
         }
 
         // Adicionar ao cache do frontend
@@ -516,35 +526,48 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
     
     return debounce(debounceKey, async () => {
         try {
+            // Verificar se os elementos necessários existem
+            const dashboardContainer = document.querySelector('.dashboard');
+            if (!dashboardContainer) {
+                console.error('Dashboard container não encontrado');
+                return;
+            }
+
             // Buscar dados com cache ativo
             const dados = await api(`/dashboard?competencia=${competencia}`, {}, true);
+
+            // Verificar se a resposta tem os dados necessários
+            if (!dados) {
+                console.error('Dados do dashboard não recebidos');
+                return;
+            }
 
         // Criar/atualizar seletor de competência
         let seletorContainer = document.querySelector('.seletor-competencia-container');
         if (!seletorContainer) {
             // Criar container do seletor apenas se não existir
-            const dashboardContainer = document.querySelector('.dashboard');
             seletorContainer = document.createElement('div');
             seletorContainer.className = 'seletor-competencia-container';
             dashboardContainer.parentNode.insertBefore(seletorContainer, dashboardContainer);
         }
 
         // Sempre atualizar o conteúdo do seletor
-        seletorContainer.innerHTML = `
-            <div class="seletor-competencia">
-                <label for="selectCompetencia">Competência:</label>
-                <select id="selectCompetencia" onchange="carregarDashboard(this.value)">
-                    ${dados.competencias_disponiveis.map(comp => 
-                        `<option value="${comp}" ${comp === competencia ? 'selected' : ''}>${comp}</option>`
-                    ).join('')}
-                </select>
-                <span class="competencia-info">📅 Visualizando dados de ${competencia}</span>
-            </div>
-        `;
+        if (dados.competencias_disponiveis && Array.isArray(dados.competencias_disponiveis)) {
+            seletorContainer.innerHTML = `
+                <div class="seletor-competencia">
+                    <label for="selectCompetencia">Competência:</label>
+                    <select id="selectCompetencia" onchange="carregarDashboard(this.value)">
+                        ${dados.competencias_disponiveis.map(comp => 
+                            `<option value="${comp}" ${comp === competencia ? 'selected' : ''}>${comp}</option>`
+                        ).join('')}
+                    </select>
+                    <span class="competencia-info">📅 Visualizando dados de ${competencia}</span>
+                </div>
+            `;
+        }
 
         // Atualizar cards do dashboard
-        const dashboard = document.querySelector('.dashboard');
-        dashboard.innerHTML = `
+        dashboardContainer.innerHTML = `
             <!-- Card 1: Em Processamento na Competência -->
             <div class="stat-card clickable-card" onclick="visualizarAIHsPorCategoria('em_processamento', '${competencia}')" 
                  style="cursor: pointer; transition: all 0.3s ease;"
@@ -552,7 +575,7 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">📊</div>
                 <h3>Em Processamento</h3>
-                <p class="stat-number" id="emProcessamentoCompetencia">${dados.em_processamento_competencia}</p>
+                <p class="stat-number" id="emProcessamentoCompetencia">${dados.em_processamento_competencia || 0}</p>
                 <p class="stat-subtitle">AIHs em análise em ${competencia}</p>
                 <p class="stat-detail">📋 Estas AIHs estão na Auditoria SUS em processamento</p>
                 <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
@@ -565,7 +588,7 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">✅</div>
                 <h3>Finalizadas</h3>
-                <p class="stat-number" id="finalizadasCompetencia">${dados.finalizadas_competencia}</p>
+                <p class="stat-number" id="finalizadasCompetencia">${dados.finalizadas_competencia || 0}</p>
                 <p class="stat-subtitle">AIHs concluídas em ${competencia}</p>
                 <p class="stat-detail">🤝 Estas AIHs já tiveram sua auditoria concluída com concordância de ambas auditorias</p>
                 <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
@@ -578,7 +601,7 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">⚠️</div>
                 <h3>Com Pendências</h3>
-                <p class="stat-number" id="comPendenciasCompetencia">${dados.com_pendencias_competencia}</p>
+                <p class="stat-number" id="comPendenciasCompetencia">${dados.com_pendencias_competencia || 0}</p>
                 <p class="stat-subtitle">AIHs com glosas em ${competencia}</p>
                 <p class="stat-detail">🔄 Estas AIHs estão com alguma pendência passível de recurso e discussão pelas partes envolvidas</p>
                 <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
@@ -591,9 +614,9 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">🏥</div>
                 <h3>Total em Processamento</h3>
-                <p class="stat-number" id="totalProcessamentoGeral">${dados.total_em_processamento_geral}</p>
+                <p class="stat-number" id="totalProcessamentoGeral">${dados.total_em_processamento_geral || 0}</p>
                 <p class="stat-subtitle">Desde o início do sistema</p>
-                <p class="stat-detail">📊 Total: ${dados.total_entradas_sus} entradas - ${dados.total_saidas_hospital} saídas</p>
+                <p class="stat-detail">📊 Total: ${dados.total_entradas_sus || 0} entradas - ${dados.total_saidas_hospital || 0} saídas</p>
                 <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
             </div>
 
@@ -604,7 +627,7 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">🎯</div>
                 <h3>Total Finalizadas</h3>
-                <p class="stat-number" id="totalFinalizadasGeral">${dados.total_finalizadas_geral}</p>
+                <p class="stat-number" id="totalFinalizadasGeral">${dados.total_finalizadas_geral || 0}</p>
                 <p class="stat-subtitle">Desde o início do sistema</p>
                 <p class="stat-detail">✅ AIHs concluídas com auditoria finalizada</p>
                 <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
@@ -617,7 +640,7 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">📈</div>
                 <h3>Total Cadastradas</h3>
-                <p class="stat-number" id="totalAIHsGeral">${dados.total_aihs_geral}</p>
+                <p class="stat-number" id="totalAIHsGeral">${dados.total_aihs_geral || 0}</p>
                 <p class="stat-subtitle">Desde o início do sistema</p>
                 <p class="stat-detail">📋 Todas as AIHs registradas no sistema</p>
                 <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
@@ -625,51 +648,58 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
         `;
 
         // Adicionar seção de resumo financeiro
-        const resumoFinanceiro = document.createElement('div');
-        resumoFinanceiro.className = 'resumo-financeiro';
-        resumoFinanceiro.innerHTML = `
-            <h3>💰 Resumo Financeiro - ${competencia}</h3>
-            <div class="resumo-cards">
-                <div class="resumo-card">
-                    <span class="resumo-label">Valor Inicial Total</span>
-                    <span class="resumo-valor">R$ ${dados.valores_competencia.inicial.toFixed(2)}</span>
+        if (dados.valores_competencia) {
+            const resumoFinanceiro = document.createElement('div');
+            resumoFinanceiro.className = 'resumo-financeiro';
+            resumoFinanceiro.innerHTML = `
+                <h3>💰 Resumo Financeiro - ${competencia}</h3>
+                <div class="resumo-cards">
+                    <div class="resumo-card">
+                        <span class="resumo-label">Valor Inicial Total</span>
+                        <span class="resumo-valor">R$ ${(dados.valores_competencia.inicial || 0).toFixed(2)}</span>
+                    </div>
+                    <div class="resumo-card">
+                        <span class="resumo-label">Valor Atual Total</span>
+                        <span class="resumo-valor">R$ ${(dados.valores_competencia.atual || 0).toFixed(2)}</span>
+                    </div>
+                    <div class="resumo-card">
+                        <span class="resumo-label">Média de Glosas</span>
+                        <span class="resumo-valor" style="color: var(--danger)">R$ ${(dados.valores_competencia.media_glosa || 0).toFixed(2)}</span>
+                    </div>
+                    <div class="resumo-card">
+                        <span class="resumo-label">Total de AIHs</span>
+                        <span class="resumo-valor">${dados.total_aihs_competencia || 0}</span>
+                    </div>
                 </div>
-                <div class="resumo-card">
-                    <span class="resumo-label">Valor Atual Total</span>
-                    <span class="resumo-valor">R$ ${dados.valores_competencia.atual.toFixed(2)}</span>
-                </div>
-                <div class="resumo-card">
-                    <span class="resumo-label">Média de Glosas</span>
-                    <span class="resumo-valor" style="color: var(--danger)">R$ ${dados.valores_competencia.media_glosa.toFixed(2)}</span>
-                </div>
-                <div class="resumo-card">
-                    <span class="resumo-label">Total de AIHs</span>
-                    <span class="resumo-valor">${dados.total_aihs_competencia}</span>
-                </div>
-            </div>
-        `;
+            `;
 
-        // Adicionar após o dashboard
-        const dashboardContainer = document.querySelector('.dashboard');
-        const resumoExistente = document.querySelector('.resumo-financeiro');
-        if (resumoExistente) {
-            resumoExistente.remove();
+            // Adicionar após o dashboard
+            const resumoExistente = document.querySelector('.resumo-financeiro');
+            if (resumoExistente) {
+                resumoExistente.remove();
+            }
+            dashboardContainer.parentNode.insertBefore(resumoFinanceiro, dashboardContainer.nextSibling);
         }
-        dashboardContainer.parentNode.insertBefore(resumoFinanceiro, dashboardContainer.nextSibling);
 
         // Animar números (opcional)
         animarNumeros();
 
     } catch (err) {
-        console.error('Erro ao carregar dashboard:', err);
-        // Mostrar mensagem de erro no dashboard
-        document.querySelector('.dashboard').innerHTML = `
-            <div class="erro-dashboard">
-                <p>⚠️ Erro ao carregar dados do dashboard</p>
-                <button onclick="carregarDashboard()">Tentar novamente</button>
-            </div>
-        `;
-    }
+            console.error('Erro ao carregar dashboard:', err);
+            // Verificar se o container ainda existe antes de tentar atualizar
+            const dashboardContainer = document.querySelector('.dashboard');
+            if (dashboardContainer) {
+                dashboardContainer.innerHTML = `
+                    <div class="erro-dashboard" style="text-align: center; padding: 2rem; background: #fef2f2; border: 1px solid #dc2626; border-radius: 8px;">
+                        <p style="color: #dc2626; margin: 0 0 1rem 0;">⚠️ Erro ao carregar dados do dashboard</p>
+                        <p style="color: #64748b; margin: 0 0 1rem 0; font-size: 0.875rem;">Erro: ${err.message}</p>
+                        <button onclick="carregarDashboard()" style="background: #dc2626; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                            🔄 Tentar novamente
+                        </button>
+                    </div>
+                `;
+            }
+        }
 };
 
 // Carregar dados para movimentação
@@ -856,14 +886,42 @@ const carregarDadosMovimentacao = async () => {
             `;
         }
 
-        // Configurar event listeners dos botões após carregar todos os dados
+        // Configurar event listeners dos botões após carregar todos os dados apenas se não existirem
         setTimeout(() => {
-            configurarEventListenersMovimentacao();
+            if (!window.eventListenersConfigurados) {
+                configurarEventListenersMovimentacao();
+                window.eventListenersConfigurados = true;
+            }
         }, 300);
 
     } catch (err) {
         console.error('Erro ao carregar dados da movimentação:', err);
         alert('Erro ao carregar dados: ' + err.message);
+    }
+};
+
+// Configurar event listeners da movimentação
+const configurarEventListenersMovimentacao = () => {
+    console.log('Configurando event listeners da movimentação...');
+    
+    // Botão cancelar
+    const btnCancelar = document.getElementById('btnCancelarMovimentacao');
+    if (btnCancelar && !btnCancelar.hasAttribute('data-listener-configurado')) {
+        btnCancelar.addEventListener('click', voltarTelaAnterior);
+        btnCancelar.setAttribute('data-listener-configurado', 'true');
+        console.log('Event listener do botão cancelar configurado');
+    }
+    
+    // Botão gerenciar glosas
+    const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
+    if (btnGerenciarGlosas && !btnGerenciarGlosas.hasAttribute('data-listener-configurado')) {
+        btnGerenciarGlosas.addEventListener('click', () => {
+            state.telaAnterior = 'telaMovimentacao';
+            mostrarTela('telaGlosas');
+            carregarGlosas();
+        });
+        btnGerenciarGlosas.setAttribute('data-listener-configurado', 'true');
+        console.log('Event listener do botão gerenciar glosas configurado');
     }
 };
 
