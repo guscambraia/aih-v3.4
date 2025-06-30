@@ -976,42 +976,86 @@ document.getElementById('btnBackup').addEventListener('click', async () => {
 
     modalContent.innerHTML = `
         <h3>🗄️ Backup e Exportação</h3>
-        <p>Escolha uma opção:</p>
-        <div style="display: grid; gap: 1rem; margin-top: 2rem;">
+        <p style="margin-bottom: 2rem; color: #64748b;">Escolha o formato desejado para backup ou exportação dos dados:</p>
+        
+        <div style="display: grid; gap: 1rem; margin-top: 1rem;">
             <button onclick="fazerBackup()" 
                     style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-                           padding: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 1rem;">
+                           color: white; border: none; border-radius: 8px; cursor: pointer;
+                           padding: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 1rem;
+                           transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <span style="font-size: 2rem;">💾</span>
                 <div style="text-align: left;">
-                    <strong>Backup Completo</strong>
+                    <strong>Backup Completo da Base de Dados</strong>
                     <br>
-                    <span style="font-size: 0.875rem; opacity: 0.9;">Baixar banco de dados SQLite</span>
+                    <span style="font-size: 0.875rem; opacity: 0.9;">Arquivo SQLite (.db) - Backup integral do sistema</span>
                 </div>
             </button>
+            
+            <button onclick="exportarDados('excel')" 
+                    style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
+                           color: white; border: none; border-radius: 8px; cursor: pointer;
+                           padding: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 1rem;
+                           transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+                <span style="font-size: 2rem;">📊</span>
+                <div style="text-align: left;">
+                    <strong>Exportar Excel (XLS)</strong>
+                    <br>
+                    <span style="font-size: 0.875rem; opacity: 0.9;">Planilha Excel com múltiplas abas e estatísticas</span>
+                </div>
+            </button>
+            
             <button onclick="exportarDados('csv')" 
                     style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
-                           padding: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 1rem;">
+                           color: white; border: none; border-radius: 8px; cursor: pointer;
+                           padding: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 1rem;
+                           transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <span style="font-size: 2rem;">📄</span>
                 <div style="text-align: left;">
                     <strong>Exportar CSV</strong>
                     <br>
-                    <span style="font-size: 0.875rem; opacity: 0.9;">Dados em formato planilha</span>
+                    <span style="font-size: 0.875rem; opacity: 0.9;">Formato planilha compatível com Excel e LibreOffice</span>
                 </div>
             </button>
+            
             <button onclick="exportarDados('json')" 
                     style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); 
-                           padding: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 1rem;">
-                <span style="font-size: 2rem;">📊</span>
+                           color: white; border: none; border-radius: 8px; cursor: pointer;
+                           padding: 1.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 1rem;
+                           transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
+                <span style="font-size: 2rem;">🔧</span>
                 <div style="text-align: left;">
                     <strong>Exportar JSON</strong>
                     <br>
-                    <span style="font-size: 0.875rem; opacity: 0.9;">Dados estruturados</span>
+                    <span style="font-size: 0.875rem; opacity: 0.9;">Dados estruturados para integração com outros sistemas</span>
                 </div>
             </button>
+            
             <button onclick="document.getElementById('modal').classList.remove('ativo')" 
-                    style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);">
-                Cancelar
+                    style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); 
+                           color: white; border: none; border-radius: 8px; cursor: pointer;
+                           padding: 1rem; font-size: 1rem; margin-top: 1rem;
+                           transition: all 0.2s ease;">
+                ❌ Cancelar
             </button>
+        </div>
+        
+        <div style="margin-top: 2rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border-left: 4px solid #0284c7;">
+            <h4 style="color: #0284c7; margin: 0 0 0.5rem 0; font-size: 0.9rem;">ℹ️ Informações sobre os formatos:</h4>
+            <ul style="margin: 0; padding-left: 1.5rem; color: #64748b; font-size: 0.85rem;">
+                <li><strong>SQLite (.db):</strong> Backup completo - restaura todo o sistema</li>
+                <li><strong>Excel (.xls):</strong> Ideal para análises e relatórios gerenciais</li>
+                <li><strong>CSV:</strong> Compatível com qualquer software de planilha</li>
+                <li><strong>JSON:</strong> Para desenvolvedores e integração de sistemas</li>
+            </ul>
         </div>
     `;
 
@@ -1182,32 +1226,129 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Adicionar funcionalidades que estavam faltando
+// Funções de backup e exportação melhoradas
 window.fazerBackup = async () => {
     try {
-        const link = document.createElement('a');
-        link.href = '/api/backup';
-        link.download = `backup-aih-${new Date().toISOString().split('T')[0]}.db`;
-        link.click();
+        // Mostrar indicador de carregamento
+        const modal = document.getElementById('modal');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        modalContent.innerHTML = `
+            <h3>💾 Fazendo Backup...</h3>
+            <p>Aguarde enquanto o backup do banco de dados é criado...</p>
+            <div style="text-align: center; margin: 2rem 0;">
+                <div style="border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            </div>
+        `;
 
-        document.getElementById('modal').classList.remove('ativo');
-        alert('Backup iniciado! O download começará em instantes.');
+        // Fazer requisição para backup
+        const response = await fetch('/api/backup', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        // Criar blob e fazer download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `backup-aih-${new Date().toISOString().split('T')[0]}.db`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        modal.classList.remove('ativo');
+        alert('✅ Backup do banco de dados realizado com sucesso!\n\nO arquivo SQLite foi baixado e contém todos os dados do sistema.');
+
     } catch (err) {
-        alert('Erro ao fazer backup: ' + err.message);
+        console.error('Erro ao fazer backup:', err);
+        modal.classList.remove('ativo');
+        alert('❌ Erro ao fazer backup: ' + err.message);
     }
 };
 
 window.exportarDados = async (formato) => {
     try {
-        const link = document.createElement('a');
-        link.href = `/api/export/${formato}`;
-        link.download = `export-aih-${new Date().toISOString().split('T')[0]}.${formato === 'excel' ? 'xls' : formato}`;
-        link.click();
+        // Mostrar indicador de carregamento
+        const modal = document.getElementById('modal');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        const formatoNome = {
+            'csv': 'CSV (Planilha)',
+            'json': 'JSON (Dados Estruturados)',
+            'excel': 'Excel (XLS)'
+        };
 
-        document.getElementById('modal').classList.remove('ativo');
-        alert(`Exportação ${formato.toUpperCase()} iniciada! O download começará em instantes.`);
+        modalContent.innerHTML = `
+            <h3>📊 Exportando ${formatoNome[formato] || formato.toUpperCase()}...</h3>
+            <p>Preparando dados para exportação...</p>
+            <div style="text-align: center; margin: 2rem 0;">
+                <div style="border: 3px solid #f3f3f3; border-top: 3px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            </div>
+        `;
+
+        // Fazer requisição para exportação
+        const response = await fetch(`/api/export/${formato}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        let fileName;
+        let mimeType;
+
+        if (formato === 'json') {
+            fileName = `export-aih-completo-${new Date().toISOString().split('T')[0]}.json`;
+            mimeType = 'application/json';
+        } else if (formato === 'csv') {
+            fileName = `export-aih-completo-${new Date().toISOString().split('T')[0]}.csv`;
+            mimeType = 'text/csv';
+        } else if (formato === 'excel') {
+            fileName = `export-aih-completo-${new Date().toISOString().split('T')[0]}.xls`;
+            mimeType = 'application/vnd.ms-excel';
+        } else {
+            throw new Error('Formato não suportado');
+        }
+
+        // Criar blob e fazer download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(new Blob([blob], { type: mimeType }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        modal.classList.remove('ativo');
+        
+        const descricaoFormato = {
+            'csv': 'O arquivo CSV pode ser aberto no Excel, LibreOffice ou Google Sheets.',
+            'json': 'O arquivo JSON contém dados estruturados ideais para integração com outros sistemas.',
+            'excel': 'O arquivo Excel contém múltiplas abas com dados completos e estatísticas.'
+        };
+
+        alert(`✅ Exportação ${formatoNome[formato]} realizada com sucesso!\n\n${descricaoFormato[formato]}`);
+
     } catch (err) {
-        alert('Erro ao exportar: ' + err.message);
+        console.error('Erro ao exportar:', err);
+        document.getElementById('modal').classList.remove('ativo');
+        alert('❌ Erro ao exportar dados: ' + err.message);
     }
 };
 
