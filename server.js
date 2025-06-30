@@ -129,8 +129,10 @@ app.post('/api/admin/login', async (req, res) => {
 // Listar usuários (apenas admin)
 app.get('/api/admin/usuarios', verificarToken, async (req, res) => {
     try {
-        if (req.usuario.tipo !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado' });
+        // Verificar se é admin consultando o banco
+        const admin = await get('SELECT id FROM administradores WHERE id = ?', [req.usuario.id]);
+        if (!admin) {
+            return res.status(403).json({ error: 'Acesso negado - apenas administradores' });
         }
         const usuarios = await listarUsuarios();
         res.json({ usuarios });
@@ -142,8 +144,10 @@ app.get('/api/admin/usuarios', verificarToken, async (req, res) => {
 // Cadastrar usuário (apenas admin)
 app.post('/api/admin/usuarios', verificarToken, async (req, res) => {
     try {
-        if (req.usuario.tipo !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado' });
+        // Verificar se é admin consultando o banco
+        const admin = await get('SELECT id FROM administradores WHERE id = ?', [req.usuario.id]);
+        if (!admin) {
+            return res.status(403).json({ error: 'Acesso negado - apenas administradores' });
         }
         const { nome, matricula, senha } = req.body;
         const usuario = await cadastrarUsuario(nome, matricula, senha);
@@ -215,12 +219,10 @@ app.post('/api/validar-senha', verificarToken, async (req, res) => {
 app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) => {
     try {
         console.log('Usuário tentando deletar movimentação:', req.usuario);
-        console.log('Tipo de usuário detectado:', req.usuario.tipo);
         
-        // Permitir tanto usuários normais quanto administradores
-        if (!req.usuario.tipo || (req.usuario.tipo !== 'admin' && req.usuario.tipo !== 'usuario')) {
-            console.log('Acesso negado - tipo de usuário inválido:', req.usuario.tipo);
-            console.log('Usuário completo:', JSON.stringify(req.usuario, null, 2));
+        // Verificar apenas se o usuário está autenticado (tem ID e nome)
+        if (!req.usuario.id || !req.usuario.nome) {
+            console.log('Acesso negado - usuário não autenticado corretamente');
             return res.status(403).json({ error: 'Acesso negado - usuário não autenticado corretamente' });
         }
 
@@ -296,12 +298,10 @@ app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) =
 app.delete('/api/admin/deletar-aih', verificarToken, async (req, res) => {
     try {
         console.log('Usuário tentando deletar AIH:', req.usuario);
-        console.log('Tipo de usuário detectado:', req.usuario.tipo);
         
-        // Permitir tanto usuários normais quanto administradores
-        if (!req.usuario.tipo || (req.usuario.tipo !== 'admin' && req.usuario.tipo !== 'usuario')) {
-            console.log('Acesso negado - tipo de usuário inválido:', req.usuario.tipo);
-            console.log('Usuário completo:', JSON.stringify(req.usuario, null, 2));
+        // Verificar apenas se o usuário está autenticado (tem ID e nome)
+        if (!req.usuario.id || !req.usuario.nome) {
+            console.log('Acesso negado - usuário não autenticado corretamente');
             return res.status(403).json({ error: 'Acesso negado - usuário não autenticado corretamente' });
         }
 

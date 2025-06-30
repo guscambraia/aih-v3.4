@@ -22,7 +22,7 @@ const verificarSenha = async (senha, hash) => {
 // Gerar token JWT
 const gerarToken = (usuario) => {
     return jwt.sign(
-        { id: usuario.id, nome: usuario.nome, tipo: usuario.tipo },
+        { id: usuario.id, nome: usuario.nome },
         JWT_SECRET,
         { expiresIn: '24h' }
     );
@@ -59,16 +59,9 @@ const login = async (nome, senha) => {
         throw new Error('Senha incorreta');
     }
 
-    // Criar objeto de usuário com tipo explícito
-    const usuarioComTipo = { 
-        id: usuario.id, 
-        nome: usuario.nome, 
-        tipo: 'usuario' 
-    };
-
     return {
-        token: gerarToken(usuarioComTipo),
-        usuario: { id: usuario.id, nome: usuario.nome, tipo: 'usuario' }
+        token: gerarToken(usuario),
+        usuario: { id: usuario.id, nome: usuario.nome }
     };
 };
 
@@ -104,7 +97,7 @@ const loginAdmin = async (usuario, senha) => {
     }
 
     return {
-        token: gerarToken({ id: admin.id, nome: admin.usuario, tipo: 'admin' }),
+        token: gerarToken({ id: admin.id, nome: admin.usuario }),
         admin: { id: admin.id, usuario: admin.usuario }
     };
 };
