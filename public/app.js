@@ -83,6 +83,14 @@ const mostrarTela = (telaId) => {
 const voltarTelaPrincipal = () => {
     mostrarTela('telaPrincipal');
     carregarDashboard();
+    
+    // Limpar campo da AIH se estiver na tela de informar AIH
+    setTimeout(() => {
+        const campoNumeroAIH = document.getElementById('numeroBuscarAIH');
+        if (campoNumeroAIH) {
+            campoNumeroAIH.value = '';
+        }
+    }, 100);
 };
 
 const voltarTelaAnterior = () => {
@@ -1033,6 +1041,13 @@ const carregarProfissionaisPesquisa = async () => {
 // Menu Principal
 document.getElementById('btnInformarAIH').addEventListener('click', () => {
     mostrarTela('telaInformarAIH');
+    // Limpar campo do número da AIH sempre que acessar a tela
+    setTimeout(() => {
+        const campoNumeroAIH = document.getElementById('numeroBuscarAIH');
+        if (campoNumeroAIH) {
+            campoNumeroAIH.value = '';
+        }
+    }, 100);
 });
 
 document.getElementById('btnBuscarAIH').addEventListener('click', () => {
@@ -1118,6 +1133,12 @@ document.getElementById('formBuscarAIH').addEventListener('submit', async (e) =>
             }
         }
 
+        // Definir tela anterior para poder voltar
+        state.telaAnterior = 'telaInformarAIH';
+        
+        // Limpar campo antes de navegar
+        document.getElementById('numeroBuscarAIH').value = '';
+        
         mostrarInfoAIH(aih);
     } catch (err) {
         if (err.message.includes('não encontrada')) {
@@ -1125,6 +1146,10 @@ document.getElementById('formBuscarAIH').addEventListener('submit', async (e) =>
             document.getElementById('cadastroNumeroAIH').value = numero;
             document.getElementById('cadastroNumeroAIH').removeAttribute('readonly');
             state.telaAnterior = 'telaInformarAIH';
+            
+            // Limpar campo antes de navegar
+            document.getElementById('numeroBuscarAIH').value = '';
+            
             mostrarTela('telaCadastroAIH');
             // Garantir que sempre tenha pelo menos um campo de atendimento
             setTimeout(garantirCampoAtendimento, 100);
