@@ -1349,6 +1349,9 @@ window.buscarPorAIH = async () => {
         const aih = await api(`/aih/${numeroAIH}`);
         state.aihAtual = aih;
 
+        // **NOVO**: Limpar campo automaticamente após busca bem-sucedida
+        document.getElementById('buscaRapidaAIH').value = '';
+
         if (aih.status === 1 || aih.status === 4) {
             const continuar = await mostrarModal(
                 'AIH Finalizada',
@@ -1356,7 +1359,6 @@ window.buscarPorAIH = async () => {
             );
 
             if (!continuar) {
-                document.getElementById('buscaRapidaAIH').value = '';
                 return;
             }
         }
@@ -1367,6 +1369,8 @@ window.buscarPorAIH = async () => {
         if (err.message.includes('não encontrada')) {
             const cadastrar = confirm(`AIH ${numeroAIH} não encontrada. Deseja cadastrá-la?`);
             if (cadastrar) {
+                // **NOVO**: Limpar campo antes de navegar para cadastro
+                document.getElementById('buscaRapidaAIH').value = '';
                 document.getElementById('cadastroNumeroAIH').value = numeroAIH;
                 state.telaAnterior = 'telaPesquisa';
                 mostrarTela('telaCadastroAIH');
@@ -1415,10 +1419,11 @@ window.buscarPorAtendimento = async () => {
 
         if (response.resultados && response.resultados.length > 0) {
             exibirResultadosPesquisa(response.resultados);
-            // Limpar campo após busca bem-sucedida
-            document.getElementById('buscaRapidaAtendimento').value = '';
+            // **REMOVIDO**: Campo será limpo automaticamente pela função exibirResultadosPesquisa
         } else {
             alert('Nenhuma AIH encontrada com este número de atendimento');
+            // **NOVO**: Limpar campo mesmo quando não encontrar resultados
+            document.getElementById('buscaRapidaAtendimento').value = '';
             // Limpar container de resultados
             const container = document.getElementById('resultadosPesquisa');
             if (container) {
@@ -1428,6 +1433,8 @@ window.buscarPorAtendimento = async () => {
     } catch (err) {
         alert('Erro ao buscar por atendimento: ' + err.message);
         console.error('Erro detalhado:', err);
+        // **NOVO**: Limpar campo em caso de erro
+        document.getElementById('buscaRapidaAtendimento').value = '';
         // Limpar container de resultados em caso de erro
         const container = document.getElementById('resultadosPesquisa');
         if (container) {
@@ -1460,6 +1467,9 @@ const exibirResultadosPesquisa = (resultados, titulo = 'Resultados da Pesquisa',
         console.error('Container de resultados não encontrado');
         return;
     }
+
+    // **NOVO**: Limpar automaticamente os campos de busca sempre que resultados são exibidos
+    limparCamposBuscaRapida();
 
     if (!resultados || resultados.length === 0) {
         container.innerHTML = `
@@ -1865,6 +1875,11 @@ window.visualizarAIHsPorCategoria = async (categoria, periodo) => {
         // Ir para tela de pesquisa e exibir resultados
         mostrarTela('telaPesquisa');
         
+        // **NOVO**: Carregar profissionais sempre que acessar a tela de pesquisa através do dashboard
+        setTimeout(() => {
+            carregarProfissionaisPesquisa();
+        }, 100);
+        
         // Aguardar um pouco para garantir que a tela foi carregada
         setTimeout(() => {
             if (!response.resultados || response.resultados.length === 0) {
@@ -2206,6 +2221,69 @@ const carregarGlosas = async () => {
     }
 };
 
+// Event listener para formulário de pesquisa avançada
+document.addEventListener('DOMContentLoaded', () => {
+    const formPesquisa = document.getElementById('formPesquisa');
+    if (formPesquisa) {
+        formPesquisa.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Coletar filtros
+            const filtros = {};
+            
+            const numeroAIH = document.getElementById('pesquisaNumeroAIH').value.trim();
+            if (numeroAIH) filtros.numero_aih = numeroAIH;
+            
+            const numeroAtendimento = document.getElementById('pesquisaNumeroAtendimento').value.trim();
+            if (numeroAtendimento) filtros.numero_atendimento = numeroAtendimento;
+            
+            const dataInicio = document.getElementById('pesquisaDataInicio').value;
+            if (dataInicio) filtros.data_inicio = dataInicio;
+            
+            const dataFim = document.getElementById('pesquisaDataFim').value;
+            if (dataFim) filtros.data_fim = dataFim;
+            
+            const competencia = document.getElementById('pesquisaCompetencia').value.trim();
+            if (competencia) filtros.competencia = competencia;
+            
+            const valorMin = document.getElementById('pesquisaValorMin').value;
+            if (valorMin) filtros.valor_min = parseFloat(valorMin);
+            
+            const valorMax = document.getElementById('pesquisaValorMax').value;
+            if (valorMax) filtros.valor_max = parseFloat(valorMax);
+            
+            const profissional = document.getElementById('pesquisaProfissional').value;
+            if (profissional) filtros.profissional = profissional;
+            
+            // Status selecionados
+            const statusSelecionados = Array.from(document.querySelectorAll('input[name="status"]:checked'))
+                .map(cb => parseInt(cb.value));
+            if (statusSelecionados.length > 0) filtros.status = statusSelecionados;
+            
+            try {
+                const response = await api('/pesquisar', {
+                    method: 'POST',
+                    body: JSON.stringify({ filtros })
+                });
+                
+                if (response.resultados && response.resultados.length > 0) {
+                    exibirResultadosPesquisa(response.resultados, 'Resultados da Pesquisa Avançada');
+                } else {
+                    const container = document.getElementById('resultadosPesquisa');
+                    if (container) {
+                        container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 2rem;">Nenhum resultado encontrado com os filtros aplicados</p>';
+                    }
+                    // **NOVO**: Limpar campos de busca rápida mesmo quando não há resultados
+                    limparCamposBuscaRapida();
+                }
+            } catch (err) {
+                alert('Erro ao realizar pesquisa: ' + err.message);
+                console.error('Erro na pesquisa avançada:', err);
+            }
+        });
+    }
+});
+
 // Função para limpar filtros (corrigindo erro do console)
 window.limparFiltros = () => {
     // Limpar campos da pesquisa avançada
@@ -2229,6 +2307,9 @@ window.limparFiltros = () => {
         container.innerHTML = '';
     }
 
+    // **NOVO**: Limpar também campos de busca rápida
+    limparCamposBuscaRapida();
+
     alert('Filtros limpos com sucesso!');
 };
 
@@ -2242,6 +2323,21 @@ window.limparFiltrosRelatorio = () => {
     alert('Filtros de relatórios limpos!');
 };
 
+// Função para limpar campos de busca rápida
+const limparCamposBuscaRapida = () => {
+    const campoAIH = document.getElementById('buscaRapidaAIH');
+    const campoAtendimento = document.getElementById('buscaRapidaAtendimento');
+    
+    if (campoAIH) {
+        campoAIH.value = '';
+    }
+    if (campoAtendimento) {
+        campoAtendimento.value = '';
+    }
+    
+    console.log('Campos de busca rápida limpos automaticamente');
+};
+
 // Função para limpar resultados
 window.limparResultados = () => {
     const container = document.getElementById('resultadosPesquisa');
@@ -2253,8 +2349,7 @@ window.limparResultados = () => {
     window.ultimosResultadosPesquisa = null;
 
     // Também limpar os campos de busca rápida
-    document.getElementById('buscaRapidaAIH').value = '';
-    document.getElementById('buscaRapidaAtendimento').value = '';
+    limparCamposBuscaRapida();
 };
 
 // Variáveis globais para controle de exclusão
