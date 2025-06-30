@@ -1608,7 +1608,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                            COUNT(DISTINCT g.tipo) as tipos_diferentes
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere}
+                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                     GROUP BY g.profissional
                     ORDER BY total_glosas DESC
                 `, params);
@@ -2157,7 +2157,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
         console.log(`Relatório ${tipo} gerado com sucesso`);
         res.json({ tipo, resultado, filtros: { data_inicio, data_fim, competencia } });
     } catch (err) {
-        console.error(`Erro ao gerar relatório ${tipo}:`, err);
+        console.error(`Erro ao gerar relatório ${req.params.tipo}:`, err);
         res.status(500).json({ error: err.message });
     }
 });
