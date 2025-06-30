@@ -12,7 +12,7 @@ const api = async (endpoint, options = {}) => {
     const config = {
         ...options,
         headers: {
-            'Content-Type': application/json',
+            'Content-Type': 'application/json',
             ...(state.token && { 'Authorization': `Bearer ${state.token}` }),
             ...options.headers
         }
@@ -41,44 +41,49 @@ const mostrarTela = (telaId) => {
     document.getElementById(telaId).classList.add('ativa');
 };
 
-// Função global de fallback para voltar à tela principal
-function voltarTelaPrincipal() {
-    if (typeof Logger !== 'undefined') {
-        Logger.debug('App', 'Função global voltarTelaPrincipal chamada');
-    }
+const voltarTelaPrincipal = () => {
+    mostrarTela('telaPrincipal');
+    carregarDashboard();
+};
 
-    if (window.Navigation) {
-        Navigation.voltarTelaPrincipal();
-    } else {
-        console.warn('Navigation não disponível, usando fallback');
-        mostrarTela('telaPrincipal');
-        setTimeout(() => {
-            if (window.Dashboard && window.Dashboard.carregar) {
-                window.Dashboard.carregar();
-            } else if (typeof carregarDashboard === 'function') {
-                carregarDashboard();
+const voltarTelaAnterior = () => {
+    try {
+        if (state.telaAnterior) {
+            mostrarTela(state.telaAnterior);
+
+            // Se voltando para tela de movimentação, recarregar dados para atualizar glosas
+            if (state.telaAnterior === 'telaMovimentacao') {
+                // Usar setTimeout para garantir que a tela foi renderizada
+                setTimeout(() => {
+                    carregarDadosMovimentacao();
+                }, 100);
             }
-        }, 100);
-    }
-}
-
-// Função global de fallback para voltar à tela anterior
-function voltarTelaAnterior() {
-    if (typeof Logger !== 'undefined') {
-        Logger.debug('App', 'Função global voltarTelaAnterior chamada');
-    }
-
-    if (window.Navigation) {
-        Navigation.voltarTelaAnterior();
-    } else {
-        console.warn('Navigation não disponível, usando fallback');
-        if (window.AppState && AppState.telaAnterior) {
-            mostrarTela(AppState.telaAnterior);
+            // Se voltando para tela de informações AIH, recarregar AIH atualizada
+            else if (state.telaAnterior === 'telaInfoAIH' && state.aihAtual) {
+                api(`/aih/${state.aihAtual.numero_aih}`)
+                    .then(aih => {
+                        state.aihAtual = aih;
+                        mostrarInfoAIH(aih);
+                    })
+                    .catch(err => {
+                        console.error('Erro ao recarregar AIH:', err);
+                        // Se der erro, pelo menos mostrar a tela anterior
+                        mostrarTela(state.telaAnterior);
+                    });
+            }
         } else {
-            voltarTelaPrincipal();
+            // Se não há tela anterior, voltar ao dashboard
+            console.log('Nenhuma tela anterior definida, voltando ao dashboard');
+            mostrarTela('telaPrincipal');
+            carregarDashboard();
         }
+    } catch (error) {
+        console.error('Erro ao voltar para tela anterior:', error);
+        // Fallback: sempre tentar voltar ao dashboard
+        mostrarTela('telaPrincipal');
+        carregarDashboard();
     }
-}
+};
 
 // Modal
 const mostrarModal = (titulo, mensagem) => {
@@ -133,21 +138,9 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
         localStorage.setItem('token', result.token);
         localStorage.setItem('userType', 'user');
 
-        const nomeUsuarioElement = document.getElementById('nomeUsuario');
-        if (nomeUsuarioElement) {
-            nomeUsuarioElement.textContent = result.usuario.nome;
-        }
-
+        document.getElementById('nomeUsuario').textContent = result.usuario.nome;
         mostrarTela('telaPrincipal');
-
-        // Aguardar um pouco mais para garantir que a tela foi renderizada
-        setTimeout(() => {
-            if (window.Dashboard && typeof window.Dashboard.carregar === 'function') {
-                window.Dashboard.carregar();
-            } else {
-                carregarDashboard();
-            }
-        }, 200);
+        carregarDashboard();
     } catch (err) {
         alert('Erro no login: ' + err.message);
     }
@@ -244,6 +237,67 @@ window.excluirUsuario = async (id, nome) => {
     }
 };
 
+// Adicionar novo usuário
+document.getElementById('formNovoUsuario').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    try {
+        const dados = {
+            nome: document.getElementById('novoUsuarioNome').value,
+            matricula: document.getElementById('novoUsuarioMatricula').value,
+            senha: document.getElementById('novoUsuarioSenha').value
+        };
+
+        await api('/admin/usuarios', {
+            method: 'POST',
+            body: JSON.stringify(dados)
+        });
+
+        alert('Usuário cadastrado com sucesso!');
+        document.getElementById('formNovoUsuario').reset();
+        carregarUsuarios();
+    } catch (err) {
+        alert('Erro ao cadastrar usuário: ' + err.message);
+    }
+});
+
+// Alterar senha do administrador
+document.getElementById('formAlterarSenhaAdmin').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const novaSenha = document.getElementById('novaSenhaAdmin').value;
+    const confirmarSenha = document.getElementById('confirmarSenhaAdmin').value;
+
+    if (novaSenha !== confirmarSenha) {
+        alert('As senhas não coincidem!');
+        return;
+    }
+
+    if (novaSenha.length < 4) {
+        alert('A senha deve ter pelo menos 4 caracteres!');
+        return;
+    }
+
+    const confirmar = await mostrarModal(
+        'Alterar Senha',
+        'Tem certeza que deseja alterar a senha do administrador?'
+    );
+
+    if (!confirmar) return;
+
+    try {
+        await api('/admin/alterar-senha', {
+            method: 'POST',
+            body: JSON.stringify({ novaSenha })
+        });
+
+        alert('Senha do administrador alterada com sucesso!');
+        document.getElementById('formAlterarSenhaAdmin').reset();
+    } catch (err) {
+        alert('Erro ao alterar senha: ' + err.message);
+    }
+});
+
 // Logout
 document.getElementById('btnSair').addEventListener('click', () => {
     state.token = null;
@@ -299,7 +353,7 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
         const competencia = competenciaSelecionada || getCompetenciaAtual();
 
         // Buscar dados do dashboard com a competência
-        const dados = await api(`/dashboard?competencia=${encodeURIComponent(competencia)}`);
+        const dados = await api(`/dashboard?competencia=${competencia}`);
 
         // Criar/atualizar seletor de competência
         let seletorContainer = document.querySelector('.seletor-competencia-container');
@@ -771,7 +825,9 @@ document.getElementById('cadastroCompetencia').value = getCompetenciaAtual();
 
 // Nova movimentação
 document.getElementById('btnNovaMovimentacao').addEventListener('click', () => {
-    Navigation.irParaMovimentacao();
+    state.telaAnterior = 'telaInfoAIH';
+    mostrarTela('telaMovimentacao');
+    carregarDadosMovimentacao();
 });
 
 // Carregue dados necessários para movimentação
@@ -790,8 +846,9 @@ const carregarDadosMovimentacao = async () => {
                         </span>
                         <p style="color: #6b7280; margin-top: 0.5rem; font-size: 0.875rem;">
                             Competência: ${state.aihAtual.competencia} | Valor: R$ ${state.aihAtual.valor_atual.toFixed(2)}
-                                                </p>
-                    </div>                    `;
+                        </p>
+                    </div>
+                `;
             }
         }
 
@@ -1196,12 +1253,8 @@ document.getElementById('btnCancelarMovimentacao').addEventListener('click', asy
             } else {
                 // Último recurso: voltar ao dashboard
                 mostrarTela('telaPrincipal');
-                if (window.Dashboard && window.Dashboard.carregar) {
-                    window.Dashboard.carregar();
-                } else {
-                    carregarDashboard();
-                }
-
+                carregarDashboard();
+                
                 // Limpar estado apenas se voltando ao dashboard
                 state.telaAnterior = null;
                 state.aihAtual = null;
@@ -1214,26 +1267,126 @@ document.getElementById('btnCancelarMovimentacao').addEventListener('click', asy
             mostrarInfoAIH(state.aihAtual);
         } else {
             mostrarTela('telaPrincipal');
-            if (window.Dashboard && window.Dashboard.carregar) {
-                window.Dashboard.carregar();
-            } else {
-                carregarDashboard();
-            }
+            carregarDashboard();
         }
     }
 });
 
-// Busca rápida por AIH (compatibilidade)
-window.buscarPorAIH = () => {
-    if (window.Search) {
-        Search.buscarPorAIH();
+// Busca rápida por AIH
+window.buscarPorAIH = async () => {
+    const numeroAIH = document.getElementById('buscaRapidaAIH').value.trim();
+    
+    if (!numeroAIH) {
+        alert('Por favor, digite o número da AIH');
+        return;
+    }
+
+    try {
+        const aih = await api(`/aih/${numeroAIH}`);
+        state.aihAtual = aih;
+
+        if (aih.status === 1 || aih.status === 4) {
+            const continuar = await mostrarModal(
+                'AIH Finalizada',
+                'Esta AIH está finalizada. É uma reassinatura/reapresentação?'
+            );
+
+            if (!continuar) {
+                document.getElementById('buscaRapidaAIH').value = '';
+                return;
+            }
+        }
+
+        mostrarInfoAIH(aih);
+    } catch (err) {
+        if (err.message.includes('não encontrada')) {
+            alert(`AIH ${numeroAIH} não encontrada no sistema.`);
+        } else {
+            alert('Erro ao buscar AIH: ' + err.message);
+        }
+        document.getElementById('buscaRapidaAIH').value = '';
     }
 };
 
-// Busca rápida por atendimento (compatibilidade)
-window.buscarPorAtendimento = () => {
-    if (window.Search) {
-        Search.buscarPorAtendimento();
+// Busca rápida por atendimento
+window.buscarPorAtendimento = async () => {
+    const numeroAtendimento = document.getElementById('buscaRapidaAtendimento').value.trim();
+    
+    if (!numeroAtendimento) {
+        alert('Por favor, digite o número do atendimento');
+        return;
+    }
+
+    try {
+        const response = await api('/pesquisar', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                filtros: { numero_atendimento: numeroAtendimento }
+            })
+        });
+
+        const container = document.getElementById('resultadosPesquisa');
+
+        if (response.resultados.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 2rem; background: #fef3c7; border-radius: 8px; margin-top: 2rem;">
+                    <h3 style="color: #92400e;">❌ Nenhum resultado encontrado</h3>
+                    <p style="color: #78350f;">O número de atendimento "${numeroAtendimento}" não foi encontrado em nenhuma AIH.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Se encontrou apenas uma AIH, abrir diretamente
+        if (response.resultados.length === 1) {
+            const aih = await api(`/aih/${response.resultados[0].numero_aih}`);
+            state.aihAtual = aih;
+            mostrarInfoAIH(aih);
+            return;
+        }
+
+        // Se encontrou múltiplas AIHs, mostrar lista
+        container.innerHTML = `
+            <div style="background: #d1fae5; padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
+                <h3 style="color: #065f46; margin-bottom: 1rem;">
+                    ✅ Encontrado em ${response.resultados.length} AIH(s)
+                </h3>
+                <p style="color: #047857; margin-bottom: 1.5rem;">
+                    O atendimento "${numeroAtendimento}" foi encontrado nas seguintes AIHs:
+                </p>
+                
+                <div style="display: grid; gap: 1rem;">
+                    ${response.resultados.map(r => `
+                        <div style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+                                    display: flex; justify-content: space-between; align-items: center; 
+                                    transition: all 0.3s; cursor: pointer; border: 2px solid transparent;"
+                             onmouseover="this.style.borderColor='#10b981'; this.style.transform='translateY(-2px)'"
+                             onmouseout="this.style.borderColor='transparent'; this.style.transform='translateY(0)'"
+                             onclick="abrirAIH('${r.numero_aih}')">
+                            <div>
+                                <h4 style="color: #1e293b; margin-bottom: 0.5rem;">AIH ${r.numero_aih}</h4>
+                                <div style="display: flex; gap: 2rem; color: #64748b; font-size: 0.875rem;">
+                                    <span>📅 ${r.competencia}</span>
+                                    <span>💰 R$ ${r.valor_atual.toFixed(2)}</span>
+                                    <span>📆 ${new Date(r.criado_em).toLocaleDateString('pt-BR')}</span>
+                                    ${r.total_glosas > 0 ? `<span>⚠️ ${r.total_glosas} glosa(s)</span>` : ''}
+                                </div>
+                            </div>
+                            <div style="text-align: center;">
+                                <span class="status-badge status-${r.status}">${getStatusDescricao(r.status)}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        // Limpar campo de busca
+        document.getElementById('buscaRapidaAtendimento').value = '';
+
+    } catch (err) {
+        alert('Erro ao buscar por atendimento: ' + err.message);
+        document.getElementById('buscaRapidaAtendimento').value = '';
     }
 };
 
@@ -1241,12 +1394,12 @@ window.buscarPorAtendimento = () => {
 window.limparFiltros = () => {
     document.getElementById('formPesquisa').reset();
     document.getElementById('resultadosPesquisa').innerHTML = '';
-
+    
     // Limpar também os checkboxes
     document.querySelectorAll('#formPesquisa input[type="checkbox"]').forEach(cb => {
         cb.checked = false;
     });
-
+    
     // Limpar busca rápida
     document.getElementById('buscaRapidaAIH').value = '';
     document.getElementById('buscaRapidaAtendimento').value = '';
@@ -1316,7 +1469,7 @@ document.getElementById('formPesquisa').addEventListener('submit', async (e) => 
                                 transition: all 0.3s; cursor: pointer; border: 2px solid transparent;"
                          onmouseover="this.style.borderColor='#6366f1'; this.style.transform='translateY(-2px)'"
                          onmouseout="this.style.borderColor='transparent'; this.style.transform='translateY(0)'"
-                         onclick="abrirAIH('${r.numero_aih}')"">
+                         onclick="abrirAIH('${r.numero_aih}')">
                         <div>
                             <h4 style="color: #1e293b; margin-bottom: 0.5rem;">AIH ${r.numero_aih}</h4>
                             <div style="display: flex; gap: 2rem; color: #64748b; font-size: 0.875rem;">
@@ -1493,7 +1646,7 @@ document.getElementById('formNovoProfissional').addEventListener('submit', async
     } catch (err) {
         alert('Erro ao adicionar profissional: ' + err.message);
     }
-};
+});
 
 // Configurações - Tipos de Glosa
 const carregarTiposGlosaConfig = async () => {
@@ -1541,7 +1694,7 @@ document.getElementById('formNovoTipoGlosa').addEventListener('submit', async (e
     } catch (err) {
         alert('Erro ao adicionar tipo de glosa: ' + err.message);
     }
-};
+});
 
 // Relatórios
 document.getElementById('btnRelatorios').addEventListener('click', () => {
@@ -1550,12 +1703,8 @@ document.getElementById('btnRelatorios').addEventListener('click', () => {
 });
 
 window.gerarRelatorio = async (tipo) => {
-    if (window.Reports) {
-        return Reports.gerarRelatorio(tipo);
-    }
-
-    // Fallback para compatibilidade
     try {
+        // Capturar filtros de período
         const dataInicio = document.getElementById('relatorioDataInicio')?.value || '';
         const dataFim = document.getElementById('relatorioDataFim')?.value || '';
         const competencia = document.getElementById('relatorioCompetencia')?.value || '';
@@ -1566,6 +1715,7 @@ window.gerarRelatorio = async (tipo) => {
             competencia: competencia
         };
 
+        // Usar POST para enviar filtros
         const response = await api(`/relatorios/${tipo}`, {
             method: 'POST',
             body: JSON.stringify(filtros)
@@ -1581,7 +1731,7 @@ window.gerarRelatorio = async (tipo) => {
             periodoTexto = `Período: ${new Date(dataInicio).toLocaleDateString('pt-BR')} a ${new Date(dataFim).toLocaleDateString('pt-BR')}`;
         } else if (dataInicio) {
             periodoTexto = `A partir de: ${new Date(dataInicio).toLocaleDateString('pt-BR')}`;
-        } else if (dataFim){
+        } else if (dataFim) {
             periodoTexto = `Até: ${new Date(dataFim).toLocaleDateString('pt-BR')}`;
         } else {
             periodoTexto = 'Todos os períodos';
@@ -2114,6 +2264,30 @@ window.exportarRelatorio = async (tipo) => {
     }
 };
 
+// Inicialização
+document.addEventListener('DOMContentLoaded', () => {
+    // Verificar se tem token
+    if (state.token) {
+        // Pequeno delay para garantir que o DOM está pronto
+        setTimeout(() => {
+            mostrarTela('telaPrincipal');
+            carregarDashboard();
+            carregarProfissionaisSelects();
+        }, 100);
+    } else {
+        mostrarTela('telaLogin');
+    }
+
+    // Preencher competência padrão nos formulários
+    const camposCompetencia = ['cadastroCompetencia', 'movCompetencia', 'pesquisaCompetencia'];
+    camposCompetencia.forEach(id => {
+        const campo = document.getElementById(id);
+        if (campo && !campo.value) {
+            campo.value = getCompetenciaAtual();
+        }
+    });
+});
+
 const getTipoDescricao = (tipo) => {
     switch (tipo) {
         case 'entrada_sus':
@@ -2228,158 +2402,3 @@ const garantirCampoAtendimento = () => {
         container.appendChild(input);
     }
 };
-
-// Verificar token existente na inicialização
-const verificarTokenInicial = () => {
-    const token = localStorage.getItem('token');
-    const userType = localStorage.getItem('userType');
-
-    if (token) {
-        state.token = token;
-
-        if (userType === 'admin') {
-            mostrarTela('telaGestaoUsuarios');
-            carregarUsuarios();
-        } else {
-            verificarTokenValido()
-                .then(() => {
-                    mostrarTela('telaPrincipal');
-                    setTimeout(() => {
-                        if (window.Dashboard && window.Dashboard.carregar) {
-                            window.Dashboard.carregar();
-                        } else {
-                            carregarDashboard();
-                        }
-                    }, 200);
-                })
-                .catch(() => {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('userType');
-                    state.token = null;
-                    mostrarTela('telaLogin');
-                });
-        }
-    } else {
-        mostrarTela('telaLogin');
-    }
-};
-
-// Função para verificar se token ainda é válido
-const verificarTokenValido = async () => {
-    try {
-        await api('/dashboard?competencia=' + getCompetenciaAtual());
-        return true;
-    } catch (err) {
-        throw err;
-    }
-};
-
-// Inicializar aplicação quando DOM estiver carregado
-document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar módulos principais
-    if (window.Logger && typeof window.Logger.init === 'function') {
-            Logger.init();
-        }
-    if (window.AppState && typeof window.AppState.init === 'function') {
-            AppState.init();
-        }
-    if (window.Navigation && typeof window.Navigation.init === 'function') {
-            Navigation.init();
-        }
-    if (window.Dashboard && typeof window.Dashboard.init === 'function') {
-            Dashboard.init();
-        }
-
-    try {
-        console.log('🚀 Inicializando aplicação...');
-
-        // Aguardar scripts carregarem e inicializar módulos
-        setTimeout(() => {
-            inicializarModulos();
-        }, 300);
-    } catch (error) {
-        console.error('Erro fatal na inicialização da aplicação:', error);
-        alert('Erro fatal na inicialização da aplicação. Verifique o console para mais detalhes.');
-    }
-});
-
-// Função para inicializar módulos com tratamento robusto de erros
-function inicializarModulos() {
-    try {
-        console.log('Iniciando inicialização dos módulos');
-
-        // Inicializar Logger primeiro
-        if (window.Logger && typeof window.Logger.init === 'function') {
-            try {
-                Logger.init();
-                Logger.info('App', '📝 Logger inicializado');
-            } catch (error) {
-                console.error('Erro ao inicializar Logger:', error);
-            }
-        }
-
-        // Inicializar módulos core
-        const modulosCore = [
-            { nome: 'AppState', objeto: window.AppState },
-            { nome: 'Navigation', objeto: window.Navigation },
-            { nome: 'ApiService', objeto: window.ApiService },
-            { nome: 'Modal', objeto: window.Modal }
-        ];
-
-        modulosCore.forEach(({ nome, objeto }) => {
-            try {
-                if (objeto && typeof objeto.init === 'function') {
-                    objeto.init();
-                    console.log(`✅ ${nome} inicializado`);
-                } else {
-                    console.warn(`⚠️ ${nome} não disponível ou sem método init`);
-                }
-            } catch (error) {
-                console.error(`❌ Erro ao inicializar ${nome}:`, error);
-            }
-        });
-
-        // Inicializar módulos de páginas
-        const modulosPaginas = [
-            { nome: 'Dashboard', objeto: window.Dashboard },
-            { nome: 'Movements', objeto: window.Movements },
-            { nome: 'AIHManagement', objeto: window.AIHManagement },
-            { nome: 'Glosas', objeto: window.Glosas },
-            { nome: 'Search', objeto: window.Search },
-            { nome: 'Reports', objeto: window.Reports }
-        ];
-
-        modulosPaginas.forEach(({ nome, objeto }) => {
-            try {
-                if (objeto && typeof objeto.init === 'function') {
-                    objeto.init();
-                    console.log(`✅ ${nome} inicializado`);
-                } else {
-                    console.warn(`⚠️ ${nome} não disponível ou sem método init`);
-                }
-            } catch (error) {
-                console.error(`❌ Erro ao inicializar ${nome}:`, error);
-            }
-        });
-
-        // Inicializar Debug Panel
-        try {
-            if (window.DebugPanel && typeof window.DebugPanel.init === 'function') {
-                DebugPanel.init();
-                console.log('✅ DebugPanel inicializado');
-            }
-        } catch (error) {
-            console.error('❌ Erro ao inicializar DebugPanel:', error);
-        }
-
-        // Verificar token e inicializar aplicação
-        verificarTokenInicial();
-
-        console.log('✅ Aplicação inicializada com sucesso');
-        console.log('💡 Pressione Ctrl+Shift+D para abrir o painel de debug');
-
-    } catch (error) {
-        console.error('Erro fatal na inicialização dos módulos:', error);
-        alert('Erro crítico na inicialização. A aplicação pode não funcionar corretamente.');
-    }
-}

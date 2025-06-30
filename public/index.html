@@ -60,13 +60,13 @@
                     <form id="formNovoUsuario">
                         <label>Nome de Usuário:</label>
                         <input type="text" id="novoUsuarioNome" placeholder="Nome do usuário" required>
-
+                        
                         <label>Número de Matrícula:</label>
                         <input type="text" id="novoUsuarioMatricula" placeholder="Matrícula" required>
-
+                        
                         <label>Senha:</label>
                         <input type="password" id="novoUsuarioSenha" placeholder="Senha inicial" required>
-
+                        
                         <button type="submit">Adicionar Usuário</button>
                     </form>
                 </div>
@@ -77,10 +77,10 @@
                     <form id="formAlterarSenhaAdmin">
                         <label>Nova Senha do Admin:</label>
                         <input type="password" id="novaSenhaAdmin" placeholder="Nova senha" required>
-
+                        
                         <label>Confirmar Senha:</label>
                         <input type="password" id="confirmarSenhaAdmin" placeholder="Confirmar nova senha" required>
-
+                        
                         <button type="submit">Alterar Senha</button>
                     </form>
                 </div>
@@ -130,7 +130,7 @@
     </div>
 
     <!-- O resumo financeiro será inserido dinamicamente aqui pelo JavaScript -->
-
+    
     </div>
         <!-- Tela Informar AIH -->
         <div id="telaInformarAIH" class="tela">
@@ -192,7 +192,7 @@
         <!-- Tela Movimentação -->
         <div id="telaMovimentacao" class="tela">
             <header>
-                <button class="btn-voltar" onclick="Navigation.voltarTelaAnterior()">← Voltar</button>
+                <button class="btn-voltar" onclick="voltarTelaAnterior()">← Voltar</button>
                 <h2>Nova Movimentação</h2>
             </header>
             <div class="container">
@@ -536,35 +536,6 @@
         </div>
     </div>
 
-    <!-- Scripts Core - devem ser carregados primeiro -->
-    <script src="js/core/logger.js"></script>
-    <script src="js/core/state.js"></script>
-    <script src="js/core/api.js"></script>
-    <script src="js/core/modal.js"></script>
-    <script src="js/core/navigation.js"></script>
-
-    <!-- Scripts Utilitários -->
-    <script src="js/utils/formatters.js"></script>
-    <script src="js/utils/validators.js"></script>
-    <script src="js/utils/helpers.js"></script>
-    <script src="js/utils/exports.js"></script>
-
-    <!-- Scripts Componentes -->
-    <script src="js/components/forms.js"></script>
-    <script src="js/components/tables.js"></script>
-    <script src="js/components/debug-panel.js"></script>
-
-    <!-- Scripts Páginas -->
-    <script src="js/pages/login.js"></script>
-    <script src="js/pages/dashboard.js"></script>
-    <script src="js/pages/aih-management.js"></script>
-    <script src="js/pages/movements.js"></script>
-    <script src="js/pages/search.js"></script>
-    <script src="js/pages/glosas.js"></script>
-    <script src="js/pages/reports.js"></script>
-    <script src="js/pages/config.js"></script>
-
-    <!-- Script Principal - deve ser carregado por último -->
     <script src="app.js"></script>
 </body>
 </html>
