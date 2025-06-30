@@ -643,7 +643,7 @@
 
                 <div style="margin-bottom: 1.5rem;">
                     <label style="font-weight: 600; color: #374151;">Sua senha:</label>
-                    <input type="password" id="senhaConfirmacao" placeholder="Digite sua senha" required style="width: 100%; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 6px; margin-top: 0.5rem;">
+                    <input type="password" idsenhaConfirmacao" placeholder="Digite sua senha" required style="width: 100%; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 6px; margin-top: 0.5rem;">
                 </div>
 
                 <div class="modal-buttons">
@@ -835,7 +835,36 @@
             </div>
         </div>
     </div>
+<div id="telaRelatoriosPeriodo" class="tela" style="display: none;">
+                <div class="header-section">
+                    <h2>📊 Relatórios por Período</h2>
+                    <div class="acoes">
+                        <button onclick="voltarTela()" class="btn-secondary">🔙 Voltar</button>
+                    </div>
+                </div>
 
+                <div class="filtros-periodo">
+                    <div class="alert alert-info" style="margin-bottom: 1rem;">
+                        <strong>⚠️ ATENÇÃO:</strong> É <strong>OBRIGATÓRIO</strong> informar:
+                        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                            <li><strong>UMA COMPETÊNCIA</strong> (MM/AAAA) - exemplo: 07/2025</li>
+                            <li style="text-align: center; margin: 0.25rem 0;"><strong>OU</strong></li>
+                            <li><strong>UM PERÍODO COMPLETO</strong> com data de início E data de fim</li>
+                        </ul>
+                        <small>Sem essas informações não é possível gerar nenhum relatório!</small>
+                    </div>
+
+                    <div class="filtro-linha">
+                        <label>📅 Data Início:</label>
+                        <input type="date" id="dataInicioPeriodo" title="Obrigatório se não informar competência">
+
+                        <label>📅 Data Fim:</label>
+                        <input type="date" id="dataFimPeriodo" title="Obrigatório se não informar competência">
+
+                        <label>📆 Competência: <span style="color: red;">*</span></label>
+                        <input type="text" id="competenciaPeriodo" pattern="\d{2}/\d{4}" placeholder="MM/AAAA" title="Formato: MM/AAAA (exemplo: 07/2025)">
+                    </div>
+                </div>
     <script src="app.js"></script>
 </body>
 </html>

@@ -975,6 +975,50 @@ button:hover {
     background: var(--success);
 }
 
+/* Alertas informativos */
+.alert {
+    padding: 1rem;
+    border-radius: 6px;
+    border-left: 4px solid;
+    margin: 1rem 0;
+}
+
+.alert-info {
+    background-color: #e8f4fd;
+    border-left-color: #2196F3;
+    color: #1976D2;
+}
+
+.alert-warning {
+    background-color: #fff8e1;
+    border-left-color: #ff9800;
+    color: #f57c00;
+}
+
+.alert-danger {
+    background-color: #ffebee;
+    border-left-color: #f44336;
+    color: #d32f2f;
+}
+
+.alert ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.alert li {
+    margin: 0.25rem 0;
+}
+
+.alert strong {
+    font-weight: 600;
+}
+
+.alert small {
+    opacity: 0.8;
+    font-style: italic;
+}
+
 .btn-success:hover {
     background: #059669;
 }

@@ -1488,6 +1488,42 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
 
         console.log(`Gerando relatório tipo: ${tipo} - página: 1`);
 
+        // VALIDAÇÃO OBRIGATÓRIA: deve ter competência OU período de datas
+        if (!competencia && (!data_inicio || !data_fim)) {
+            return res.status(400).json({ 
+                error: 'É obrigatório informar uma COMPETÊNCIA (MM/AAAA) OU um PERÍODO com data de início E data de fim para gerar o relatório.',
+                exemplo_competencia: '07/2025',
+                exemplo_periodo: 'data_inicio: 2025-01-01, data_fim: 2025-12-31'
+            });
+        }
+
+        // Validar formato da competência se informada
+        if (competencia && !/^\d{2}\/\d{4}$/.test(competencia)) {
+            return res.status(400).json({ 
+                error: 'Competência deve estar no formato MM/AAAA (exemplo: 07/2025)' 
+            });
+        }
+
+        // Validar formato das datas se informadas
+        if (data_inicio && !/^\d{4}-\d{2}-\d{2}$/.test(data_inicio)) {
+            return res.status(400).json({ 
+                error: 'Data de início deve estar no formato AAAA-MM-DD (exemplo: 2025-01-01)' 
+            });
+        }
+
+        if (data_fim && !/^\d{4}-\d{2}-\d{2}$/.test(data_fim)) {
+            return res.status(400).json({ 
+                error: 'Data de fim deve estar no formato AAAA-MM-DD (exemplo: 2025-12-31)' 
+            });
+        }
+
+        // Validar se data de início não é maior que data de fim
+        if (data_inicio && data_fim && data_inicio > data_fim) {
+            return res.status(400).json({ 
+                error: 'Data de início não pode ser maior que data de fim' 
+            });
+        }
+
         // Construir filtros de período
         let filtroWhere = '';
         let params = [];
@@ -1495,15 +1531,11 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
         if (competencia) {
             filtroWhere = ' AND competencia = ?';
             params.push(competencia);
+            console.log(`📅 Relatório ${tipo} - Filtro por competência: ${competencia}`);
         } else if (data_inicio && data_fim) {
             filtroWhere = ' AND DATE(criado_em) BETWEEN ? AND ?';
             params.push(data_inicio, data_fim);
-        } else if (data_inicio) {
-            filtroWhere = ' AND DATE(criado_em) >= ?';
-            params.push(data_inicio);
-        } else if (data_fim) {
-            filtroWhere = ' AND DATE(criado_em) <= ?';
-            params.push(data_fim);
+            console.log(`📅 Relatório ${tipo} - Filtro por período: ${data_inicio} até ${data_fim}`);
         }
 
         switch(tipo) {
@@ -2241,6 +2273,42 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
 
         console.log(`📊 Exportando relatório: ${tipo}`);
 
+        // VALIDAÇÃO OBRIGATÓRIA: deve ter competência OU período de datas
+        if (!competencia && (!data_inicio || !data_fim)) {
+            return res.status(400).json({ 
+                error: 'É obrigatório informar uma COMPETÊNCIA (MM/AAAA) OU um PERÍODO com data de início E data de fim para exportar o relatório.',
+                exemplo_competencia: '07/2025',
+                exemplo_periodo: 'data_inicio: 2025-01-01, data_fim: 2025-12-31'
+            });
+        }
+
+        // Validar formato da competência se informada
+        if (competencia && !/^\d{2}\/\d{4}$/.test(competencia)) {
+            return res.status(400).json({ 
+                error: 'Competência deve estar no formato MM/AAAA (exemplo: 07/2025)' 
+            });
+        }
+
+        // Validar formato das datas se informadas
+        if (data_inicio && !/^\d{4}-\d{2}-\d{2}$/.test(data_inicio)) {
+            return res.status(400).json({ 
+                error: 'Data de início deve estar no formato AAAA-MM-DD (exemplo: 2025-01-01)' 
+            });
+        }
+
+        if (data_fim && !/^\d{4}-\d{2}-\d{2}$/.test(data_fim)) {
+            return res.status(400).json({ 
+                error: 'Data de fim deve estar no formato AAAA-MM-DD (exemplo: 2025-12-31)' 
+            });
+        }
+
+        // Validar se data de início não é maior que data de fim
+        if (data_inicio && data_fim && data_inicio > data_fim) {
+            return res.status(400).json({ 
+                error: 'Data de início não pode ser maior que data de fim' 
+            });
+        }
+
         // Construir filtros de período
         let filtroWhere = '';
         let params = [];
@@ -2249,18 +2317,12 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
             filtroWhere = ' AND competencia = ?';
             params.push(competencia);
             nomeArquivo += `-${competencia.replace('/', '-')}`;
+            console.log(`📅 Exportação ${tipo} - Filtro por competência: ${competencia}`);
         } else if (data_inicio && data_fim) {
             filtroWhere = ' AND DATE(criado_em) BETWEEN ? AND ?';
             params.push(data_inicio, data_fim);
             nomeArquivo += `-${data_inicio}-a-${data_fim}`;
-        } else if (data_inicio) {
-            filtroWhere = ' AND DATE(criado_em) >= ?';
-            params.push(data_inicio);
-            nomeArquivo += `-a-partir-${data_inicio}`;
-        } else if (data_fim) {
-            filtroWhere = ' AND DATE(criado_em) <= ?';
-            params.push(data_fim);
-            nomeArquivo += `-ate-${data_fim}`;
+            console.log(`📅 Exportação ${tipo} - Filtro por período: ${data_inicio} até ${data_fim}`);
         }
 
         switch(tipo) {
