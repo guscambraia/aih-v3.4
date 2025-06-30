@@ -1,7 +1,4 @@
-The code is updated to correctly display the glosas calculation and to properly pre-populate the last recorded value in the movimentação form.
-```
 
-```replit_final_file
 // Estado da aplicação
 let state = {
     token: localStorage.getItem('token'),
@@ -832,6 +829,21 @@ document.getElementById('btnAddAtendimento').addEventListener('click', () => {
     container.appendChild(input);
 });
 
+// Garantir que sempre tenha pelo menos um campo de atendimento
+const garantirCampoAtendimento = () => {
+    const container = document.getElementById('atendimentosContainer');
+    if (container) {
+        const inputs = container.querySelectorAll('.atendimento-input');
+        if (inputs.length === 0) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'atendimento-input';
+            input.placeholder = 'Número do atendimento';
+            container.appendChild(input);
+        }
+    }
+};
+
 // Cadastrar AIH
 document.getElementById('formCadastroAIH').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -905,4 +917,162 @@ document.getElementById('formCadastroAIH').addEventListener('submit', async (e) 
         novoInput.placeholder = 'Número do atendimento';
         container.appendChild(novoInput);
 
-        //
+        // Voltar para a tela de informar AIH
+        mostrarTela('telaInformarAIH');
+
+    } catch (err) {
+        console.error('Erro ao cadastrar AIH:', err);
+        alert('Erro ao cadastrar AIH: ' + err.message);
+    }
+});
+
+// Configurar competência padrão no campo
+document.addEventListener('DOMContentLoaded', () => {
+    const hoje = new Date();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+    const competenciaAtual = `${mes}/${ano}`;
+    
+    const campoCadastroCompetencia = document.getElementById('cadastroCompetencia');
+    if (campoCadastroCompetencia && !campoCadastroCompetencia.value) {
+        campoCadastroCompetencia.value = competenciaAtual;
+    }
+});
+
+// Adicionar funcionalidades que estavam faltando
+window.fazerBackup = async () => {
+    try {
+        const link = document.createElement('a');
+        link.href = '/api/backup';
+        link.download = `backup-aih-${new Date().toISOString().split('T')[0]}.db`;
+        link.click();
+        
+        document.getElementById('modal').classList.remove('ativo');
+        alert('Backup iniciado! O download começará em instantes.');
+    } catch (err) {
+        alert('Erro ao fazer backup: ' + err.message);
+    }
+};
+
+window.exportarDados = async (formato) => {
+    try {
+        const link = document.createElement('a');
+        link.href = `/api/export/${formato}`;
+        link.download = `export-aih-${new Date().toISOString().split('T')[0]}.${formato === 'excel' ? 'xls' : formato}`;
+        link.click();
+        
+        document.getElementById('modal').classList.remove('ativo');
+        alert(`Exportação ${formato.toUpperCase()} iniciada! O download começará em instantes.`);
+    } catch (err) {
+        alert('Erro ao exportar: ' + err.message);
+    }
+};
+
+// Adicionar funcionalidades de configuração
+const carregarProfissionais = async () => {
+    try {
+        const response = await api('/profissionais');
+        const container = document.getElementById('listaProfissionais');
+        
+        if (response && response.profissionais) {
+            container.innerHTML = response.profissionais.map(prof => `
+                <div class="glosa-item">
+                    <div>
+                        <strong>${prof.nome}</strong> - ${prof.especialidade}
+                    </div>
+                    <button onclick="excluirProfissional(${prof.id})" class="btn-danger">Excluir</button>
+                </div>
+            `).join('') || '<p>Nenhum profissional cadastrado</p>';
+        }
+    } catch (err) {
+        console.error('Erro ao carregar profissionais:', err);
+    }
+};
+
+const carregarTiposGlosaConfig = async () => {
+    try {
+        const response = await api('/tipos-glosa');
+        const container = document.getElementById('listaTiposGlosa');
+        
+        if (response && response.tipos) {
+            container.innerHTML = response.tipos.map(tipo => `
+                <div class="glosa-item">
+                    <div>${tipo.descricao}</div>
+                    <button onclick="excluirTipoGlosa(${tipo.id})" class="btn-danger">Excluir</button>
+                </div>
+            `).join('') || '<p>Nenhum tipo de glosa cadastrado</p>';
+        }
+    } catch (err) {
+        console.error('Erro ao carregar tipos de glosa:', err);
+    }
+};
+
+// Event listeners para configurações
+document.getElementById('formNovoProfissional').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    try {
+        const dados = {
+            nome: document.getElementById('profNome').value,
+            especialidade: document.getElementById('profEspecialidade').value
+        };
+
+        await api('/profissionais', {
+            method: 'POST',
+            body: JSON.stringify(dados)
+        });
+
+        alert('Profissional adicionado com sucesso!');
+        document.getElementById('formNovoProfissional').reset();
+        carregarProfissionais();
+    } catch (err) {
+        alert('Erro ao adicionar profissional: ' + err.message);
+    }
+});
+
+document.getElementById('formNovoTipoGlosa').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    try {
+        const dados = {
+            descricao: document.getElementById('tipoGlosaDescricao').value
+        };
+
+        await api('/tipos-glosa', {
+            method: 'POST',
+            body: JSON.stringify(dados)
+        });
+
+        alert('Tipo de glosa adicionado com sucesso!');
+        document.getElementById('formNovoTipoGlosa').reset();
+        carregarTiposGlosaConfig();
+    } catch (err) {
+        alert('Erro ao adicionar tipo de glosa: ' + err.message);
+    }
+});
+
+window.excluirProfissional = async (id) => {
+    const confirmar = confirm('Tem certeza que deseja excluir este profissional?');
+    if (!confirmar) return;
+
+    try {
+        await api(`/profissionais/${id}`, { method: 'DELETE' });
+        alert('Profissional excluído com sucesso!');
+        carregarProfissionais();
+    } catch (err) {
+        alert('Erro ao excluir profissional: ' + err.message);
+    }
+};
+
+window.excluirTipoGlosa = async (id) => {
+    const confirmar = confirm('Tem certeza que deseja excluir este tipo de glosa?');
+    if (!confirmar) return;
+
+    try {
+        await api(`/tipos-glosa/${id}`, { method: 'DELETE' });
+        alert('Tipo de glosa excluído com sucesso!');
+        carregarTiposGlosaConfig();
+    } catch (err) {
+        alert('Erro ao excluir tipo de glosa: ' + err.message);
+    }
+};
