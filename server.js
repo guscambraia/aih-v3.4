@@ -2053,11 +2053,6 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY g.profissional, ocorrencias DESC
                 `, params);
                 break;
-                    WHERE 1=1 ${filtroWhere}
-                    GROUP BY faixa_valor
-                    ORDER BY MIN(a.valor_inicial)
-                `, params);
-                break;
 
             case 'analise-preditiva':
                 const mediaTempo = await get(`
@@ -2596,21 +2591,6 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     WHERE g.ativa = 1 ${filtroWhere}
                     GROUP BY g.tipo, g.linha
                     ORDER BY COUNT(*) DESC, SUM(a.valor_inicial - a.valor_atual) DESC
-                `, params);
-                break;
-                        ROUND(AVG(a.valor_atual), 2) as 'Valor Atual Médio (R$)'
-                    FROM aihs a
-                    WHERE 1=1 ${filtroWhere}
-                    GROUP BY CASE 
-                        WHEN a.valor_inicial <= 500 THEN '≤ R$ 500'
-                        WHEN a.valor_inicial <= 1000 THEN 'R$ 501-1.000'
-                        WHEN a.valor_inicial <= 2000 THEN 'R$ 1.001-2.000'
-                        WHEN a.valor_inicial <= 5000 THEN 'R$ 2.001-5.000'
-                        WHEN a.valor_inicial <= 10000 THEN 'R$ 5.001-10.000'
-                        WHEN a.valor_inicial <= 20000 THEN 'R$ 10.001-20.000'
-                        ELSE '> R$ 20.000'
-                    END
-                    ORDER BY MIN(a.valor_inicial)
                 `, params);
                 break;
 
