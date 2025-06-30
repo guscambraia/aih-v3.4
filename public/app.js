@@ -639,17 +639,23 @@ const mostrarInfoAIH = (aih) => {
                         ${aih.movimentacoes.length}
                     </span>
                 </span>
-                <div style="display: flex; gap: 0.5rem; margin-left: auto;">
+                <div style="display: flex; gap: 0.5rem; margin-left: auto; flex-wrap: wrap;">
                     <button onclick="exportarHistoricoMovimentacoes('csv')" 
                             style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
                                    color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;">
+                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
+                                   transition: all 0.2s ease; min-width: 80px; justify-content: center;"
+                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
                         📄 CSV
                     </button>
                     <button onclick="exportarHistoricoMovimentacoes('xlsx')" 
                             style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); 
                                    color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;">
+                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
+                                   transition: all 0.2s ease; min-width: 100px; justify-content: center;"
+                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
                         📊 Excel (XLS)
                     </button>
                 </div>
@@ -1560,16 +1566,79 @@ document.getElementById('formPesquisa').addEventListener('submit', async (e) => 
 });
 
 // Exportar histórico de movimentações
-window.exportarHistoricoMovimentacoes = (formato) => {
+window.exportarHistoricoMovimentacoes = async (formato) => {
     if (!state.aihAtual) {
         alert('Nenhuma AIH selecionada');
         return;
     }
     
-    const link = document.createElement('a');
-    link.href = `/api/aih/${state.aihAtual.id}/movimentacoes/export/${formato}`;
-    link.download = `historico-AIH-${state.aihAtual.numero_aih}.${formato}`;
-    link.click();
+    try {
+        // Mostrar indicador de carregamento
+        const botoes = document.querySelectorAll('button[onclick*="exportarHistoricoMovimentacoes"]');
+        botoes.forEach(btn => {
+            btn.disabled = true;
+            btn.textContent = btn.textContent.replace('📄', '⏳').replace('📊', '⏳');
+        });
+
+        const response = await fetch(`/api/aih/${state.aihAtual.id}/movimentacoes/export/${formato}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        // Criar blob com o conteúdo da resposta
+        const blob = await response.blob();
+        
+        // Determinar o nome do arquivo e tipo MIME
+        let fileName, mimeType;
+        if (formato === 'csv') {
+            fileName = `historico-movimentacoes-AIH-${state.aihAtual.numero_aih}-${new Date().toISOString().split('T')[0]}.csv`;
+            mimeType = 'text/csv;charset=utf-8';
+        } else if (formato === 'xlsx') {
+            fileName = `historico-movimentacoes-AIH-${state.aihAtual.numero_aih}-${new Date().toISOString().split('T')[0]}.xls`;
+            mimeType = 'application/vnd.ms-excel';
+        } else {
+            throw new Error('Formato não suportado');
+        }
+
+        // Criar link de download
+        const url = window.URL.createObjectURL(new Blob([blob], { type: mimeType }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        
+        // Adicionar ao DOM temporariamente e clicar
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Limpar URL do blob
+        window.URL.revokeObjectURL(url);
+        
+        alert(`Histórico exportado com sucesso em formato ${formato.toUpperCase()}!`);
+        
+    } catch (err) {
+        console.error('Erro ao exportar histórico:', err);
+        alert(`Erro ao exportar histórico: ${err.message}`);
+    } finally {
+        // Restaurar botões
+        setTimeout(() => {
+            const botoes = document.querySelectorAll('button[onclick*="exportarHistoricoMovimentacoes"]');
+            botoes.forEach(btn => {
+                btn.disabled = false;
+                if (btn.textContent.includes('CSV')) {
+                    btn.textContent = '📄 CSV';
+                } else if (btn.textContent.includes('Excel')) {
+                    btn.textContent = '📊 Excel (XLS)';
+                }
+            });
+        }, 1000);
+    }
 };
 
 // Adicionar funcionalidades de configuração

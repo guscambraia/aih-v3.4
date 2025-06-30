@@ -1525,9 +1525,12 @@ app.get('/api/aih/:id/movimentacoes/export/:formato', verificarToken, async (req
         const aihId = req.params.id;
         const formato = req.params.formato;
 
+        console.log(`📊 Exportando histórico da AIH ID ${aihId} em formato ${formato}`);
+
         // Buscar dados da AIH
         const aih = await get('SELECT numero_aih FROM aihs WHERE id = ?', [aihId]);
         if (!aih) {
+            console.log(`❌ AIH com ID ${aihId} não encontrada`);
             return res.status(404).json({ error: 'AIH não encontrada' });
         }
 
@@ -1542,51 +1545,92 @@ app.get('/api/aih/:id/movimentacoes/export/:formato', verificarToken, async (req
             ORDER BY m.data_movimentacao DESC
         `, [aihId]);
 
+        console.log(`📋 Encontradas ${movimentacoes.length} movimentações para a AIH ${aih.numero_aih}`);
+
+        if (movimentacoes.length === 0) {
+            return res.status(404).json({ error: 'Nenhuma movimentação encontrada para esta AIH' });
+        }
+
         const nomeArquivo = `historico-movimentacoes-AIH-${aih.numero_aih}-${new Date().toISOString().split('T')[0]}`;
 
         if (formato === 'csv') {
-            const csv = [
-                'Data,Tipo,Status,Valor,Competencia,Prof_Medicina,Prof_Enfermagem,Prof_Fisioterapia,Prof_Bucomaxilo,Usuario,Observacoes',
-                ...movimentacoes.map(m => 
-                    `"${new Date(m.data_movimentacao).toLocaleString('pt-BR')}","${m.tipo === 'entrada_sus' ? 'Entrada SUS' : 'Saída Hospital'}","${getStatusExcel(m.status_aih)}","${m.valor_conta || 0}","${m.competencia || ''}","${m.prof_medicina || ''}","${m.prof_enfermagem || ''}","${m.prof_fisioterapia || ''}","${m.prof_bucomaxilo || ''}","${m.usuario_nome || ''}","${(m.observacoes || '').replace(/"/g, '""')}"`
-                )
-            ].join('\n');
+            const cabecalhos = 'Data,Tipo,Status,Valor,Competencia,Prof_Medicina,Prof_Enfermagem,Prof_Fisioterapia,Prof_Bucomaxilo,Usuario,Observacoes';
+            const linhas = movimentacoes.map(m => {
+                const data = new Date(m.data_movimentacao).toLocaleString('pt-BR');
+                const tipo = m.tipo === 'entrada_sus' ? 'Entrada SUS' : 'Saída Hospital';
+                const status = getStatusExcel(m.status_aih);
+                const valor = (m.valor_conta || 0).toFixed(2);
+                const competencia = m.competencia || '';
+                const profMed = m.prof_medicina || '';
+                const profEnf = m.prof_enfermagem || '';
+                const profFisio = m.prof_fisioterapia || '';
+                const profBuco = m.prof_bucomaxilo || '';
+                const usuario = m.usuario_nome || '';
+                const obs = (m.observacoes || '').replace(/"/g, '""');
+                
+                return `"${data}","${tipo}","${status}","R$ ${valor}","${competencia}","${profMed}","${profEnf}","${profFisio}","${profBuco}","${usuario}","${obs}"`;
+            });
+
+            const csv = [cabecalhos, ...linhas].join('\n');
 
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-            res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.csv`);
+            res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}.csv"`);
+            res.setHeader('Cache-Control', 'no-cache');
             res.send('\ufeff' + csv); // BOM para UTF-8
 
         } else if (formato === 'xlsx') {
-            const dadosFormatados = movimentacoes.map(m => ({
-                'Data': new Date(m.data_movimentacao).toLocaleString('pt-BR'),
-                'Tipo': m.tipo === 'entrada_sus' ? 'Entrada na Auditoria SUS' : 'Saída para Auditoria Hospital',
-                'Status': getStatusExcel(m.status_aih),
-                'Valor da Conta': m.valor_conta || 0,
-                'Competência': m.competencia || '',
-                'Profissional Medicina': m.prof_medicina || '',
-                'Profissional Enfermagem': m.prof_enfermagem || '',
-                'Profissional Fisioterapia': m.prof_fisioterapia || '',
-                'Profissional Bucomaxilo': m.prof_bucomaxilo || '',
-                'Usuário Responsável': m.usuario_nome || '',
-                'Observações': m.observacoes || ''
+            const dadosFormatados = movimentacoes.map((m, index) => ({
+                'Sequência': index + 1,
+                'Data/Hora': new Date(m.data_movimentacao).toLocaleString('pt-BR'),
+                'Tipo de Movimentação': m.tipo === 'entrada_sus' ? 'Entrada na Auditoria SUS' : 'Saída para Auditoria Hospital',
+                'Status da AIH': getStatusExcel(m.status_aih),
+                'Valor da Conta': `R$ ${(m.valor_conta || 0).toFixed(2)}`,
+                'Competência': m.competencia || 'Não informada',
+                'Profissional Medicina': m.prof_medicina || 'Não informado',
+                'Profissional Enfermagem': m.prof_enfermagem || 'Não informado',
+                'Profissional Fisioterapia': m.prof_fisioterapia || 'Não informado',
+                'Profissional Bucomaxilo': m.prof_bucomaxilo || 'Não informado',
+                'Usuário Responsável': m.usuario_nome || 'Sistema',
+                'Observações': m.observacoes || 'Nenhuma observação'
             }));
 
             const worksheet = XLSX.utils.json_to_sheet(dadosFormatados);
+            
+            // Configurar largura das colunas
+            worksheet['!cols'] = [
+                { wch: 10 }, // Sequência
+                { wch: 20 }, // Data/Hora
+                { wch: 25 }, // Tipo
+                { wch: 25 }, // Status
+                { wch: 15 }, // Valor
+                { wch: 12 }, // Competência
+                { wch: 20 }, // Prof Medicina
+                { wch: 20 }, // Prof Enfermagem
+                { wch: 20 }, // Prof Fisioterapia
+                { wch: 20 }, // Prof Bucomaxilo
+                { wch: 20 }, // Usuário
+                { wch: 30 }  // Observações
+            ];
+
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, `Histórico AIH ${aih.numero_aih}`);
+            XLSX.utils.book_append_sheet(workbook, worksheet, `Movimentações AIH ${aih.numero_aih}`);
 
             const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
 
             res.setHeader('Content-Type', 'application/vnd.ms-excel');
-            res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
+            res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}.xls"`);
+            res.setHeader('Cache-Control', 'no-cache');
             res.send(buffer);
+            
         } else {
-            res.status(400).json({ error: 'Formato não suportado' });
+            return res.status(400).json({ error: 'Formato não suportado. Use "csv" ou "xlsx"' });
         }
 
+        console.log(`✅ Histórico da AIH ${aih.numero_aih} exportado com sucesso em formato ${formato}`);
+
     } catch (err) {
-        console.error('Erro ao exportar histórico:', err);
-        res.status(500).json({ error: err.message });
+        console.error('❌ Erro ao exportar histórico:', err);
+        res.status(500).json({ error: 'Erro interno do servidor ao exportar histórico' });
     }
 });
 
