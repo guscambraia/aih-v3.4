@@ -1215,6 +1215,20 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
 
         console.log(`Gerando relatório tipo: ${tipo} - página: ${pagina}`);
 
+        // Validar se o tipo de relatório é suportado
+        const tiposSuportados = [
+            'acessos', 'aprovacoes', 'glosas-profissional', 'aihs-profissional', 
+            'tipos-glosa', 'logs-exclusao', 'estatisticas-periodo', 
+            'valores-glosas-periodo', 'tipos-glosa-periodo', 'aihs-profissional-periodo'
+        ];
+
+        if (!tiposSuportados.includes(tipo)) {
+            console.error(`Tipo de relatório não suportado: ${tipo}`);
+            return res.status(400).json({ 
+                error: `Tipo de relatório '${tipo}' não é suportado. Tipos disponíveis: ${tiposSuportados.join(', ')}` 
+            });
+        }
+
         switch (tipo) {
             case 'acessos':
                 const acessos = await all(`
@@ -1563,7 +1577,16 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
 
     } catch (err) {
         console.error(`Erro ao gerar relatório ${req.params.tipo}:`, err);
-        res.status(500).json({ error: err.message });
+        
+        // Resposta de erro mais detalhada
+        const errorResponse = {
+            error: `Erro ao gerar relatório: ${err.message}`,
+            tipo_relatorio: req.params.tipo,
+            detalhes: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+            timestamp: new Date().toISOString()
+        };
+        
+        res.status(500).json(errorResponse);
     }
 });
 

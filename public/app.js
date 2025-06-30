@@ -48,6 +48,7 @@ const api = async (endpoint, options = {}) => {
     };
 
     try {
+        console.log(`Fazendo requisição para: /api${endpoint}`);
         const response = await fetch(`/api${endpoint}`, config);
 
         // Verificar se a resposta é JSON válida
@@ -58,16 +59,25 @@ const api = async (endpoint, options = {}) => {
         } else {
             const text = await response.text();
             console.error('Resposta não é JSON:', text);
-            throw new Error('Resposta inválida do servidor');
+            console.error('Content-Type recebido:', contentType);
+            console.error('Status da resposta:', response.status);
+            throw new Error(`Resposta inválida do servidor: ${response.status} - ${text.substring(0, 200)}`);
         }
 
         if (!response.ok) {
-            throw new Error(data.error || `Erro HTTP ${response.status}`);
+            console.error('Erro na resposta da API:', data);
+            throw new Error(data.error || `Erro HTTP ${response.status}: ${data.detalhes || 'Erro desconhecido'}`);
         }
 
+        console.log(`Resposta recebida de /api${endpoint}:`, data);
         return data;
     } catch (err) {
-        console.error('Erro API:', err);
+        console.error(`Erro API em /api${endpoint}:`, err);
+        console.error('Detalhes do erro:', {
+            message: err.message,
+            name: err.name,
+            stack: err.stack
+        });
         throw err;
     }
 };
@@ -1922,6 +1932,11 @@ document.getElementById('btnRelatorios').addEventListener('click', () => {
     carregarRelatorios();
 });
 
+// Função global para voltar ao menu de relatórios
+window.voltarMenuRelatorios = () => {
+    carregarRelatorios();
+};
+
 // Navegação para alterar BD
 document.getElementById('btnAlterarBD').addEventListener('click', () => {
     mostrarTela('telaAlterarBD');
@@ -1934,44 +1949,122 @@ document.getElementById('btnAlterarBD').addEventListener('click', () => {
 
 // Carregar opções de relatórios
 const carregarRelatorios = () => {
-    const container = document.getElementById('opcoesRelatorios');
+    const container = document.getElementById('resultadoRelatorio');
+    
+    if (!container) {
+        console.error('Container de relatórios não encontrado');
+        return;
+    }
 
     container.innerHTML = `
-        <div class="relatorios-grid">
-            <div class="relatorio-card" onclick="gerarRelatorio('acessos')">
-                <div class="relatorio-icon">👥</div>
-                <h4>Relatório de Acessos</h4>
-                <p>Usuários e frequência de acessos</p>
+        <div class="relatorios-menu">
+            <h3>📊 Relatórios Disponíveis</h3>
+            
+            <!-- Relatórios Básicos -->
+            <div class="categoria-relatorios">
+                <h4>👥 Relatórios de Usuários e Acesso</h4>
+                <div class="relatorios-grid">
+                    <button onclick="gerarRelatorio('acessos')" class="relatorio-card-btn">
+                        <span class="relatorio-icon">👥</span>
+                        <div>
+                            <strong>Relatório de Acessos</strong>
+                            <p>Usuários e frequência de acessos</p>
+                        </div>
+                    </button>
+                </div>
             </div>
 
-            <div class="relatorio-card" onclick="gerarRelatorio('aprovacoes')">
-                <div class="relatorio-icon">✅</div>
-                <h4>Relatório de Aprovações</h4>
-                <p>Distribuição por status de aprovação</p>
+            <!-- Relatórios de AIH -->
+            <div class="categoria-relatorios">
+                <h4>📋 Relatórios de AIH e Status</h4>
+                <div class="relatorios-grid">
+                    <button onclick="gerarRelatorio('aprovacoes')" class="relatorio-card-btn">
+                        <span class="relatorio-icon">✅</span>
+                        <div>
+                            <strong>Status de Aprovação</strong>
+                            <p>Distribuição por status de AIH</p>
+                        </div>
+                    </button>
+                </div>
             </div>
 
-            <div class="relatorio-card" onclick="gerarRelatorio('glosas-profissional')">
-                <div class="relatorio-icon">⚠️</div>
-                <h4>Glosas por Profissional</h4>
-                <p>Glosas identificadas por auditor</p>
+            <!-- Relatórios de Glosas -->
+            <div class="categoria-relatorios">
+                <h4>⚠️ Análises de Glosas e Pendências</h4>
+                <div class="relatorios-grid">
+                    <button onclick="gerarRelatorio('glosas-profissional')" class="relatorio-card-btn">
+                        <span class="relatorio-icon">⚠️</span>
+                        <div>
+                            <strong>Glosas por Profissional</strong>
+                            <p>Glosas identificadas por auditor</p>
+                        </div>
+                    </button>
+                    
+                    <button onclick="gerarRelatorio('tipos-glosa')" class="relatorio-card-btn">
+                        <span class="relatorio-icon">📊</span>
+                        <div>
+                            <strong>Tipos de Glosa</strong>
+                            <p>Ranking dos tipos mais frequentes</p>
+                        </div>
+                    </button>
+                </div>
             </div>
 
-            <div class="relatorio-card" onclick="gerarRelatorio('aihs-profissional')">
-                <div class="relatorio-icon">🏥</div>
-                <h4>AIHs por Profissional</h4>
-                <p>Produtividade por auditor</p>
+            <!-- Relatórios de Produtividade -->
+            <div class="categoria-relatorios">
+                <h4>👨‍⚕️ Relatórios de Produtividade</h4>
+                <div class="relatorios-grid">
+                    <button onclick="gerarRelatorio('aihs-profissional')" class="relatorio-card-btn">
+                        <span class="relatorio-icon">🏥</span>
+                        <div>
+                            <strong>Produtividade dos Auditores</strong>
+                            <p>AIHs auditadas por profissional</p>
+                        </div>
+                    </button>
+                </div>
             </div>
 
-            <div class="relatorio-card" onclick="gerarRelatorio('tipos-glosa')">
-                <div class="relatorio-icon">📊</div>
-                <h4>Tipos de Glosa</h4>
-                <p>Ranking dos tipos mais frequentes</p>
+            <!-- Relatórios Administrativos -->
+            <div class="categoria-relatorios">
+                <h4>🔒 Relatórios Administrativos</h4>
+                <div class="relatorios-grid">
+                    <button onclick="gerarRelatorio('logs-exclusao')" class="relatorio-card-btn">
+                        <span class="relatorio-icon">🔒</span>
+                        <div>
+                            <strong>Logs de Exclusão</strong>
+                            <p>Histórico de alterações na BD</p>
+                        </div>
+                    </button>
+                </div>
             </div>
 
-            <div class="relatorio-card" onclick="mostrarRelatoriosPeriodo()">
-                <div class="relatorio-icon">📅</div>
-                <h4>Relatórios por Período</h4>
-                <p>Análises com filtros de data</p>
+            <!-- Relatórios por Período -->
+            <div class="categoria-relatorios">
+                <h4>📅 Relatórios por Período</h4>
+                <div class="filtros-periodo">
+                    <div class="filtro-item">
+                        <label>Data Início:</label>
+                        <input type="date" id="dataInicioPeriodo">
+                    </div>
+                    <div class="filtro-item">
+                        <label>Data Fim:</label>
+                        <input type="date" id="dataFimPeriodo">
+                    </div>
+                    <div class="filtro-item">
+                        <label>Competência:</label>
+                        <input type="text" id="competenciaPeriodo" placeholder="MM/AAAA">
+                    </div>
+                </div>
+                
+                <div class="relatorios-grid">
+                    <button onclick="gerarRelatorioPeriodo('estatisticas-periodo')" class="relatorio-card-btn">
+                        <span class="relatorio-icon">📊</span>
+                        <div>
+                            <strong>Estatísticas Gerais</strong>
+                            <p>Resumo por período</p>
+                        </div>
+                    </button>
+                </div>
             </div>
         </div>
     `;
@@ -1981,7 +2074,8 @@ const carregarRelatorios = () => {
 window.gerarRelatorio = async (tipo) => {
     const container = document.getElementById('resultadoRelatorio');
     if (!container) {
-        alert('Container de relatórios não encontrado');
+        console.error('Container de relatórios não encontrado');
+        alert('Erro: Container de relatórios não encontrado na página');
         return;
     }
 
@@ -1989,12 +2083,22 @@ window.gerarRelatorio = async (tipo) => {
     container.innerHTML = `
         <div style="text-align: center; padding: 3rem;">
             <div style="border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-            <p style="color: #64748b; margin: 0;">Gerando relatório...</p>
+            <p style="color: #64748b; margin: 0;">Gerando relatório ${tipo}...</p>
         </div>
     `;
 
     try {
         console.log(`Iniciando geração do relatório: ${tipo}`);
+
+        // Validar tipos suportados no frontend
+        const tiposSuportados = [
+            'acessos', 'aprovacoes', 'glosas-profissional', 'aihs-profissional', 
+            'tipos-glosa', 'logs-exclusao', 'estatisticas-periodo'
+        ];
+
+        if (!tiposSuportados.includes(tipo)) {
+            throw new Error(`Tipo de relatório '${tipo}' não é suportado. Disponíveis: ${tiposSuportados.join(', ')}`);
+        }
 
         // Resetar sistema de relatórios
         sistemaRelatorios = {
@@ -2017,29 +2121,43 @@ window.gerarRelatorio = async (tipo) => {
 
         console.log(`Relatório ${tipo} recebido:`, response);
 
-        if (!response || !response.resultado) {
-            throw new Error('Resposta inválida do servidor - dados não encontrados');
+        if (!response) {
+            throw new Error('Nenhuma resposta recebida do servidor');
         }
 
-        exibirRelatorio(tipo, response.resultado, response.filtros);
+        if (!response.resultado) {
+            throw new Error('Dados do relatório não encontrados na resposta do servidor');
+        }
+
+        exibirRelatorio(tipo, response.resultado, response.filtros || {});
         
     } catch (err) {
         console.error(`Erro ao gerar relatório ${tipo}:`, err);
         
+        let mensagemErro = err.message;
+        if (err.message.includes('fetch')) {
+            mensagemErro = 'Erro de conexão com o servidor. Verifique sua conexão.';
+        } else if (err.message.includes('JSON')) {
+            mensagemErro = 'Erro na resposta do servidor. Formato inválido.';
+        }
+        
         container.innerHTML = `
             <div style="text-align: center; padding: 3rem; color: #dc2626;">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
-                <h4 style="margin: 0 0 1rem 0;">Erro ao gerar relatório</h4>
-                <p style="margin: 0 0 1rem 0; color: #64748b;">${err.message}</p>
-                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <h4 style="margin: 0 0 1rem 0;">Erro ao gerar relatório "${tipo}"</h4>
+                <p style="margin: 0 0 1rem 0; color: #64748b; max-width: 600px; margin-left: auto; margin-right: auto;">${mensagemErro}</p>
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem;">
                     <button onclick="gerarRelatorio('${tipo}')" 
-                            style="background: #6366f1; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
+                            style="background: #6366f1; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
                         🔄 Tentar Novamente
                     </button>
                     <button onclick="carregarRelatorios()" 
-                            style="background: #64748b; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
+                            style="background: #64748b; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
                         ← Voltar aos Relatórios
                     </button>
+                </div>
+                <div style="margin-top: 2rem; padding: 1rem; background: #f1f5f9; border-radius: 6px; font-size: 0.8rem; color: #64748b;">
+                    <strong>Detalhes técnicos:</strong> ${err.name}: ${err.message}
                 </div>
             </div>
         `;
