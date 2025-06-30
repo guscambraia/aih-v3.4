@@ -911,7 +911,7 @@ const carregarDadosMovimentacao = async () => {
             console.log('Profissionais a pré-selecionar:', profissionaisPreSelecionados);
         }
 
-        // 5. Preencher selects COM pré-seleção integrada
+        // 5. Preencher selects e depois aplicar pré-seleção
         const especialidades = [
             { id: 'movProfMedicina', nome: 'Medicina', campo: 'prof_medicina' },
             { id: 'movProfEnfermagem', nome: 'Enfermagem', campo: 'prof_enfermagem' },
@@ -919,6 +919,7 @@ const carregarDadosMovimentacao = async () => {
             { id: 'movProfBucomaxilo', nome: 'Bucomaxilo', campo: 'prof_bucomaxilo' }
         ];
 
+        // Primeiro, preencher todos os selects
         especialidades.forEach(esp => {
             const select = document.getElementById(esp.id);
             if (select) {
@@ -931,17 +932,42 @@ const carregarDadosMovimentacao = async () => {
                 );
 
                 profsDaEspecialidade.forEach(prof => {
-                    const selected = (profissionaisPreSelecionados && 
-                                    profissionaisPreSelecionados[esp.campo] === prof.nome) ? 'selected' : '';
-                    select.innerHTML += `<option value="${prof.nome}" ${selected}>${prof.nome}</option>`;
+                    select.innerHTML += `<option value="${prof.nome}">${prof.nome}</option>`;
                 });
-
-                // Log da pré-seleção
-                if (profissionaisPreSelecionados && profissionaisPreSelecionados[esp.campo]) {
-                    console.log(`✅ Pré-seleção aplicada: ${esp.id} = ${profissionaisPreSelecionados[esp.campo]}`);
-                }
             }
         });
+
+        // Depois, aplicar pré-seleção se houver dados da última movimentação
+        if (profissionaisPreSelecionados) {
+            console.log('🔄 Aplicando pré-seleção de profissionais:', profissionaisPreSelecionados);
+            
+            // Usar setTimeout para garantir que os selects foram renderizados
+            setTimeout(() => {
+                especialidades.forEach(esp => {
+                    const select = document.getElementById(esp.id);
+                    const valorPreSelecionado = profissionaisPreSelecionados[esp.campo];
+                    
+                    if (select && valorPreSelecionado && valorPreSelecionado.trim() !== '') {
+                        // Procurar a opção com o valor correspondente
+                        const opcoes = select.querySelectorAll('option');
+                        let encontrou = false;
+                        
+                        for (const opcao of opcoes) {
+                            if (opcao.value === valorPreSelecionado) {
+                                opcao.selected = true;
+                                encontrou = true;
+                                console.log(`✅ Pré-seleção aplicada: ${esp.id} = ${valorPreSelecionado}`);
+                                break;
+                            }
+                        }
+                        
+                        if (!encontrou) {
+                            console.log(`⚠️ Profissional não encontrado para pré-seleção: ${esp.id} = ${valorPreSelecionado}`);
+                        }
+                    }
+                });
+            }, 100); // 100ms de delay para garantir renderização
+        }
 
         // 6. Carregar próxima movimentação possível
         if (state.aihAtual) {
