@@ -1979,7 +1979,23 @@ const carregarRelatorios = () => {
 
 // Gerar relatório
 window.gerarRelatorio = async (tipo) => {
+    const container = document.getElementById('resultadoRelatorio');
+    if (!container) {
+        alert('Container de relatórios não encontrado');
+        return;
+    }
+
+    // Mostrar indicador de carregamento
+    container.innerHTML = `
+        <div style="text-align: center; padding: 3rem;">
+            <div style="border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+            <p style="color: #64748b; margin: 0;">Gerando relatório...</p>
+        </div>
+    `;
+
     try {
+        console.log(`Iniciando geração do relatório: ${tipo}`);
+
         // Resetar sistema de relatórios
         sistemaRelatorios = {
             tipoAtual: tipo,
@@ -1999,9 +2015,34 @@ window.gerarRelatorio = async (tipo) => {
             })
         });
 
+        console.log(`Relatório ${tipo} recebido:`, response);
+
+        if (!response || !response.resultado) {
+            throw new Error('Resposta inválida do servidor - dados não encontrados');
+        }
+
         exibirRelatorio(tipo, response.resultado, response.filtros);
+        
     } catch (err) {
-        alert('Erro ao gerar relatório: ' + err.message);
+        console.error(`Erro ao gerar relatório ${tipo}:`, err);
+        
+        container.innerHTML = `
+            <div style="text-align: center; padding: 3rem; color: #dc2626;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                <h4 style="margin: 0 0 1rem 0;">Erro ao gerar relatório</h4>
+                <p style="margin: 0 0 1rem 0; color: #64748b;">${err.message}</p>
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <button onclick="gerarRelatorio('${tipo}')" 
+                            style="background: #6366f1; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
+                        🔄 Tentar Novamente
+                    </button>
+                    <button onclick="carregarRelatorios()" 
+                            style="background: #64748b; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
+                        ← Voltar aos Relatórios
+                    </button>
+                </div>
+            </div>
+        `;
     }
 };
 
@@ -2019,12 +2060,24 @@ let sistemaRelatorios = {
 // Exibir relatório com paginação
 const exibirRelatorio = (tipo, dados, filtros = {}) => {
     const container = document.getElementById('resultadoRelatorio');
+    if (!container) {
+        console.error('Container de relatórios não encontrado');
+        return;
+    }
+
     let html = `<h3>📊 ${getTituloRelatorio(tipo)}</h3>`;
 
     // Atualizar sistema de relatórios
     sistemaRelatorios.tipoAtual = tipo;
     sistemaRelatorios.dadosAtuais = dados;
     sistemaRelatorios.filtrosAtuais = filtros;
+
+    // Verificar se dados são válidos
+    if (!dados) {
+        html += '<p style="color: #dc2626; text-align: center; padding: 2rem;">Nenhum dado encontrado para este relatório</p>';
+        container.innerHTML = html;
+        return;
+    }
 
     // Verificar se é um relatório com paginação
     if (dados && typeof dados === 'object' && dados.dados && dados.total_registros !== undefined) {
@@ -2253,11 +2306,16 @@ const recarregarRelatorioAtual = async () => {
 // Obter título do relatório
 const getTituloRelatorio = (tipo) => {
     const titulos = {
-        'acessos': 'Relatório de Acessos',
-        'aprovacoes': 'Relatório de Aprovações',
-        'glosas-profissional': 'Glosas por Profissional',
-        'aihs-profissional': 'AIHs por Profissional',
-        'tipos-glosa': 'Tipos de Glosa'
+        'acessos': 'Relatório de Acessos dos Usuários',
+        'aprovacoes': 'Relatório de Status de Aprovação',
+        'glosas-profissional': 'Glosas por Profissional Auditor',
+        'aihs-profissional': 'Produtividade dos Auditores',
+        'tipos-glosa': 'Ranking de Tipos de Glosa',
+        'logs-exclusao': 'Histórico de Exclusões do Sistema',
+        'estatisticas-periodo': 'Estatísticas Gerais por Período',
+        'valores-glosas-periodo': 'Análise Financeira de Glosas',
+        'tipos-glosa-periodo': 'Tipos de Glosa por Período',
+        'aihs-profissional-periodo': 'Produtividade dos Profissionais por Período'
     };
     return titulos[tipo] || 'Relatório';
 };
