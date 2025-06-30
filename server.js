@@ -1553,45 +1553,49 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 break;
 
             case 'aihs-profissional-periodo':
-                // AIHs auditadas por profissional no período
-                let sqlAihs = `
+                // AIHs auditadas por profissional no período - incluindo todos os profissionais
+                let sqlAihsProfissional = `
                     SELECT 
-                        CASE 
-                            WHEN m.prof_medicina IS NOT NULL THEN m.prof_medicina
-                            WHEN m.prof_enfermagem IS NOT NULL THEN m.prof_enfermagem
-                            WHEN m.prof_fisioterapia IS NOT NULL THEN m.prof_fisioterapia
-                            WHEN m.prof_bucomaxilo IS NOT NULL THEN m.prof_bucomaxilo
-                        END as profissional,
-                        CASE 
-                            WHEN m.prof_medicina IS NOT NULL THEN 'Medicina'
-                            WHEN m.prof_enfermagem IS NOT NULL THEN 'Enfermagem'
-                            WHEN m.prof_fisioterapia IS NOT NULL THEN 'Fisioterapia'
-                            WHEN m.prof_bucomaxilo IS NOT NULL THEN 'Bucomaxilo'
-                        END as especialidade,
-                        COUNT(DISTINCT m.aih_id) as total_aihs_auditadas,
-                        COUNT(*) as total_movimentacoes
-                    FROM movimentacoes m
-                    JOIN aihs a ON m.aih_id = a.id
-                    WHERE (m.prof_medicina IS NOT NULL 
-                       OR m.prof_enfermagem IS NOT NULL 
-                       OR m.prof_fisioterapia IS NOT NULL 
-                       OR m.prof_bucomaxilo IS NOT NULL)
+                        p.nome as profissional,
+                        p.especialidade,
+                        COALESCE(COUNT(DISTINCT CASE 
+                            WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN m.aih_id
+                        END), 0) as total_aihs_auditadas,
+                        COALESCE(COUNT(CASE 
+                            WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN 1
+                            WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN 1
+                            WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN 1
+                            WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN 1
+                        END), 0) as total_movimentacoes
+                    FROM profissionais p
+                    LEFT JOIN movimentacoes m ON (
+                        (p.especialidade = 'Medicina' AND m.prof_medicina = p.nome) OR
+                        (p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome) OR
+                        (p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome) OR
+                        (p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome)
+                    )
+                    LEFT JOIN aihs a ON m.aih_id = a.id
                 `;
 
+                // Adicionar filtros de período
                 if (competencia) {
-                    sqlAihs += ' AND m.competencia = ?';
+                    sqlAihsProfissional += ' AND (m.competencia = ? OR m.competencia IS NULL)';
                 } else if (data_inicio && data_fim) {
-                    sqlAihs += ' AND DATE(m.data_movimentacao) BETWEEN ? AND ?';
+                    sqlAihsProfissional += ' AND (DATE(m.data_movimentacao) BETWEEN ? AND ? OR m.data_movimentacao IS NULL)';
                 } else if (data_inicio) {
-                    sqlAihs += ' AND DATE(m.data_movimentacao) >= ?';
+                    sqlAihsProfissional += ' AND (DATE(m.data_movimentacao) >= ? OR m.data_movimentacao IS NULL)';
                 } else if (data_fim) {
-                    sqlAihs += ' AND DATE(m.data_movimentacao) <= ?';
+                    sqlAihsProfissional += ' AND (DATE(m.data_movimentacao) <= ? OR m.data_movimentacao IS NULL)';
                 }
 
-                sqlAihs += ` GROUP BY profissional, especialidade
-                            ORDER BY total_aihs_auditadas DESC`;
+                sqlAihsProfissional += ` 
+                    GROUP BY p.id, p.nome, p.especialidade
+                    ORDER BY total_aihs_auditadas DESC, p.especialidade, p.nome`;
 
-                resultado = await all(sqlAihs, params);
+                resultado = await all(sqlAihsProfissional, params);
                 break;
 
             case 'glosas-profissional-periodo':
@@ -2352,44 +2356,55 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 break;
 
             case 'aihs-profissional-periodo':
-                let sqlAihs = `
+                let sqlAihsExport = `
                     SELECT 
-                        CASE 
-                            WHEN m.prof_medicina IS NOT NULL THEN m.prof_medicina
-                            WHEN m.prof_enfermagem IS NOT NULL THEN m.prof_enfermagem
-                            WHEN m.prof_fisioterapia IS NOT NULL THEN m.prof_fisioterapia
-                            WHEN m.prof_bucomaxilo IS NOT NULL THEN m.prof_bucomaxilo
-                        END as 'Profissional',
-                        CASE 
-                            WHEN m.prof_medicina IS NOT NULL THEN 'Medicina'
-                            WHEN m.prof_enfermagem IS NOT NULL THEN 'Enfermagem'
-                            WHEN m.prof_fisioterapia IS NOT NULL THEN 'Fisioterapia'
-                            WHEN m.prof_bucomaxilo IS NOT NULL THEN 'Bucomaxilo'
-                        END as 'Especialidade',
-                        COUNT(DISTINCT m.aih_id) as 'Total AIHs Auditadas',
-                        COUNT(*) as 'Total Movimentacoes'
-                    FROM movimentacoes m
-                    JOIN aihs a ON m.aih_id = a.id
-                    WHERE (m.prof_medicina IS NOT NULL 
-                       OR m.prof_enfermagem IS NOT NULL 
-                       OR m.prof_fisioterapia IS NOT NULL 
-                       OR m.prof_bucomaxilo IS NOT NULL)
+                        p.nome as 'Profissional',
+                        p.especialidade as 'Especialidade',
+                        COALESCE(COUNT(DISTINCT CASE 
+                            WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN m.aih_id
+                            WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN m.aih_id
+                        END), 0) as 'Total AIHs Auditadas',
+                        COALESCE(COUNT(CASE 
+                            WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN 1
+                            WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN 1
+                            WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN 1
+                            WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN 1
+                        END), 0) as 'Total Movimentacoes'
+                    FROM profissionais p
+                    LEFT JOIN movimentacoes m ON (
+                        (p.especialidade = 'Medicina' AND m.prof_medicina = p.nome) OR
+                        (p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome) OR
+                        (p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome) OR
+                        (p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome)
+                    )
+                    LEFT JOIN aihs a ON m.aih_id = a.id
                 `;
 
+                // Adicionar filtros de período
                 if (competencia) {
-                    sqlAihs += ' AND m.competencia = ?';
+                    sqlAihsExport += ' WHERE (m.competencia = ? OR m.competencia IS NULL)';
                 } else if (data_inicio && data_fim) {
-                    sqlAihs += ' AND DATE(m.data_movimentacao) BETWEEN ? AND ?';
+                    sqlAihsExport += ' WHERE (DATE(m.data_movimentacao) BETWEEN ? AND ? OR m.data_movimentacao IS NULL)';
                 } else if (data_inicio) {
-                    sqlAihs += ' AND DATE(m.data_movimentacao) >= ?';
+                    sqlAihsExport += ' WHERE (DATE(m.data_movimentacao) >= ? OR m.data_movimentacao IS NULL)';
                 } else if (data_fim) {
-                    sqlAihs += ' AND DATE(m.data_movimentacao) <= ?';
+                    sqlAihsExport += ' WHERE (DATE(m.data_movimentacao) <= ? OR m.data_movimentacao IS NULL)';
+                } else {
+                    sqlAihsExport += ' WHERE 1=1';
                 }
 
-                sqlAihs += ` GROUP BY Profissional, Especialidade
-                            ORDER BY COUNT(DISTINCT m.aih_id) DESC`;
+                sqlAihsExport += ` 
+                    GROUP BY p.id, p.nome, p.especialidade
+                    ORDER BY COALESCE(COUNT(DISTINCT CASE 
+                        WHEN p.especialidade = 'Medicina' AND m.prof_medicina = p.nome THEN m.aih_id
+                        WHEN p.especialidade = 'Enfermagem' AND m.prof_enfermagem = p.nome THEN m.aih_id
+                        WHEN p.especialidade = 'Fisioterapia' AND m.prof_fisioterapia = p.nome THEN m.aih_id
+                        WHEN p.especialidade = 'Bucomaxilo' AND m.prof_bucomaxilo = p.nome THEN m.aih_id
+                    END), 0) DESC, p.especialidade, p.nome`;
 
-                dados = await all(sqlAihs, params);
+                dados = await all(sqlAihsExport, params);
                 break;
 
             case 'glosas-profissional-periodo':
