@@ -2239,6 +2239,8 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
         let dados = [];
         let nomeArquivo = `relatorio-${tipo}-${new Date().toISOString().split('T')[0]}`;
 
+        console.log(`📊 Exportando relatório: ${tipo}`);
+
         // Construir filtros de período
         let filtroWhere = '';
         let params = [];
@@ -2400,6 +2402,371 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 }];
                 break;
 
+            // Novos relatórios avançados
+            case 'performance-competencias':
+                dados = await all(`
+                    SELECT 
+                        a.competencia as 'Competência',
+                        COUNT(*) as 'Total AIHs',
+                        COUNT(DISTINCT CASE WHEN g.id IS NOT NULL THEN a.id END) as 'AIHs com Glosas',
+                        ROUND((COUNT(DISTINCT CASE WHEN g.id IS NOT NULL THEN a.id END) * 100.0 / COUNT(*)), 2) as 'Percentual com Glosas (%)',
+                        SUM(a.valor_inicial) as 'Valor Inicial Total',
+                        SUM(a.valor_atual) as 'Valor Atual Total',
+                        SUM(a.valor_inicial - a.valor_atual) as 'Total Glosas (R$)',
+                        ROUND(AVG(a.valor_inicial - a.valor_atual), 2) as 'Média Glosa por AIH',
+                        SUM(CASE WHEN a.status IN (1, 4) THEN 1 ELSE 0 END) as 'AIHs Finalizadas',
+                        SUM(CASE WHEN a.status IN (2, 3) THEN 1 ELSE 0 END) as 'AIHs Pendentes'
+                    FROM aihs a
+                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
+                    WHERE 1=1 ${filtroWhere}
+                    GROUP BY a.competencia
+                    ORDER BY a.competencia DESC
+                `, params);
+                break;
+
+            case 'logs-exclusao':
+                dados = await all(`
+                    SELECT 
+                        le.id as 'ID Log',
+                        CASE le.tipo_exclusao
+                            WHEN 'movimentacao' THEN 'Movimentação'
+                            WHEN 'aih_completa' THEN 'AIH Completa'
+                            ELSE le.tipo_exclusao
+                        END as 'Tipo Exclusão',
+                        u.nome as 'Usuário',
+                        le.justificativa as 'Justificativa',
+                        datetime(le.data_exclusao, 'localtime') as 'Data/Hora Exclusão',
+                        CASE 
+                            WHEN le.tipo_exclusao = 'movimentacao' THEN 
+                                json_extract(le.dados_excluidos, '$.numero_aih')
+                            WHEN le.tipo_exclusao = 'aih_completa' THEN 
+                                json_extract(le.dados_excluidos, '$.aih.numero_aih')
+                        END as 'AIH Afetada'
+                    FROM logs_exclusao le
+                    LEFT JOIN usuarios u ON le.usuario_id = u.id
+                    WHERE 1=1 ${filtroWhere.replace('competencia', 'DATE(le.data_exclusao)').replace('criado_em', 'DATE(le.data_exclusao)')}
+                    ORDER BY le.data_exclusao DESC
+                `, params);
+                break;
+
+            case 'analise-preditiva':
+                const mediaTempo = await get(`
+                    SELECT AVG(JULIANDAY(CURRENT_TIMESTAMP) - JULIANDAY(criado_em)) as media_dias
+                    FROM aihs WHERE status IN (1, 4)
+                `);
+
+                const tendenciaGlosas = await all(`
+                    SELECT 
+                        strftime('%Y-%m', criado_em) as 'Mês',
+                        COUNT(*) as 'Total Glosas'
+                    FROM glosas
+                    WHERE ativa = 1
+                    GROUP BY strftime('%Y-%m', criado_em)
+                    ORDER BY strftime('%Y-%m', criado_em) DESC
+                    LIMIT 12
+                `);
+
+                dados = [
+                    {
+                        'Métrica': 'Tempo Médio de Processamento',
+                        'Valor': `${Math.round(mediaTempo.media_dias || 0)} dias`,
+                        'Observação': 'Tempo médio para finalização de AIHs'
+                    },
+                    {
+                        'Métrica': 'Tendência de Glosas',
+                        'Valor': `${tendenciaGlosas.length} meses analisados`,
+                        'Observação': 'Histórico de glosas por mês'
+                    }
+                ];
+
+                // Adicionar dados da tendência
+                tendenciaGlosas.forEach(t => {
+                    dados.push({
+                        'Métrica': `Glosas em ${t['Mês']}`,
+                        'Valor': t['Total Glosas'],
+                        'Observação': 'Quantidade de glosas no período'
+                    });
+                });
+                break;
+
+            case 'detalhamento-status':
+                dados = await all(`
+                    SELECT 
+                        CASE a.status
+                            WHEN 1 THEN 'Finalizada com aprovação direta'
+                            WHEN 2 THEN 'Ativa com aprovação indireta'
+                            WHEN 3 THEN 'Ativa em discussão'
+                            WHEN 4 THEN 'Finalizada após discussão'
+                            ELSE 'Status desconhecido'
+                        END as 'Status',
+                        a.status as 'Código Status',
+                        COUNT(*) as 'Quantidade AIHs',
+                        ROUND(SUM(a.valor_inicial), 2) as 'Valor Inicial Total (R$)',
+                        ROUND(SUM(a.valor_atual), 2) as 'Valor Atual Total (R$)',
+                        ROUND(SUM(a.valor_inicial - a.valor_atual), 2) as 'Diferença Valores (R$)',
+                        ROUND(AVG(a.valor_inicial), 2) as 'Valor Inicial Médio (R$)',
+                        ROUND(AVG(a.valor_atual), 2) as 'Valor Atual Médio (R$)',
+                        COUNT(DISTINCT g.id) as 'Total Glosas',
+                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs WHERE 1=1 ${filtroWhere})), 2) as 'Percentual (%)'
+                    FROM aihs a
+                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
+                    WHERE 1=1 ${filtroWhere}
+                    GROUP BY a.status
+                    ORDER BY a.status
+                `, params);
+                break;
+
+            case 'ranking-glosas-frequentes':
+                dados = await all(`
+                    SELECT 
+                        g.tipo as 'Tipo de Glosa',
+                        g.linha as 'Linha Item',
+                        COUNT(*) as 'Frequência',
+                        COUNT(DISTINCT g.aih_id) as 'AIHs Afetadas',
+                        COUNT(DISTINCT g.profissional) as 'Profissionais Envolvidos',
+                        GROUP_CONCAT(DISTINCT g.profissional) as 'Lista Profissionais',
+                        ROUND(SUM(a.valor_inicial - a.valor_atual), 2) as 'Impacto Financeiro Total (R$)',
+                        ROUND(AVG(a.valor_inicial - a.valor_atual), 2) as 'Impacto Financeiro Médio (R$)'
+                    FROM glosas g
+                    JOIN aihs a ON g.aih_id = a.id
+                    WHERE g.ativa = 1 ${filtroWhere}
+                    GROUP BY g.tipo, g.linha
+                    ORDER BY COUNT(*) DESC, SUM(a.valor_inicial - a.valor_atual) DESC
+                `, params);
+                break;
+
+            case 'distribuicao-valores':
+                dados = await all(`
+                    SELECT 
+                        CASE 
+                            WHEN a.valor_inicial <= 500 THEN '≤ R$ 500'
+                            WHEN a.valor_inicial <= 1000 THEN 'R$ 501-1.000'
+                            WHEN a.valor_inicial <= 2000 THEN 'R$ 1.001-2.000'
+                            WHEN a.valor_inicial <= 5000 THEN 'R$ 2.001-5.000'
+                            WHEN a.valor_inicial <= 10000 THEN 'R$ 5.001-10.000'
+                            WHEN a.valor_inicial <= 20000 THEN 'R$ 10.001-20.000'
+                            ELSE '> R$ 20.000'
+                        END as 'Faixa de Valor',
+                        COUNT(*) as 'Quantidade AIHs',
+                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs WHERE 1=1 ${filtroWhere})), 2) as 'Percentual (%)',
+                        ROUND(SUM(a.valor_inicial), 2) as 'Valor Inicial Faixa (R$)',
+                        ROUND(SUM(a.valor_atual), 2) as 'Valor Atual Faixa (R$)',
+                        ROUND(SUM(a.valor_inicial - a.valor_atual), 2) as 'Glosas Faixa (R$)',
+                        ROUND(AVG(a.valor_inicial), 2) as 'Valor Inicial Médio (R$)',
+                        ROUND(AVG(a.valor_atual), 2) as 'Valor Atual Médio (R$)'
+                    FROM aihs a
+                    WHERE 1=1 ${filtroWhere}
+                    GROUP BY CASE 
+                        WHEN a.valor_inicial <= 500 THEN '≤ R$ 500'
+                        WHEN a.valor_inicial <= 1000 THEN 'R$ 501-1.000'
+                        WHEN a.valor_inicial <= 2000 THEN 'R$ 1.001-2.000'
+                        WHEN a.valor_inicial <= 5000 THEN 'R$ 2.001-5.000'
+                        WHEN a.valor_inicial <= 10000 THEN 'R$ 5.001-10.000'
+                        WHEN a.valor_inicial <= 20000 THEN 'R$ 10.001-20.000'
+                        ELSE '> R$ 20.000'
+                    END
+                    ORDER BY MIN(a.valor_inicial)
+                `, params);
+                break;
+
+            case 'analise-financeira':
+                const analiseFinanceira = await get(`
+                    SELECT 
+                        COUNT(*) as total_aihs,
+                        SUM(a.valor_inicial) as valor_inicial_geral,
+                        SUM(a.valor_atual) as valor_atual_geral,
+                        SUM(a.valor_inicial - a.valor_atual) as perdas_glosas,
+                        AVG(a.valor_inicial) as valor_inicial_medio,
+                        AVG(a.valor_atual) as valor_atual_medio,
+                        AVG(a.valor_inicial - a.valor_atual) as perda_media_por_aih,
+                        MIN(a.valor_inicial) as menor_valor_inicial,
+                        MAX(a.valor_inicial) as maior_valor_inicial,
+                        MIN(a.valor_atual) as menor_valor_atual,
+                        MAX(a.valor_atual) as maior_valor_atual
+                    FROM aihs a
+                    WHERE 1=1 ${filtroWhere}
+                `, params);
+
+                dados = [{
+                    'Total AIHs': analiseFinanceira.total_aihs || 0,
+                    'Valor Inicial Geral': `R$ ${(analiseFinanceira.valor_inicial_geral || 0).toFixed(2)}`,
+                    'Valor Atual Geral': `R$ ${(analiseFinanceira.valor_atual_geral || 0).toFixed(2)}`,
+                    'Perdas por Glosas': `R$ ${(analiseFinanceira.perdas_glosas || 0).toFixed(2)}`,
+                    'Valor Inicial Médio': `R$ ${(analiseFinanceira.valor_inicial_medio || 0).toFixed(2)}`,
+                    'Valor Atual Médio': `R$ ${(analiseFinanceira.valor_atual_medio || 0).toFixed(2)}`,
+                    'Perda Média por AIH': `R$ ${(analiseFinanceira.perda_media_por_aih || 0).toFixed(2)}`,
+                    'Menor Valor Inicial': `R$ ${(analiseFinanceira.menor_valor_inicial || 0).toFixed(2)}`,
+                    'Maior Valor Inicial': `R$ ${(analiseFinanceira.maior_valor_inicial || 0).toFixed(2)}`,
+                    'Menor Valor Atual': `R$ ${(analiseFinanceira.menor_valor_atual || 0).toFixed(2)}`,
+                    'Maior Valor Atual': `R$ ${(analiseFinanceira.maior_valor_atual || 0).toFixed(2)}`
+                }];
+                break;
+
+            case 'analise-valores-glosas':
+                const analiseValoresCompleta = await get(`
+                    SELECT 
+                        COUNT(DISTINCT a.id) as aihs_com_glosas,
+                        COUNT(g.id) as total_glosas,
+                        SUM(a.valor_inicial) as valor_inicial_total,
+                        SUM(a.valor_atual) as valor_atual_total,
+                        SUM(a.valor_inicial - a.valor_atual) as valor_total_glosas,
+                        AVG(a.valor_inicial - a.valor_atual) as media_glosa_por_aih,
+                        MIN(a.valor_inicial - a.valor_atual) as menor_impacto,
+                        MAX(a.valor_inicial - a.valor_atual) as maior_impacto
+                    FROM aihs a
+                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
+                    WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
+                    ${filtroWhere}
+                `, params);
+
+                dados = [{
+                    'AIHs com Glosas': analiseValoresCompleta.aihs_com_glosas || 0,
+                    'Total de Glosas': analiseValoresCompleta.total_glosas || 0,
+                    'Valor Inicial Total': `R$ ${(analiseValoresCompleta.valor_inicial_total || 0).toFixed(2)}`,
+                    'Valor Atual Total': `R$ ${(analiseValoresCompleta.valor_atual_total || 0).toFixed(2)}`,
+                    'Valor Total Glosas': `R$ ${(analiseValoresCompleta.valor_total_glosas || 0).toFixed(2)}`,
+                    'Média Glosa por AIH': `R$ ${(analiseValoresCompleta.media_glosa_por_aih || 0).toFixed(2)}`,
+                    'Menor Impacto': `R$ ${(analiseValoresCompleta.menor_impacto || 0).toFixed(2)}`,
+                    'Maior Impacto': `R$ ${(analiseValoresCompleta.maior_impacto || 0).toFixed(2)}`
+                }];
+                break;
+
+            case 'cruzamento-profissional-glosas':
+                dados = await all(`
+                    SELECT 
+                        g.profissional as 'Profissional',
+                        g.tipo as 'Tipo de Glosa',
+                        COUNT(*) as 'Ocorrências',
+                        COUNT(DISTINCT g.aih_id) as 'AIHs Afetadas',
+                        ROUND(SUM(a.valor_inicial - a.valor_atual), 2) as 'Impacto Financeiro (R$)'
+                    FROM glosas g
+                    JOIN aihs a ON g.aih_id = a.id
+                    WHERE g.ativa = 1 ${filtroWhere}
+                    GROUP BY g.profissional, g.tipo
+                    ORDER BY g.profissional, COUNT(*) DESC
+                `, params);
+                break;
+
+            case 'produtividade-auditores':
+                dados = await all(`
+                    SELECT 
+                        CASE 
+                            WHEN m.prof_medicina IS NOT NULL THEN m.prof_medicina
+                            WHEN m.prof_enfermagem IS NOT NULL THEN m.prof_enfermagem
+                            WHEN m.prof_fisioterapia IS NOT NULL THEN m.prof_fisioterapia
+                            WHEN m.prof_bucomaxilo IS NOT NULL THEN m.prof_bucomaxilo
+                        END as 'Profissional',
+                        CASE 
+                            WHEN m.prof_medicina IS NOT NULL THEN 'Medicina'
+                            WHEN m.prof_enfermagem IS NOT NULL THEN 'Enfermagem'
+                            WHEN m.prof_fisioterapia IS NOT NULL THEN 'Fisioterapia'
+                            WHEN m.prof_bucomaxilo IS NOT NULL THEN 'Bucomaxilo'
+                        END as 'Especialidade',
+                        COUNT(DISTINCT m.aih_id) as 'AIHs Auditadas',
+                        COUNT(*) as 'Movimentações Realizadas',
+                        ROUND(AVG(m.valor_conta), 2) as 'Valor Médio Auditado (R$)',
+                        COUNT(DISTINCT g.id) as 'Glosas Identificadas'
+                    FROM movimentacoes m
+                    JOIN aihs a ON m.aih_id = a.id
+                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
+                    WHERE (m.prof_medicina IS NOT NULL OR m.prof_enfermagem IS NOT NULL 
+                           OR m.prof_fisioterapia IS NOT NULL OR m.prof_bucomaxilo IS NOT NULL)
+                    ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
+                    GROUP BY Profissional, Especialidade
+                    ORDER BY COUNT(DISTINCT m.aih_id) DESC
+                `, params);
+                break;
+
+            case 'comparativo-auditorias':
+                dados = await all(`
+                    SELECT 
+                        CASE m.tipo
+                            WHEN 'entrada_sus' THEN 'Entrada na Auditoria SUS'
+                            WHEN 'saida_hospital' THEN 'Saída para Auditoria Hospital'
+                            ELSE m.tipo
+                        END as 'Tipo de Movimentação',
+                        COUNT(*) as 'Total Movimentações',
+                        COUNT(DISTINCT m.aih_id) as 'AIHs Movimentadas',
+                        ROUND(AVG(m.valor_conta), 2) as 'Valor Médio (R$)',
+                        ROUND(SUM(m.valor_conta), 2) as 'Valor Total (R$)',
+                        COUNT(DISTINCT m.prof_medicina) as 'Profissionais Medicina',
+                        COUNT(DISTINCT m.prof_enfermagem) as 'Profissionais Enfermagem',
+                        COUNT(DISTINCT m.prof_fisioterapia) as 'Profissionais Fisioterapia',
+                        COUNT(DISTINCT m.prof_bucomaxilo) as 'Profissionais Bucomaxilo'
+                    FROM movimentacoes m
+                    JOIN aihs a ON m.aih_id = a.id
+                    WHERE 1=1 ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
+                    GROUP BY m.tipo
+                `, params);
+                break;
+
+            case 'eficiencia-processamento':
+                dados = await all(`
+                    SELECT 
+                        a.competencia as 'Competência',
+                        COUNT(*) as 'AIHs na Competência',
+                        ROUND(AVG(JULIANDAY(CURRENT_TIMESTAMP) - JULIANDAY(a.criado_em)), 1) as 'Tempo Médio (dias)',
+                        COUNT(CASE WHEN a.status IN (1, 4) THEN 1 END) as 'Finalizadas',
+                        COUNT(CASE WHEN a.status IN (2, 3) THEN 1 END) as 'Em Andamento',
+                        COUNT(DISTINCT m.id) as 'Total Movimentações',
+                        ROUND(COUNT(DISTINCT m.id) * 1.0 / COUNT(*), 2) as 'Movimentações por AIH'
+                    FROM aihs a
+                    LEFT JOIN movimentacoes m ON a.id = m.aih_id
+                    WHERE 1=1 ${filtroWhere}
+                    GROUP BY a.competencia
+                    ORDER BY a.competencia DESC
+                `, params);
+                break;
+
+            case 'analise-temporal-cadastros':
+                dados = await all(`
+                    SELECT 
+                        DATE(a.criado_em) as 'Data Cadastro',
+                        COUNT(*) as 'AIHs Cadastradas',
+                        ROUND(SUM(a.valor_inicial), 2) as 'Valor Total Cadastrado (R$)',
+                        COUNT(CASE WHEN a.status IN (1, 4) THEN 1 END) as 'Finalizadas',
+                        ROUND(AVG(a.valor_inicial), 2) as 'Valor Médio AIH (R$)'
+                    FROM aihs a
+                    WHERE 1=1 ${filtroWhere}
+                    GROUP BY DATE(a.criado_em)
+                    ORDER BY DATE(a.criado_em) DESC
+                `, params);
+                break;
+
+            case 'fluxo-movimentacoes':
+                const fluxoEntradas = await get(`
+                    SELECT COUNT(DISTINCT m.aih_id) as total_entradas
+                    FROM movimentacoes m
+                    JOIN aihs a ON m.aih_id = a.id
+                    WHERE m.tipo = 'entrada_sus' ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
+                `, params);
+
+                const fluxoSaidas = await get(`
+                    SELECT COUNT(DISTINCT m.aih_id) as total_saidas
+                    FROM movimentacoes m
+                    JOIN aihs a ON m.aih_id = a.id
+                    WHERE m.tipo = 'saida_hospital' ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
+                `, params);
+
+                dados = [
+                    {
+                        'Tipo': 'Entradas na Auditoria SUS',
+                        'Quantidade': fluxoEntradas.total_entradas || 0,
+                        'Observação': 'AIHs que entraram na auditoria SUS'
+                    },
+                    {
+                        'Tipo': 'Saídas para Auditoria Hospital',
+                        'Quantidade': fluxoSaidas.total_saidas || 0,
+                        'Observação': 'AIHs enviadas para auditoria do hospital'
+                    },
+                    {
+                        'Tipo': 'Diferença (Em Processamento)',
+                        'Quantidade': (fluxoEntradas.total_entradas || 0) - (fluxoSaidas.total_saidas || 0),
+                        'Observação': 'AIHs atualmente em processamento na auditoria SUS'
+                    }
+                ];
+                break;
+
             // Relatórios originais (sem filtros)
             case 'acessos':
                 dados = await all(`
@@ -2470,11 +2837,29 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(*) DESC
                 `);
                 break;
+
+            default:
+                console.log(`❌ Tipo de relatório não reconhecido: ${tipo}`);
+                return res.status(400).json({ 
+                    error: `Tipo de relatório não suportado para exportação: ${tipo}`,
+                    tipos_suportados: [
+                        'tipos-glosa-periodo', 'aihs-profissional-periodo', 'glosas-profissional-periodo',
+                        'valores-glosas-periodo', 'estatisticas-periodo', 'performance-competencias',
+                        'logs-exclusao', 'analise-preditiva', 'detalhamento-status', 'ranking-glosas-frequentes',
+                        'distribuicao-valores', 'analise-financeira', 'analise-valores-glosas',
+                        'cruzamento-profissional-glosas', 'produtividade-auditores', 'comparativo-auditorias',
+                        'eficiencia-processamento', 'analise-temporal-cadastros', 'fluxo-movimentacoes',
+                        'acessos', 'glosas-profissional', 'aihs-profissional', 'aprovacoes', 'tipos-glosa'
+                    ]
+                });
         }
 
-        if (dados.length === 0) {
-            return res.status(404).json({ error: 'Nenhum dado encontrado' });
+        if (!dados || dados.length === 0) {
+            console.log(`❌ Nenhum dado encontrado para o relatório: ${tipo}`);
+            return res.status(404).json({ error: 'Nenhum dado encontrado para este relatório' });
         }
+
+        console.log(`✅ Dados do relatório ${tipo}: ${dados.length} registros`);
 
         // Criar Excel real (XLS compatível)
         const worksheet = XLSX.utils.json_to_sheet(dados);
@@ -2485,10 +2870,14 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
 
         res.setHeader('Content-Type', 'application/vnd.ms-excel');
         res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
+        res.setHeader('Cache-Control', 'no-cache');
         res.send(buffer);
 
+        console.log(`📊 Relatório ${tipo} exportado com sucesso: ${nomeArquivo}.xls`);
+
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error(`❌ Erro ao exportar relatório ${req.params.tipo}:`, err);
+        res.status(500).json({ error: `Erro interno ao exportar relatório: ${err.message}` });
     }
 });
 
