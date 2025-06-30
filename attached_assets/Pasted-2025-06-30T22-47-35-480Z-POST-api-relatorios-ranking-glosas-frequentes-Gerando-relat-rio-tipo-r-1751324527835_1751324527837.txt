@@ -1,0 +1,176 @@
+2025-06-30T22:47:35.480Z - POST /api/relatorios/ranking-glosas-frequentes
+Gerando relatório tipo: ranking-glosas-frequentes - página: 1
+📅 Relatório ranking-glosas-frequentes - Filtro por período: 2025-06-01 até 2025-06-30
+Erro SQL: {
+  sql: '\n' +
+    '                    SELECT \n' +
+    '                        g.tipo as tipo_glosa,\n' +
+    '                        g',
+  params: [ '2025-06-01', '2025-06-30' ],
+  error: 'SQLITE_ERROR: ambiguous column name: criado_em'
+}
+Erro ao gerar relatório ranking-glosas-frequentes: Error: SQLITE_ERROR: ambiguous column name: criado_em
+--> in Database#all('\n' +
+  '                    SELECT \n' +
+  '                        g.tipo as tipo_glosa,\n' +
+  '                        g.linha as linha_glosa,\n' +
+  '                        COUNT(*) as frequencia,\n' +
+  '                        COUNT(DISTINCT g.aih_id) as aihs_afetadas,\n' +
+  '                        COUNT(DISTINCT g.profissional) as profissionais_envolvidos,\n' +
+  '                        GROUP_CONCAT(DISTINCT g.profissional) as lista_profissionais,\n' +
+  '                        SUM(a.valor_inicial - a.valor_atual) as impacto_financeiro_total,\n' +
+  '                        AVG(a.valor_inicial - a.valor_atual) as impacto_financeiro_medio\n' +
+  '                    FROM glosas g\n' +
+  '                    JOIN aihs a ON g.aih_id = a.id\n' +
+  '                    WHERE g.ativa = 1  AND DATE(criado_em) BETWEEN ? AND ?\n' +
+  '                    GROUP BY g.tipo, g.linha\n' +
+  '                    ORDER BY frequencia DESC, impacto_financeiro_total DESC\n' +
+  '                ', [ '2025-06-01', '2025-06-30' ], [Function (anonymous)])
+    at /home/runner/workspace/database.js:366:14
+    at new Promise (<anonymous>)
+    at all (/home/runner/workspace/database.js:365:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/runner/workspace/server.js:1902:29 {
+  errno: 1,
+  code: 'SQLITE_ERROR',
+  __augmented: true
+}
+2025-06-30T22:47:40.522Z - POST /api/relatorios/tipos-glosa-periodo
+Gerando relatório tipo: tipos-glosa-periodo - página: 1
+📅 Relatório tipos-glosa-periodo - Filtro por período: 2025-06-01 até 2025-06-30
+Erro SQL: {
+  sql: '\n' +
+    '                    SELECT g.tipo, COUNT(*) as total_ocorrencias, \n' +
+    '                           SUM(g',
+  params: [ '2025-06-01', '2025-06-30' ],
+  error: 'SQLITE_ERROR: ambiguous column name: criado_em'
+}
+Erro ao gerar relatório tipos-glosa-periodo: Error: SQLITE_ERROR: ambiguous column name: criado_em
+--> in Database#all('\n' +
+  '                    SELECT g.tipo, COUNT(*) as total_ocorrencias, \n' +
+  '                           SUM(g.quantidade) as quantidade_total,\n' +
+  '                           GROUP_CONCAT(DISTINCT g.profissional) as profissionais\n' +
+  '                    FROM glosas g\n' +
+  '                    JOIN aihs a ON g.aih_id = a.id\n' +
+  '                    WHERE g.ativa = 1  AND DATE(criado_em) BETWEEN ? AND ?\n' +
+  '                    GROUP BY g.tipo\n' +
+  '                    ORDER BY total_ocorrencias DESC\n' +
+  '                ', [ '2025-06-01', '2025-06-30' ], [Function (anonymous)])
+    at /home/runner/workspace/database.js:366:14
+    at new Promise (<anonymous>)
+    at all (/home/runner/workspace/database.js:365:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/runner/workspace/server.js:1543:29 {
+  errno: 1,
+  code: 'SQLITE_ERROR',
+  __augmented: true
+}
+2025-06-30T22:47:46.377Z - POST /api/relatorios/detalhamento-status
+Gerando relatório tipo: detalhamento-status - página: 1
+📅 Relatório detalhamento-status - Filtro por período: 2025-06-01 até 2025-06-30
+Erro SQL: {
+  sql: '\n' +
+    '                    SELECT \n' +
+    '                        CASE a.status\n' +
+    '                            WHEN ',
+  params: [ '2025-06-01', '2025-06-30' ],
+  error: 'SQLITE_ERROR: ambiguous column name: criado_em'
+}
+Erro ao gerar relatório detalhamento-status: Error: SQLITE_ERROR: ambiguous column name: criado_em
+--> in Database#all('\n' +
+  '                    SELECT \n' +
+  '                        CASE a.status\n' +
+  "                            WHEN 1 THEN 'Finalizada com aprovação direta'\n" +
+  "                            WHEN 2 THEN 'Ativa com aprovação indireta'\n" +
+  "                            WHEN 3 THEN 'Ativa em discussão'\n" +
+  "                            WHEN 4 THEN 'Finalizada após discussão'\n" +
+  "                            ELSE 'Status desconhecido'\n" +
+  '                        END as status_descricao,\n' +
+  '                        a.status as status_codigo,\n' +
+  '                        COUNT(*) as quantidade_aihs,\n' +
+  '                        SUM(a.valor_inicial) as valor_inicial_total,\n' +
+  '                        SUM(a.valor_atual) as valor_atual_total,\n' +
+  '                        SUM(a.valor_inicial - a.valor_atual) as diferenca_valores,\n' +
+  '                        AVG(a.valor_inicial) as valor_inicial_medio,\n' +
+  '                        AVG(a.valor_atual) as valor_atual_medio,\n' +
+  '                        COUNT(DISTINCT g.id) as total_glosas,\n' +
+  '                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs WHERE 1=1  AND DATE(criado_em) BETWEEN ? AND ?)), 2) as percentual\n' +
+  '                    FROM aihs a\n' +
+  '                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1\n' +
+  '                    WHERE 1=1  AND DATE(criado_em) BETWEEN ? AND ?\n' +
+  '                    GROUP BY a.status\n' +
+  '                    ORDER BY a.status\n' +
+  '                ', [ '2025-06-01', '2025-06-30' ], [Function (anonymous)])
+    at /home/runner/workspace/database.js:366:14
+    at new Promise (<anonymous>)
+    at all (/home/runner/workspace/database.js:365:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/runner/workspace/server.js:1956:29 {
+  errno: 1,
+  code: 'SQLITE_ERROR',
+  __augmented: true
+}
+2025-06-30T22:47:49.406Z - POST /api/relatorios/performance-competencias
+Gerando relatório tipo: performance-competencias - página: 1
+📅 Relatório performance-competencias - Filtro por período: 2025-06-01 até 2025-06-30
+Erro SQL: {
+  sql: '\n' +
+    '                    SELECT \n' +
+    '                        a.competencia,\n' +
+    '                        COUNT(*)',
+  params: [ '2025-06-01', '2025-06-30' ],
+  error: 'SQLITE_ERROR: ambiguous column name: criado_em'
+}
+Erro ao gerar relatório performance-competencias: Error: SQLITE_ERROR: ambiguous column name: criado_em
+--> in Database#all('\n' +
+  '                    SELECT \n' +
+  '                        a.competencia,\n' +
+  '                        COUNT(*) as total_aihs,\n' +
+  '                        COUNT(DISTINCT CASE WHEN g.id IS NOT NULL THEN a.id END) as aihs_com_glosas,\n' +
+  '                        SUM(a.valor_inicial) as valor_inicial_competencia,\n' +
+  '                        SUM(a.valor_atual) as valor_atual_competencia,\n' +
+  '                        SUM(a.valor_inicial - a.valor_atual) as total_glosas_competencia,\n' +
+  '                        AVG(a.valor_inicial - a.valor_atual) as media_glosa_competencia,\n' +
+  '                        SUM(CASE WHEN a.status IN (1, 4) THEN 1 ELSE 0 END) as aihs_finalizadas,\n' +
+  '                        SUM(CASE WHEN a.status IN (2, 3) THEN 1 ELSE 0 END) as aihs_pendentes\n' +
+  '                    FROM aihs a\n' +
+  '                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1\n' +
+  '                    WHERE 1=1  AND DATE(criado_em) BETWEEN ? AND ?\n' +
+  '                    GROUP BY a.competencia\n' +
+  '                    ORDER BY a.competencia DESC\n' +
+  '                ', [ '2025-06-01', '2025-06-30' ], [Function (anonymous)])
+    at /home/runner/workspace/database.js:366:14
+    at new Promise (<anonymous>)
+    at all (/home/runner/workspace/database.js:365:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async /home/runner/workspace/server.js:1881:29 {
+  errno: 1,
+  code: 'SQLITE_ERROR',
+  __augmented: true
+}
+2025-06-30T22:47:52.275Z - POST /api/relatorios/estatisticas-periodo
+Gerando relatório tipo: estatisticas-periodo - página: 1
+📅 Relatório estatisticas-periodo - Filtro por período: 2025-06-01 até 2025-06-30
+Erro SQL: {
+  sql: '\n' +
+    '                    SELECT COUNT(*) as total_glosas,\n' +
+    '                           COUNT(DISTINCT aih_',
+  params: [ '2025-06-01', '2025-06-30' ],
+  error: 'SQLITE_ERROR: ambiguous column name: criado_em'
+}
+Erro ao gerar relatório estatisticas-periodo: Error: SQLITE_ERROR: ambiguous column name: criado_em
+--> in Database#get('\n' +
+  '                    SELECT COUNT(*) as total_glosas,\n' +
+  '                           COUNT(DISTINCT aih_id) as aihs_com_glosas\n' +
+  '                    FROM glosas g\n' +
+  '                    JOIN aihs a ON g.aih_id = a.id\n' +
+  '                    WHERE g.ativa = 1  AND DATE(criado_em) BETWEEN ? AND ?\n' +
+  '                ', [ '2025-06-01', '2025-06-30' ], [Function (anonymous)])
+    at /home/runner/workspace/database.js:332:14
+    at new Promise (<anonymous>)
+    at get (/home/runner/workspace/database.js:331:12)
+    at async /home/runner/workspace/server.js:1668:44 {
+  errno: 1,
+  code: 'SQLITE_ERROR',
+  __augmented: true
+}
