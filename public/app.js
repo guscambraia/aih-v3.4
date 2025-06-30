@@ -1147,9 +1147,6 @@ document.getElementById('formNovaGlosa').addEventListener('submit', async (e) =>
 
         // Recarregar glosas imediatamente
         await carregarGlosas();
-
-        // Mostrar confirmação
-        alert('Pendência/Glosa adicionada com sucesso!');
     } catch (err) {
         alert('Erro ao adicionar pendência/glosa: ' + err.message);
     }
