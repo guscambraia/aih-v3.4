@@ -675,9 +675,14 @@ const carregarDadosMovimentacao = async () => {
                     
                     listaGlosas.innerHTML = `
                         <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 1.5rem; margin-top: 1rem;">
-                            <h5 style="color: #92400e; margin: 0 0 1rem 0; font-size: 1.125rem; font-weight: 600;">
-                                ⚠️ Glosas Ativas (${glosas.glosas.length})
-                            </h5>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                                <h5 style="color: #92400e; margin: 0; font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                                    ⚠️ Glosas e Pendências (${glosas.glosas.length})
+                                </h5>
+                                <button onclick="document.getElementById('btnGerenciarGlosas').click()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
+                                    📋 Gerenciar Glosas
+                                </button>
+                            </div>
                             <div style="background: white; border-radius: 8px; padding: 1rem; border: 1px solid #fbbf24;">
                                 ${glosasOrdenadas.map((g, index) => `
                                     <div style="padding: 0.75rem 0; ${index < glosasOrdenadas.length - 1 ? 'border-bottom: 1px solid #f3f4f6;' : ''} display: flex; justify-content: between; align-items: center; gap: 1rem;">
@@ -703,14 +708,24 @@ const carregarDadosMovimentacao = async () => {
                     `;
                 } else {
                     listaGlosas.innerHTML = `
-                        <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 12px; padding: 1.5rem; margin-top: 1rem; text-align: center;">
-                            <div style="font-size: 3rem; margin-bottom: 0.5rem;">✅</div>
-                            <p style="color: #166534; font-weight: 600; margin: 0; font-size: 1.125rem;">
-                                Nenhuma glosa ativa para esta AIH
-                            </p>
-                            <p style="color: #22c55e; font-size: 0.875rem; margin: 0.5rem 0 0 0; font-style: italic;">
-                                Esta AIH está livre de pendências
-                            </p>
+                        <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 1.5rem; margin-top: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                                <h5 style="color: #92400e; margin: 0; font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                                    ⚠️ Glosas e Pendências (0)
+                                </h5>
+                                <button onclick="document.getElementById('btnGerenciarGlosas').click()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
+                                    📋 Gerenciar Glosas
+                                </button>
+                            </div>
+                            <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px; padding: 2rem; text-align: center;">
+                                <div style="font-size: 3rem; margin-bottom: 0.5rem;">✅</div>
+                                <p style="color: #166534; font-weight: 600; margin: 0; font-size: 1.125rem;">
+                                    Nenhuma glosa ativa para esta AIH
+                                </p>
+                                <p style="color: #22c55e; font-size: 0.875rem; margin: 0.5rem 0 0 0; font-style: italic;">
+                                    Esta AIH está livre de pendências
+                                </p>
+                            </div>
                         </div>
                     `;
                 }
