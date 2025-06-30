@@ -2103,7 +2103,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
 
             case 'analise-financeira-completa':
                 // Análise financeira completa
-                const analiseFinanceira = await get(`
+                const analiseFinanceiraCompleta = await get(`
                     SELECT 
                         COUNT(*) as total_aihs,
                         SUM(a.valor_inicial) as valor_inicial_geral,
@@ -2120,7 +2120,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     WHERE 1=1 ${filtroWhere}
                 `, params);
 
-                const faixasValor = await all(`
+                const faixasValorCompleta = await all(`
                     SELECT 
                         CASE 
                             WHEN a.valor_inicial <= 1000 THEN 'Até R$ 1.000'
@@ -2139,8 +2139,8 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 `, params);
 
                 resultado = {
-                    resumo_geral: analiseFinanceira,
-                    distribuicao_por_faixa: faixasValor
+                    resumo_geral: analiseFinanceiraCompleta,
+                    distribuicao_por_faixa: faixasValorCompleta
                 };
                 break;
         }
