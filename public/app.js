@@ -2342,6 +2342,33 @@ window.carregarLogsExclusao = async () => {
 
 // Configurar funcionalidades de alteração da BD
 const configurarAlteracaoBD = () => {
+    // Limpar todos os campos ao acessar a tela
+    const camposParaLimpar = [
+        'aihMovimentacao', 'justificativaMovimentacao',
+        'aihCompleta', 'justificativaAIH'
+    ];
+    
+    camposParaLimpar.forEach(campoId => {
+        const campo = document.getElementById(campoId);
+        if (campo) {
+            campo.value = '';
+        }
+    });
+
+    // Limpar containers de informações
+    const containerMovimentacoes = document.getElementById('listaMovimentacoes');
+    if (containerMovimentacoes) {
+        containerMovimentacoes.innerHTML = '<p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as movimentações</p>';
+    }
+
+    const containerInfoAIH = document.getElementById('infoAIHDeletar');
+    if (containerInfoAIH) {
+        containerInfoAIH.innerHTML = '<p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as informações</p>';
+    }
+
+    // Limpar dados globais de exclusão
+    dadosExclusao = { tipo: null, dados: null, justificativa: null };
+
     // Event listener para buscar movimentações
     document.getElementById('aihMovimentacao').addEventListener('input', async (e) => {
         const numeroAIH = e.target.value.trim();
@@ -2365,6 +2392,8 @@ const configurarAlteracaoBD = () => {
     // Event listeners para os formulários
     document.getElementById('formDeletarMovimentacao').addEventListener('submit', processarDeletarMovimentacao);
     document.getElementById('formDeletarAIH').addEventListener('submit', processarDeletarAIH);
+
+    console.log('✅ Funcionalidades de alteração da BD configuradas e campos limpos');
 };
 
 // Carregar movimentações de uma AIH
@@ -2586,7 +2615,7 @@ window.confirmarExclusao = async () => {
 
             alert('✅ Movimentação deletada com sucesso!');
 
-            // Limpar formulário
+            // Limpar formulário de movimentação
             document.getElementById('formDeletarMovimentacao').reset();
             document.getElementById('listaMovimentacoes').innerHTML = '<p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as movimentações</p>';
 
@@ -2601,7 +2630,7 @@ window.confirmarExclusao = async () => {
 
             alert('✅ AIH deletada com sucesso!');
 
-            // Limpar formulário
+            // Limpar formulário de AIH
             document.getElementById('formDeletarAIH').reset();
             document.getElementById('infoAIHDeletar').innerHTML = '<p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as informações</p>';
         }
@@ -2609,6 +2638,25 @@ window.confirmarExclusao = async () => {
         // Fechar modal e limpar dados
         document.getElementById('modalConfirmacaoExclusao').classList.remove('ativo');
         dadosExclusao = { tipo: null, dados: null, justificativa: null };
+
+        // Limpar campos específicos adicionais (garantir limpeza completa)
+        const camposParaLimpar = [
+            'aihMovimentacao', 'justificativaMovimentacao',
+            'aihCompleta', 'justificativaAIH'
+        ];
+        
+        camposParaLimpar.forEach(campoId => {
+            const campo = document.getElementById(campoId);
+            if (campo) {
+                campo.value = '';
+            }
+        });
+
+        // Carregar logs de exclusão automaticamente após exclusão bem-sucedida
+        console.log('🔄 Carregando logs de exclusão automaticamente após exclusão...');
+        setTimeout(() => {
+            carregarLogsExclusao();
+        }, 500); // Pequeno delay para garantir que a exclusão foi processada
 
     } catch (err) {
         alert('❌ Erro na exclusão: ' + err.message);
