@@ -211,6 +211,19 @@ const initDB = () => {
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
         )`);
 
+        // Logs de Exclusão (para auditoria de alterações na BD)
+        db.run(`CREATE TABLE IF NOT EXISTS logs_exclusao (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo_exclusao TEXT NOT NULL, -- 'movimentacao' ou 'aih_completa'
+            usuario_id INTEGER NOT NULL,
+            dados_excluidos TEXT NOT NULL, -- JSON com todos os dados excluídos
+            justificativa TEXT NOT NULL,
+            ip_origem TEXT,
+            user_agent TEXT,
+            data_exclusao DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+        )`);
+
         // Popular tipos de glosa padrão
         db.run(`INSERT OR IGNORE INTO tipos_glosa (descricao) VALUES 
             ('Material não autorizado'),
@@ -255,6 +268,11 @@ const initDB = () => {
         db.run(`CREATE INDEX IF NOT EXISTS idx_atendimentos_numero ON atendimentos(numero_atendimento)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_usuario_data ON logs_acesso(usuario_id, data_hora DESC)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_acao_data ON logs_acesso(acao, data_hora DESC)`);
+        
+        // Índices para logs de exclusão
+        db.run(`CREATE INDEX IF NOT EXISTS idx_logs_exclusao_usuario ON logs_exclusao(usuario_id, data_exclusao DESC)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_logs_exclusao_tipo ON logs_exclusao(tipo_exclusao, data_exclusao DESC)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_logs_exclusao_data ON logs_exclusao(data_exclusao DESC)`);
         
         // Índices para texto (FTS seria ideal, mas usando LIKE otimizado)
         db.run(`CREATE INDEX IF NOT EXISTS idx_mov_prof_medicina ON movimentacoes(prof_medicina) WHERE prof_medicina IS NOT NULL`);

@@ -1882,6 +1882,12 @@ document.getElementById('btnRelatorios').addEventListener('click', () => {
     carregarRelatorios();
 });
 
+// Navegação para alterar BD
+document.getElementById('btnAlterarBD').addEventListener('click', () => {
+    mostrarTela('telaAlterarBD');
+    configurarAlteracaoBD();
+});
+
 // Carregar opções de relatórios
 const carregarRelatorios = () => {
     const container = document.getElementById('opcoesRelatorios');
@@ -2220,6 +2226,288 @@ window.limparResultados = () => {
     // Também limpar os campos de busca rápida
     document.getElementById('buscaRapidaAIH').value = '';
     document.getElementById('buscaRapidaAtendimento').value = '';
+};
+
+// Variáveis globais para controle de exclusão
+let dadosExclusao = {
+    tipo: null, // 'movimentacao' ou 'aih'
+    dados: null,
+    justificativa: null
+};
+
+// Configurar funcionalidades de alteração da BD
+const configurarAlteracaoBD = () => {
+    // Event listener para buscar movimentações
+    document.getElementById('aihMovimentacao').addEventListener('input', async (e) => {
+        const numeroAIH = e.target.value.trim();
+        if (numeroAIH.length >= 3) {
+            await carregarMovimentacoesAIH(numeroAIH);
+        } else {
+            document.getElementById('listaMovimentacoes').innerHTML = '<p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as movimentações</p>';
+        }
+    });
+
+    // Event listener para buscar informações da AIH
+    document.getElementById('aihCompleta').addEventListener('input', async (e) => {
+        const numeroAIH = e.target.value.trim();
+        if (numeroAIH.length >= 3) {
+            await carregarInformacoesAIH(numeroAIH);
+        } else {
+            document.getElementById('infoAIHDeletar').innerHTML = '<p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as informações</p>';
+        }
+    });
+
+    // Event listeners para os formulários
+    document.getElementById('formDeletarMovimentacao').addEventListener('submit', processarDeletarMovimentacao);
+    document.getElementById('formDeletarAIH').addEventListener('submit', processarDeletarAIH);
+};
+
+// Carregar movimentações de uma AIH
+const carregarMovimentacoesAIH = async (numeroAIH) => {
+    try {
+        const aih = await api(`/aih/${numeroAIH}`);
+        const container = document.getElementById('listaMovimentacoes');
+
+        if (aih.movimentacoes && aih.movimentacoes.length > 0) {
+            container.innerHTML = `
+                <div style="margin-bottom: 1rem;">
+                    <strong style="color: #059669;">AIH ${aih.numero_aih} encontrada - ${aih.movimentacoes.length} movimentação(ões)</strong>
+                </div>
+                ${aih.movimentacoes.map((mov, index) => `
+                    <div style="border: 1px solid #d1d5db; border-radius: 6px; padding: 1rem; margin-bottom: 0.5rem; background: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${mov.tipo === 'entrada_sus' ? '📥 Entrada SUS' : '📤 Saída Hospital'}</strong>
+                                <br>
+                                <span style="color: #64748b;">Data: ${new Date(mov.data_movimentacao).toLocaleString('pt-BR')}</span>
+                                <br>
+                                <span style="color: #64748b;">Valor: R$ ${(mov.valor_conta || 0).toFixed(2)}</span>
+                            </div>
+                            <button type="button" onclick="selecionarMovimentacao(${mov.id}, '${aih.numero_aih}', '${mov.tipo}', '${mov.data_movimentacao}')" 
+                                    style="background: #dc2626; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                                Selecionar
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        } else {
+            container.innerHTML = '<p style="color: #f59e0b; text-align: center; margin: 0;">AIH encontrada, mas sem movimentações registradas</p>';
+        }
+    } catch (err) {
+        const container = document.getElementById('listaMovimentacoes');
+        if (err.message.includes('não encontrada')) {
+            container.innerHTML = '<p style="color: #dc2626; text-align: center; margin: 0;">AIH não encontrada</p>';
+        } else {
+            container.innerHTML = '<p style="color: #dc2626; text-align: center; margin: 0;">Erro ao carregar movimentações</p>';
+        }
+    }
+};
+
+// Carregar informações de uma AIH
+const carregarInformacoesAIH = async (numeroAIH) => {
+    try {
+        const aih = await api(`/aih/${numeroAIH}`);
+        const container = document.getElementById('infoAIHDeletar');
+
+        container.innerHTML = `
+            <div style="color: #059669; margin-bottom: 1rem;">
+                <strong>✅ AIH ${aih.numero_aih} encontrada</strong>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.9rem;">
+                <div><strong>Status:</strong> ${getStatusDescricao(aih.status)}</div>
+                <div><strong>Competência:</strong> ${aih.competencia}</div>
+                <div><strong>Valor Inicial:</strong> R$ ${aih.valor_inicial.toFixed(2)}</div>
+                <div><strong>Valor Atual:</strong> R$ ${aih.valor_atual.toFixed(2)}</div>
+                <div><strong>Movimentações:</strong> ${aih.movimentacoes.length}</div>
+                <div><strong>Glosas Ativas:</strong> ${aih.glosas.length}</div>
+                <div><strong>Atendimentos:</strong> ${aih.atendimentos.length}</div>
+                <div><strong>Criada em:</strong> ${new Date(aih.criado_em).toLocaleDateString('pt-BR')}</div>
+            </div>
+            <div style="margin-top: 1rem; padding: 1rem; background: #fef2f2; border: 1px solid #dc2626; border-radius: 4px;">
+                <strong style="color: #dc2626;">⚠️ ATENÇÃO:</strong>
+                <span style="color: #dc2626;">Esta exclusão removerá PERMANENTEMENTE todos os dados relacionados: ${aih.movimentacoes.length} movimentação(ões), ${aih.glosas.length} glosa(s), ${aih.atendimentos.length} atendimento(s).</span>
+            </div>
+        `;
+    } catch (err) {
+        const container = document.getElementById('infoAIHDeletar');
+        if (err.message.includes('não encontrada')) {
+            container.innerHTML = '<p style="color: #dc2626; text-align: center; margin: 0;">AIH não encontrada</p>';
+        } else {
+            container.innerHTML = '<p style="color: #dc2626; text-align: center; margin: 0;">Erro ao carregar informações da AIH</p>';
+        }
+    }
+};
+
+// Selecionar movimentação para exclusão
+window.selecionarMovimentacao = (movId, numeroAIH, tipo, data) => {
+    dadosExclusao = {
+        tipo: 'movimentacao',
+        dados: { id: movId, numero_aih: numeroAIH, tipo, data },
+        justificativa: null
+    };
+
+    // Destacar movimentação selecionada
+    document.querySelectorAll('#listaMovimentacoes > div > div').forEach(div => {
+        div.style.border = '1px solid #d1d5db';
+        div.style.background = 'white';
+    });
+
+    event.target.closest('div').style.border = '2px solid #dc2626';
+    event.target.closest('div').style.background = '#fef2f2';
+    event.target.textContent = 'Selecionada ✓';
+    event.target.style.background = '#059669';
+};
+
+// Processar exclusão de movimentação
+const processarDeletarMovimentacao = async (e) => {
+    e.preventDefault();
+
+    if (!dadosExclusao.dados || dadosExclusao.tipo !== 'movimentacao') {
+        alert('Por favor, selecione uma movimentação para deletar');
+        return;
+    }
+
+    const justificativa = document.getElementById('justificativaMovimentacao').value.trim();
+    if (justificativa.length < 10) {
+        alert('A justificativa deve ter pelo menos 10 caracteres');
+        return;
+    }
+
+    dadosExclusao.justificativa = justificativa;
+
+    // Mostrar modal de confirmação
+    const modal = document.getElementById('modalConfirmacaoExclusao');
+    const detalhes = document.getElementById('detalhesExclusao');
+
+    detalhes.innerHTML = `
+        <h4 style="color: #dc2626; margin: 0 0 1rem 0;">Deletar Movimentação</h4>
+        <p><strong>AIH:</strong> ${dadosExclusao.dados.numero_aih}</p>
+        <p><strong>Tipo:</strong> ${dadosExclusao.dados.tipo === 'entrada_sus' ? 'Entrada SUS' : 'Saída Hospital'}</p>
+        <p><strong>Data:</strong> ${new Date(dadosExclusao.dados.data).toLocaleString('pt-BR')}</p>
+        <p><strong>Justificativa:</strong> ${justificativa}</p>
+    `;
+
+    document.getElementById('senhaConfirmacao').value = '';
+    modal.classList.add('ativo');
+};
+
+// Processar exclusão de AIH
+const processarDeletarAIH = async (e) => {
+    e.preventDefault();
+
+    const numeroAIH = document.getElementById('aihCompleta').value.trim();
+    const justificativa = document.getElementById('justificativaAIH').value.trim();
+
+    if (!numeroAIH) {
+        alert('Por favor, informe o número da AIH');
+        return;
+    }
+
+    if (justificativa.length < 10) {
+        alert('A justificativa deve ter pelo menos 10 caracteres');
+        return;
+    }
+
+    try {
+        const aih = await api(`/aih/${numeroAIH}`);
+        dadosExclusao = {
+            tipo: 'aih',
+            dados: { numero_aih: numeroAIH, ...aih },
+            justificativa: justificativa
+        };
+
+        // Mostrar modal de confirmação
+        const modal = document.getElementById('modalConfirmacaoExclusao');
+        const detalhes = document.getElementById('detalhesExclusao');
+
+        detalhes.innerHTML = `
+            <h4 style="color: #dc2626; margin: 0 0 1rem 0;">Deletar AIH Completa</h4>
+            <p><strong>AIH:</strong> ${aih.numero_aih}</p>
+            <p><strong>Competência:</strong> ${aih.competencia}</p>
+            <p><strong>Valor:</strong> R$ ${aih.valor_atual.toFixed(2)}</p>
+            <p><strong>Movimentações:</strong> ${aih.movimentacoes.length}</p>
+            <p><strong>Glosas:</strong> ${aih.glosas.length}</p>
+            <p><strong>Justificativa:</strong> ${justificativa}</p>
+            <div style="background: #7f1d1d; color: white; padding: 0.5rem; border-radius: 4px; margin-top: 1rem;">
+                <strong>⚠️ TODOS os dados relacionados serão PERMANENTEMENTE removidos!</strong>
+            </div>
+        `;
+
+        document.getElementById('senhaConfirmacao').value = '';
+        modal.classList.add('ativo');
+
+    } catch (err) {
+        alert('Erro ao buscar AIH: ' + err.message);
+    }
+};
+
+// Cancelar exclusão
+window.cancelarExclusao = () => {
+    document.getElementById('modalConfirmacaoExclusao').classList.remove('ativo');
+    dadosExclusao = { tipo: null, dados: null, justificativa: null };
+};
+
+// Confirmar exclusão
+window.confirmarExclusao = async () => {
+    const senha = document.getElementById('senhaConfirmacao').value;
+
+    if (!senha) {
+        alert('Por favor, digite sua senha para confirmar');
+        return;
+    }
+
+    if (!dadosExclusao.dados || !dadosExclusao.justificativa) {
+        alert('Dados de exclusão incompletos');
+        return;
+    }
+
+    try {
+        // Validar senha do usuário
+        await api('/validar-senha', {
+            method: 'POST',
+            body: JSON.stringify({ senha })
+        });
+
+        // Executar exclusão
+        if (dadosExclusao.tipo === 'movimentacao') {
+            await api(`/admin/deletar-movimentacao`, {
+                method: 'DELETE',
+                body: JSON.stringify({
+                    movimentacao_id: dadosExclusao.dados.id,
+                    justificativa: dadosExclusao.justificativa
+                })
+            });
+
+            alert('✅ Movimentação deletada com sucesso!');
+
+            // Limpar formulário
+            document.getElementById('formDeletarMovimentacao').reset();
+            document.getElementById('listaMovimentacoes').innerHTML = '<p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as movimentações</p>';
+
+        } else if (dadosExclusao.tipo === 'aih') {
+            await api(`/admin/deletar-aih`, {
+                method: 'DELETE',
+                body: JSON.stringify({
+                    numero_aih: dadosExclusao.dados.numero_aih,
+                    justificativa: dadosExclusao.justificativa
+                })
+            });
+
+            alert('✅ AIH deletada com sucesso!');
+
+            // Limpar formulário
+            document.getElementById('formDeletarAIH').reset();
+            document.getElementById('infoAIHDeletar').innerHTML = '<p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as informações</p>';
+        }
+
+        // Fechar modal e limpar dados
+        document.getElementById('modalConfirmacaoExclusao').classList.remove('ativo');
+        dadosExclusao = { tipo: null, dados: null, justificativa: null };
+
+    } catch (err) {
+        alert('❌ Erro na exclusão: ' + err.message);
+    }
 };
 
 // Função para exportar resultados da pesquisa

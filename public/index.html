@@ -121,6 +121,10 @@
             <span class="icon">📊</span>
             <span>Relatórios</span>
         </button>
+        <button class="menu-btn" id="btnAlterarBD">
+            <span class="icon">⚠️</span>
+            <span>Alterar BD</span>
+        </button>
     </div>
 
     <!-- O seletor de competência será inserido dinamicamente aqui pelo JavaScript -->
@@ -527,6 +531,111 @@
             </div>
         </div>
 
+        <!-- Tela Alterar Base de Dados -->
+        <div id="telaAlterarBD" class="tela">
+            <header>
+                <button class="btn-voltar" onclick="voltarTelaPrincipal()">← Voltar</button>
+                <h2>⚠️ Alteração da Base de Dados</h2>
+            </header>
+            <div class="container">
+                <div style="background: #fef2f2; border: 2px solid #dc2626; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; text-align: center;">
+                    <h3 style="color: #dc2626; margin-bottom: 1rem;">⚠️ ATENÇÃO - ÁREA RESTRITA</h3>
+                    <p style="color: #dc2626; font-weight: 600; margin: 0;">
+                        As operações desta seção são IRREVERSÍVEIS e afetam permanentemente a base de dados.<br>
+                        Use com extrema cautela e apenas quando absolutamente necessário.
+                    </p>
+                </div>
+
+                <!-- Deletar Movimentação -->
+                <div class="config-section" style="border: 2px solid #f59e0b; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; background: #fffbeb;">
+                    <h3 style="color: #92400e;">🗑️ Deletar Movimentação</h3>
+                    <p style="color: #92400e; margin-bottom: 1.5rem;">Remove completamente uma movimentação específica da base de dados.</p>
+                    
+                    <form id="formDeletarMovimentacao" style="display: grid; gap: 1rem;">
+                        <div>
+                            <label style="font-weight: 600; color: #92400e;">Número da AIH:</label>
+                            <input type="text" id="aihMovimentacao" placeholder="Digite o número da AIH" required style="width: 100%; padding: 0.75rem; border: 2px solid #f59e0b; border-radius: 6px;">
+                        </div>
+                        
+                        <div>
+                            <label style="font-weight: 600; color: #92400e;">Movimentações Disponíveis:</label>
+                            <div id="listaMovimentacoes" style="min-height: 100px; border: 2px solid #f59e0b; border-radius: 6px; padding: 1rem; background: white;">
+                                <p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as movimentações</p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label style="font-weight: 600; color: #92400e;">Justificativa (Obrigatória):</label>
+                            <textarea id="justificativaMovimentacao" rows="4" placeholder="Descreva detalhadamente o motivo desta exclusão..." required style="width: 100%; padding: 0.75rem; border: 2px solid #f59e0b; border-radius: 6px; resize: vertical;"></textarea>
+                        </div>
+                        
+                        <button type="submit" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem;">
+                            🗑️ Deletar Movimentação
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Deletar AIH -->
+                <div class="config-section" style="border: 2px solid #dc2626; border-radius: 12px; padding: 2rem; background: #fef2f2;">
+                    <h3 style="color: #dc2626;">💀 Deletar AIH Completa</h3>
+                    <p style="color: #dc2626; margin-bottom: 1.5rem;">Remove completamente uma AIH e TODOS os seus dados relacionados da base de dados.</p>
+                    
+                    <form id="formDeletarAIH" style="display: grid; gap: 1rem;">
+                        <div>
+                            <label style="font-weight: 600; color: #dc2626;">Número da AIH:</label>
+                            <input type="text" id="aihCompleta" placeholder="Digite o número da AIH" required style="width: 100%; padding: 0.75rem; border: 2px solid #dc2626; border-radius: 6px;">
+                        </div>
+                        
+                        <div>
+                            <label style="font-weight: 600; color: #dc2626;">Informações da AIH:</label>
+                            <div id="infoAIHDeletar" style="min-height: 100px; border: 2px solid #dc2626; border-radius: 6px; padding: 1rem; background: white;">
+                                <p style="color: #64748b; text-align: center; margin: 0;">Informe o número da AIH para carregar as informações</p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label style="font-weight: 600; color: #dc2626;">Justificativa (Obrigatória):</label>
+                            <textarea id="justificativaAIH" rows="4" placeholder="Descreva detalhadamente o motivo desta exclusão..." required style="width: 100%; padding: 0.75rem; border: 2px solid #dc2626; border-radius: 6px; resize: vertical;"></textarea>
+                        </div>
+                        
+                        <button type="submit" style="background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%); color: white; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem;">
+                            💀 Deletar AIH Completa
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Confirmação de Exclusão -->
+        <div id="modalConfirmacaoExclusao" class="modal">
+            <div class="modal-content" style="max-width: 500px;">
+                <h3 style="color: #dc2626; margin-bottom: 1rem;">⚠️ CONFIRMAÇÃO DE EXCLUSÃO</h3>
+                <div id="detalhesExclusao" style="background: #fef2f2; border: 1px solid #dc2626; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem;">
+                    <!-- Detalhes serão preenchidos dinamicamente -->
+                </div>
+                
+                <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem;">
+                    <p style="color: #92400e; font-weight: 600; margin: 0;">
+                        ⚠️ Esta ação é IRREVERSÍVEL. Digite sua senha para confirmar:
+                    </p>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="font-weight: 600; color: #374151;">Sua senha:</label>
+                    <input type="password" id="senhaConfirmacao" placeholder="Digite sua senha" required style="width: 100%; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 6px; margin-top: 0.5rem;">
+                </div>
+                
+                <div class="modal-buttons">
+                    <button onclick="cancelarExclusao()" style="background: #64748b; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
+                        Cancelar
+                    </button>
+                    <button onclick="confirmarExclusao()" style="background: #dc2626; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                        Confirmar Exclusão
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Tela Relatórios -->
         <div id="telaRelatorios" class="tela">
             <header>
@@ -680,6 +789,11 @@
                         <button onclick="gerarRelatorio('analise-preditiva')" class="card-relatorio">
                             <h4>Análise Preditiva</h4>
                             <p>Tendências e previsões</p>
+                        </button>
+
+                        <button onclick="gerarRelatorio('logs-exclusao')" class="card-relatorio" style="border: 2px solid #dc2626;">
+                            <h4 style="color: #dc2626;">🔒 Logs de Exclusão</h4>
+                            <p style="color: #dc2626;">Auditoria de alterações na BD (Admin)</p>
                         </button>
                     </div>
                 </div>

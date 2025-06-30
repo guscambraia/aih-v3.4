@@ -180,6 +180,206 @@ app.post('/api/admin/alterar-senha', verificarToken, async (req, res) => {
     }
 });
 
+// Validar senha do usuário logado
+app.post('/api/validar-senha', verificarToken, async (req, res) => {
+    try {
+        const { senha } = req.body;
+        
+        if (!senha) {
+            return res.status(400).json({ error: 'Senha é obrigatória' });
+        }
+
+        // Buscar usuário no banco
+        const usuario = await get('SELECT senha_hash FROM usuarios WHERE id = ?', [req.usuario.id]);
+        
+        if (!usuario) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+
+        // Verificar senha
+        const bcrypt = require('bcryptjs');
+        const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
+
+        if (!senhaValida) {
+            return res.status(401).json({ error: 'Senha incorreta' });
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Erro na validação de senha:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Deletar movimentação (apenas para usuários logados com senha confirmada)
+app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) => {
+    try {
+        console.log('Usuário tentando deletar movimentação:', req.usuario);
+        console.log('Tipo de usuário detectado:', req.usuario.tipo);
+        console.log('Verificação de admin:', req.usuario.tipo === 'admin');
+        
+        if (req.usuario.tipo !== 'admin') {
+            console.log('Acesso negado - tipo de usuário:', req.usuario.tipo);
+            console.log('Usuário completo:', JSON.stringify(req.usuario, null, 2));
+            return res.status(403).json({ error: 'Acesso negado - apenas administradores podem realizar esta operação' });
+        }
+
+        const { movimentacao_id, justificativa } = req.body;
+
+        if (!movimentacao_id || !justificativa) {
+            return res.status(400).json({ error: 'ID da movimentação e justificativa são obrigatórios' });
+        }
+
+        if (justificativa.length < 10) {
+            return res.status(400).json({ error: 'Justificativa deve ter pelo menos 10 caracteres' });
+        }
+
+        // Buscar detalhes da movimentação antes de deletar
+        const movimentacao = await get(`
+            SELECT m.*, a.numero_aih 
+            FROM movimentacoes m 
+            JOIN aihs a ON m.aih_id = a.id 
+            WHERE m.id = ?
+        `, [movimentacao_id]);
+
+        if (!movimentacao) {
+            return res.status(404).json({ error: 'Movimentação não encontrada' });
+        }
+
+        // Registrar log de exclusão
+        await run(`
+            INSERT INTO logs_exclusao (
+                tipo_exclusao, usuario_id, dados_excluidos, justificativa, 
+                ip_origem, user_agent, data_exclusao
+            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `, [
+            'movimentacao',
+            req.usuario.id,
+            JSON.stringify({
+                id: movimentacao.id,
+                numero_aih: movimentacao.numero_aih,
+                tipo: movimentacao.tipo,
+                data_movimentacao: movimentacao.data_movimentacao,
+                valor_conta: movimentacao.valor_conta,
+                prof_medicina: movimentacao.prof_medicina,
+                prof_enfermagem: movimentacao.prof_enfermagem,
+                prof_fisioterapia: movimentacao.prof_fisioterapia,
+                prof_bucomaxilo: movimentacao.prof_bucomaxilo
+            }),
+            justificativa,
+            req.ip || req.connection.remoteAddress,
+            req.get('User-Agent') || 'Unknown'
+        ]);
+
+        // Deletar movimentação
+        await run('DELETE FROM movimentacoes WHERE id = ?', [movimentacao_id]);
+
+        console.log(`✅ Movimentação ${movimentacao_id} da AIH ${movimentacao.numero_aih} deletada por ${req.usuario.nome}`);
+
+        res.json({ 
+            success: true, 
+            message: 'Movimentação deletada com sucesso',
+            movimentacao_deletada: {
+                id: movimentacao_id,
+                aih: movimentacao.numero_aih,
+                tipo: movimentacao.tipo
+            }
+        });
+
+    } catch (err) {
+        console.error('Erro ao deletar movimentação:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Deletar AIH completa (apenas para usuários logados com senha confirmada)
+app.delete('/api/admin/deletar-aih', verificarToken, async (req, res) => {
+    try {
+        console.log('Usuário tentando deletar AIH:', req.usuario);
+        console.log('Tipo de usuário detectado:', req.usuario.tipo);
+        console.log('Verificação de admin:', req.usuario.tipo === 'admin');
+        
+        if (req.usuario.tipo !== 'admin') {
+            console.log('Acesso negado - tipo de usuário:', req.usuario.tipo);
+            console.log('Usuário completo:', JSON.stringify(req.usuario, null, 2));
+            return res.status(403).json({ error: 'Acesso negado - apenas administradores podem realizar esta operação' });
+        }
+
+        const { numero_aih, justificativa } = req.body;
+
+        if (!numero_aih || !justificativa) {
+            return res.status(400).json({ error: 'Número da AIH e justificativa são obrigatórios' });
+        }
+
+        if (justificativa.length < 10) {
+            return res.status(400).json({ error: 'Justificativa deve ter pelo menos 10 caracteres' });
+        }
+
+        // Buscar AIH e todos os dados relacionados
+        const aih = await get('SELECT * FROM aihs WHERE numero_aih = ?', [numero_aih]);
+        
+        if (!aih) {
+            return res.status(404).json({ error: 'AIH não encontrada' });
+        }
+
+        const movimentacoes = await all('SELECT * FROM movimentacoes WHERE aih_id = ?', [aih.id]);
+        const glosas = await all('SELECT * FROM glosas WHERE aih_id = ?', [aih.id]);
+        const atendimentos = await all('SELECT * FROM atendimentos WHERE aih_id = ?', [aih.id]);
+
+        // Registrar log de exclusão com todos os dados
+        await run(`
+            INSERT INTO logs_exclusao (
+                tipo_exclusao, usuario_id, dados_excluidos, justificativa, 
+                ip_origem, user_agent, data_exclusao
+            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `, [
+            'aih_completa',
+            req.usuario.id,
+            JSON.stringify({
+                aih: aih,
+                movimentacoes: movimentacoes,
+                glosas: glosas,
+                atendimentos: atendimentos,
+                totais: {
+                    movimentacoes: movimentacoes.length,
+                    glosas: glosas.length,
+                    atendimentos: atendimentos.length
+                }
+            }),
+            justificativa,
+            req.ip || req.connection.remoteAddress,
+            req.get('User-Agent') || 'Unknown'
+        ]);
+
+        // Usar transação para deletar tudo
+        const operations = [
+            { sql: 'DELETE FROM glosas WHERE aih_id = ?', params: [aih.id] },
+            { sql: 'DELETE FROM movimentacoes WHERE aih_id = ?', params: [aih.id] },
+            { sql: 'DELETE FROM atendimentos WHERE aih_id = ?', params: [aih.id] },
+            { sql: 'DELETE FROM aihs WHERE id = ?', params: [aih.id] }
+        ];
+
+        await runTransaction(operations);
+
+        console.log(`✅ AIH ${numero_aih} completamente deletada por ${req.usuario.nome} - ${movimentacoes.length} movimentações, ${glosas.length} glosas, ${atendimentos.length} atendimentos`);
+
+        res.json({ 
+            success: true, 
+            message: 'AIH deletada completamente com sucesso',
+            aih_deletada: {
+                numero_aih: numero_aih,
+                movimentacoes_removidas: movimentacoes.length,
+                glosas_removidas: glosas.length,
+                atendimentos_removidos: atendimentos.length
+            }
+        });
+
+    } catch (err) {
+        console.error('Erro ao deletar AIH:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Dashboard aprimorado com filtro por competência
 app.get('/api/dashboard', verificarToken, async (req, res) => {
     try {
@@ -1861,6 +2061,33 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     valor_medio_glosa: valorMedioGlosa.valor_medio || 0,
                     previsao: "Com base nos dados, espera-se manter a média de processamento"
                 };
+                break;
+
+            case 'logs-exclusao':
+                // Relatório de logs de exclusão (apenas para admins)
+                if (req.usuario.tipo !== 'admin') {
+                    return res.status(403).json({ error: 'Acesso negado - apenas administradores' });
+                }
+
+                resultado = await all(`
+                    SELECT 
+                        le.id,
+                        le.tipo_exclusao,
+                        u.nome as usuario_nome,
+                        le.justificativa,
+                        le.ip_origem,
+                        le.data_exclusao,
+                        CASE 
+                            WHEN le.tipo_exclusao = 'movimentacao' THEN 
+                                json_extract(le.dados_excluidos, '$.numero_aih')
+                            WHEN le.tipo_exclusao = 'aih_completa' THEN 
+                                json_extract(le.dados_excluidos, '$.aih.numero_aih')
+                        END as numero_aih_afetado
+                    FROM logs_exclusao le
+                    LEFT JOIN usuarios u ON le.usuario_id = u.id
+                    WHERE 1=1 ${filtroWhere.replace('competencia', 'le.data_exclusao').replace('criado_em', 'le.data_exclusao')}
+                    ORDER BY le.data_exclusao DESC
+                `, params);
                 break;
         }
 
