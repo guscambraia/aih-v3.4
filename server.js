@@ -1770,8 +1770,10 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 const fluxoMensalMovimentacoes = await all(`
                     SELECT 
                         strftime('%Y-%m', m.data_movimentacao) as mes,
-                        SUM(CASE WHEN m.tipo = 'entrada_sus' THEN 1 ELSE 0 END) as entradas,
-                        SUM(CASE WHEN m.tipo = 'saida_hospital' THEN 1 ELSE 0 END) as saidas
+                        COUNT(DISTINCT CASE WHEN m.tipo = 'entrada_sus' THEN m.aih_id END) as entradas,
+                        COUNT(DISTINCT CASE WHEN m.tipo = 'saida_hospital' THEN m.aih_id END) as saidas,
+                        COUNT(DISTINCT CASE WHEN m.tipo = 'entrada_sus' THEN m.aih_id END) - 
+                        COUNT(DISTINCT CASE WHEN m.tipo = 'saida_hospital' THEN m.aih_id END) as saldo_mensal
                     FROM movimentacoes m
                     JOIN aihs a ON m.aih_id = a.id
                     WHERE 1=1 ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
@@ -1780,9 +1782,12 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 `, params);
 
                 resultado = {
-                    total_entradas_sus: fluxoEntradasSUS.total_entradas || 0,
-                    total_saidas_hospital: fluxoSaidasHospital.total_saidas || 0,
-                    diferenca_fluxo: (fluxoEntradasSUS.total_entradas || 0) - (fluxoSaidasHospital.total_saidas || 0),
+                    resumo: {
+                        total_entradas_sus: fluxoEntradasSUS.total_entradas || 0,
+                        total_saidas_hospital: fluxoSaidasHospital.total_saidas || 0,
+                        diferenca_fluxo: (fluxoEntradasSUS.total_entradas || 0) - (fluxoSaidasHospital.total_saidas || 0),
+                        aihs_em_processamento: (fluxoEntradasSUS.total_entradas || 0) - (fluxoSaidasHospital.total_saidas || 0)
+                    },
                     fluxo_mensal: fluxoMensalMovimentacoes
                 };
                 break;
@@ -2810,23 +2815,41 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     WHERE m.tipo = 'saida_hospital' ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
                 `, params);
 
-                dados = [
+                const fluxoMensal = await all(`
+                    SELECT 
+                        strftime('%Y-%m', m.data_movimentacao) as 'Mês/Ano',
+                        COUNT(DISTINCT CASE WHEN m.tipo = 'entrada_sus' THEN m.aih_id END) as 'Entradas SUS (Qtd AIHs)',
+                        COUNT(DISTINCT CASE WHEN m.tipo = 'saida_hospital' THEN m.aih_id END) as 'Saídas Hospital (Qtd AIHs)',
+                        COUNT(DISTINCT CASE WHEN m.tipo = 'entrada_sus' THEN m.aih_id END) - 
+                        COUNT(DISTINCT CASE WHEN m.tipo = 'saida_hospital' THEN m.aih_id END) as 'Saldo Mensal (Qtd AIHs)'
+                    FROM movimentacoes m
+                    JOIN aihs a ON m.aih_id = a.id
+                    WHERE 1=1 ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
+                    GROUP BY strftime('%Y-%m', m.data_movimentacao)
+                    ORDER BY strftime('%Y-%m', m.data_movimentacao) DESC
+                `, params);
+
+                // Dados do resumo geral
+                const resumoGeral = [
                     {
-                        'Tipo': 'Entradas na Auditoria SUS',
-                        'Quantidade': fluxoEntradas.total_entradas || 0,
-                        'Observação': 'AIHs que entraram na auditoria SUS'
+                        'Tipo de Movimentação': 'Entradas na Auditoria SUS',
+                        'Quantidade de AIHs': fluxoEntradas.total_entradas || 0,
+                        'Descrição': 'AIHs que entraram na auditoria SUS no período'
                     },
                     {
-                        'Tipo': 'Saídas para Auditoria Hospital',
-                        'Quantidade': fluxoSaidas.total_saidas || 0,
-                        'Observação': 'AIHs enviadas para auditoria do hospital'
+                        'Tipo de Movimentação': 'Saídas para Auditoria Hospital',
+                        'Quantidade de AIHs': fluxoSaidas.total_saidas || 0,
+                        'Descrição': 'AIHs enviadas para auditoria do hospital no período'
                     },
                     {
-                        'Tipo': 'Diferença (Em Processamento)',
-                        'Quantidade': (fluxoEntradas.total_entradas || 0) - (fluxoSaidas.total_saidas || 0),
-                        'Observação': 'AIHs atualmente em processamento na auditoria SUS'
+                        'Tipo de Movimentação': 'Saldo (Em Processamento)',
+                        'Quantidade de AIHs': (fluxoEntradas.total_entradas || 0) - (fluxoSaidas.total_saidas || 0),
+                        'Descrição': 'AIHs atualmente em processamento na auditoria SUS'
                     }
                 ];
+
+                // Combinar resumo e fluxo mensal
+                dados = [...resumoGeral, ...fluxoMensal];
                 break;
 
             // Relatórios originais (sem filtros)
