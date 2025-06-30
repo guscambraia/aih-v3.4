@@ -902,6 +902,7 @@ app.get('/api/health', async (req, res) => {
 // Backup do banco de dados SQLite
 app.get('/api/backup', verificarToken, async (req, res) => {
     try {
+        const fs = require('fs');
         const dbPath = path.join(__dirname, 'db', 'aih.db');
         
         // Verificar se o arquivo existe
@@ -933,7 +934,9 @@ app.get('/api/backup', verificarToken, async (req, res) => {
         
     } catch (err) {
         console.error('Erro no backup:', err);
-        res.status(500).json({ error: 'Erro interno ao fazer backup' });
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Erro interno ao fazer backup' });
+        }
     }
 });
 
@@ -1003,7 +1006,7 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
             res.setHeader('Content-Type', 'application/json; charset=utf-8');
             res.setHeader('Content-Disposition', `attachment; filename="${nomeBase}.json"`);
             res.setHeader('Cache-Control', 'no-cache');
-            res.json(dadosCompletos);
+            return res.json(dadosCompletos);
 
         } else if (req.params.formato === 'csv') {
             // CSV com codificação UTF-8 e BOM
@@ -1045,7 +1048,7 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');
             res.setHeader('Content-Disposition', `attachment; filename="${nomeBase}.csv"`);
             res.setHeader('Cache-Control', 'no-cache');
-            res.send('\ufeff' + csv); // BOM para UTF-8
+            return res.send('\ufeff' + csv); // BOM para UTF-8
 
         } else if (req.params.formato === 'excel') {
             // Excel com formatação e múltiplas abas
@@ -1116,17 +1119,15 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
             res.setHeader('Content-Type', 'application/vnd.ms-excel');
             res.setHeader('Content-Disposition', `attachment; filename="${nomeBase}.xls"`);
             res.setHeader('Cache-Control', 'no-cache');
-            res.send(buffer);
+            return res.send(buffer);
 
         } else {
             return res.status(400).json({ error: 'Formato não suportado. Use: json, csv ou excel' });
         }
 
-        console.log(`Exportação ${req.params.formato} concluída com sucesso - ${aihs.length} registros`);
-
     } catch (err) {
         console.error('Erro na exportação:', err);
-        res.status(500).json({ error: 'Erro interno ao exportar dados: ' + err.message });
+        return res.status(500).json({ error: 'Erro interno ao exportar dados: ' + err.message });
     }
 });
 
@@ -1151,26 +1152,26 @@ app.post('/api/export/:formato', verificarToken, async (req, res) => {
 
             res.setHeader('Content-Type', 'application/vnd.ms-excel');
             res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
-            res.send(buffer);
+            return res.send(buffer);
         } else if (req.params.formato === 'csv') {
             // Criar CSV
             const cabecalhos = Object.keys(dados[0]);
             const csv = [
                 cabecalhos.join(','),
                 ...dados.map(item => 
-                    cabecalhos.map(header => `"${item[header] || ''}"`).join(',')
+                    cabecalhos.map(header => `"${(item[header] || '').toString().replace(/"/g, '""')}"`).join(',')
                 )
             ].join('\n');
 
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');
             res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.csv`);
-            res.send('\ufeff' + csv); // BOM para UTF-8
+            return res.send('\ufeff' + csv); // BOM para UTF-8
         } else {
-            res.status(400).json({ error: 'Formato não suportado' });
+            return res.status(400).json({ error: 'Formato não suportado' });
         }
     } catch (err) {
         console.error('Erro na exportação personalizada:', err);
-        res.status(500).json({ error: err.message });
+        return res.status(500).json({ error: err.message });
     }
 });
 
