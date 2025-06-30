@@ -967,7 +967,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
 
             case 'valores-glosas-periodo':
                 // Análise financeira das glosas no período
-                const valoresGlosas = await get(`
+                const valoresGlosasPeriodo = await get(`
                     SELECT 
                         COUNT(DISTINCT a.id) as aihs_com_glosas,
                         SUM(a.valor_inicial) as valor_inicial_total,
@@ -981,7 +981,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ${filtroWhere}
                 `, params);
 
-                const totalAihs = await get(`
+                const totalAihsPeriodo = await get(`
                     SELECT COUNT(*) as total,
                            SUM(valor_inicial) as valor_inicial_periodo,
                            SUM(valor_atual) as valor_atual_periodo
@@ -990,12 +990,12 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 `, params);
 
                 resultado = {
-                    ...valoresGlosas,
-                    total_aihs_periodo: totalAihs.total,
-                    valor_inicial_periodo: totalAihs.valor_inicial_periodo,
-                    valor_atual_periodo: totalAihs.valor_atual_periodo,
-                    percentual_aihs_com_glosas: totalAihs.total > 0 ? 
-                        ((valoresGlosas.aihs_com_glosas / totalAihs.total) * 100).toFixed(2) : 0
+                    ...valoresGlosasPeriodo,
+                    total_aihs_periodo: totalAihsPeriodo.total,
+                    valor_inicial_periodo: totalAihsPeriodo.valor_inicial_periodo,
+                    valor_atual_periodo: totalAihsPeriodo.valor_atual_periodo,
+                    percentual_aihs_com_glosas: totalAihsPeriodo.total > 0 ? 
+                        ((valoresGlosasPeriodo.aihs_com_glosas / totalAihsPeriodo.total) * 100).toFixed(2) : 0
                 };
                 break;
 
@@ -1175,7 +1175,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
 
             case 'analise-valores-glosas':
                 // Análise financeira detalhada das glosas
-                const valoresGlosas = await get(`
+                const analiseValoresGlosas = await get(`
                     SELECT 
                         COUNT(DISTINCT a.id) as aihs_com_glosas,
                         COUNT(g.id) as total_glosas,
@@ -1205,7 +1205,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 `, params);
 
                 resultado = {
-                    resumo_financeiro: valoresGlosas,
+                    resumo_financeiro: analiseValoresGlosas,
                     glosas_por_impacto: glosasFrequentes
                 };
                 break;
@@ -1634,7 +1634,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 break;
 
             case 'valores-glosas-periodo':
-                const valoresGlosas = await get(`
+                const dadosValoresGlosas = await get(`
                     SELECT 
                         COUNT(DISTINCT a.id) as aihs_com_glosas,
                         SUM(a.valor_inicial) as valor_inicial_total,
@@ -1649,13 +1649,13 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 `, params);
 
                 dados = [{
-                    'AIHs com Glosas': valoresGlosas.aihs_com_glosas || 0,
-                    'Valor Inicial Total': `R$ ${(valoresGlosas.valor_inicial_total || 0).toFixed(2)}`,
-                    'Valor Atual Total': `R$ ${(valoresGlosas.valor_atual_total || 0).toFixed(2)}`,
-                    'Total de Glosas': `R$ ${(valoresGlosas.total_glosas || 0).toFixed(2)}`,
-                    'Média por AIH': `R$ ${(valoresGlosas.media_glosa_por_aih || 0).toFixed(2)}`,
-                    'Menor Glosa': `R$ ${(valoresGlosas.menor_glosa || 0).toFixed(2)}`,
-                    'Maior Glosa': `R$ ${(valoresGlosas.maior_glosa || 0).toFixed(2)}`
+                    'AIHs com Glosas': dadosValoresGlosas.aihs_com_glosas || 0,
+                    'Valor Inicial Total': `R$ ${(dadosValoresGlosas.valor_inicial_total || 0).toFixed(2)}`,
+                    'Valor Atual Total': `R$ ${(dadosValoresGlosas.valor_atual_total || 0).toFixed(2)}`,
+                    'Total de Glosas': `R$ ${(dadosValoresGlosas.total_glosas || 0).toFixed(2)}`,
+                    'Média por AIH': `R$ ${(dadosValoresGlosas.media_glosa_por_aih || 0).toFixed(2)}`,
+                    'Menor Glosa': `R$ ${(dadosValoresGlosas.menor_glosa || 0).toFixed(2)}`,
+                    'Maior Glosa': `R$ ${(dadosValoresGlosas.maior_glosa || 0).toFixed(2)}`
                 }];
                 break;
 
