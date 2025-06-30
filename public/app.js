@@ -932,6 +932,31 @@ const mostrarInfoAIH = (aih) => {
     mostrarTela('telaInfoAIH');
 };
 
+// Carregar profissionais para o campo de pesquisa
+const carregarProfissionaisPesquisa = async () => {
+    try {
+        const response = await api('/profissionais');
+        const selectProfissional = document.getElementById('pesquisaProfissional');
+        
+        if (response && response.profissionais && selectProfissional) {
+            // Limpar opções existentes exceto a primeira
+            selectProfissional.innerHTML = '<option value="">Todos os profissionais</option>';
+            
+            // Adicionar profissionais
+            response.profissionais.forEach(prof => {
+                const option = document.createElement('option');
+                option.value = prof.nome;
+                option.textContent = `${prof.nome} (${prof.especialidade})`;
+                selectProfissional.appendChild(option);
+            });
+            
+            console.log('Profissionais carregados na pesquisa:', response.profissionais.length);
+        }
+    } catch (err) {
+        console.error('Erro ao carregar profissionais para pesquisa:', err);
+    }
+};
+
 // Menu Principal
 document.getElementById('btnInformarAIH').addEventListener('click', () => {
     mostrarTela('telaInformarAIH');
@@ -939,6 +964,10 @@ document.getElementById('btnInformarAIH').addEventListener('click', () => {
 
 document.getElementById('btnBuscarAIH').addEventListener('click', () => {
     mostrarTela('telaPesquisa');
+    // Carregar profissionais quando abrir a tela de pesquisa
+    setTimeout(() => {
+        carregarProfissionaisPesquisa();
+    }, 100);
 });
 
 document.getElementById('btnBackup').addEventListener('click', async () => {
