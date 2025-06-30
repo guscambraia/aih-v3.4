@@ -1614,6 +1614,46 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 `, params);
                 break;
 
+            case 'valores-por-periodo':
+                // Análise financeira detalhada por período
+                const dadosGeraisPeriodo = await get(`
+                    SELECT 
+                        COUNT(*) as total_aihs_periodo,
+                        SUM(valor_inicial) as valor_inicial_periodo,
+                        SUM(valor_atual) as valor_atual_periodo
+                    FROM aihs a
+                    WHERE 1=1 ${filtroWhere}
+                `, params);
+
+                const dadosGlosasPeriodo = await get(`
+                    SELECT 
+                        COUNT(DISTINCT a.id) as aihs_com_glosas,
+                        COUNT(g.id) as total_glosas
+                    FROM aihs a
+                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
+                    WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
+                    ${filtroWhere}
+                `, params);
+
+                const totalAihsPeriodo = dadosGeraisPeriodo.total_aihs_periodo || 0;
+                const aihsComGlosas = dadosGlosasPeriodo.aihs_com_glosas || 0;
+                const valorInicialPeriodo = dadosGeraisPeriodo.valor_inicial_periodo || 0;
+                const valorAtualPeriodo = dadosGeraisPeriodo.valor_atual_periodo || 0;
+                const valorTotalGlosas = valorInicialPeriodo - valorAtualPeriodo;
+                const percentualAihsComGlosas = totalAihsPeriodo > 0 ? 
+                    ((aihsComGlosas / totalAihsPeriodo) * 100).toFixed(2) : 0;
+
+                resultado = {
+                    total_aihs_periodo: totalAihsPeriodo,
+                    aihs_com_glosas: aihsComGlosas,
+                    total_glosas: dadosGlosasPeriodo.total_glosas || 0,
+                    valor_inicial_periodo: valorInicialPeriodo,
+                    valor_atual_periodo: valorAtualPeriodo,
+                    valor_total_glosas: valorTotalGlosas,
+                    percentual_aihs_com_glosas: parseFloat(percentualAihsComGlosas)
+                };
+                break;
+
             case 'valores-glosas-periodo':
                 // Análise financeira das glosas no período
                 const valoresGlosasPeriodo = await get(`
@@ -1630,7 +1670,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ${filtroWhere}
                 `, params);
 
-                const totalAihsPeriodo = await get(`
+                const totalAihsPeriodoValores = await get(`
                     SELECT COUNT(*) as total,
                            SUM(valor_inicial) as valor_inicial_periodo,
                            SUM(valor_atual) as valor_atual_periodo
@@ -1640,11 +1680,11 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
 
                 resultado = {
                     ...valoresGlosasPeriodo,
-                    total_aihs_periodo: totalAihsPeriodo.total,
-                    valor_inicial_periodo: totalAihsPeriodo.valor_inicial_periodo,
-                    valor_atual_periodo: totalAihsPeriodo.valor_atual_periodo,
-                    percentual_aihs_com_glosas: totalAihsPeriodo.total > 0 ? 
-                        ((valoresGlosasPeriodo.aihs_com_glosas / totalAihsPeriodo.total) * 100).toFixed(2) : 0
+                    total_aihs_periodo: totalAihsPeriodoValores.total,
+                    valor_inicial_periodo: totalAihsPeriodoValores.valor_inicial_periodo,
+                    valor_atual_periodo: totalAihsPeriodoValores.valor_atual_periodo,
+                    percentual_aihs_com_glosas: totalAihsPeriodoValores.total > 0 ? 
+                        ((valoresGlosasPeriodo.aihs_com_glosas / totalAihsPeriodoValores.total) * 100).toFixed(2) : 0
                 };
                 break;
 
@@ -2142,7 +2182,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
             return res.status(400).json({ 
                 error: `Tipo de relatório não suportado: ${tipo}`,
                 tipos_disponiveis: [
-                    'tipos-glosa-periodo', 'aihs-profissional-periodo', 'glosas-profissional-periodo',
+                    'valores-por-periodo', 'tipos-glosa-periodo', 'aihs-profissional-periodo', 'glosas-profissional-periodo',
                     'valores-glosas-periodo', 'estatisticas-periodo', 'acessos', 'aprovacoes',
                     'tipos-glosa', 'fluxo-movimentacoes', 'produtividade-auditores', 
                     'analise-valores-glosas', 'performance-competencias', 'ranking-glosas-frequentes',
@@ -2420,6 +2460,46 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     GROUP BY g.profissional
                     ORDER BY COUNT(*) DESC
                 `, params);
+                break;
+
+            case 'valores-por-periodo':
+                // Análise financeira detalhada por período - para exportação
+                const dadosGeraisExport = await get(`
+                    SELECT 
+                        COUNT(*) as total_aihs_periodo,
+                        SUM(valor_inicial) as valor_inicial_periodo,
+                        SUM(valor_atual) as valor_atual_periodo
+                    FROM aihs a
+                    WHERE 1=1 ${filtroWhere}
+                `, params);
+
+                const dadosGlosasExport = await get(`
+                    SELECT 
+                        COUNT(DISTINCT a.id) as aihs_com_glosas,
+                        COUNT(g.id) as total_glosas
+                    FROM aihs a
+                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
+                    WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
+                    ${filtroWhere}
+                `, params);
+
+                const totalAihsExport = dadosGeraisExport.total_aihs_periodo || 0;
+                const aihsComGlosasExport = dadosGlosasExport.aihs_com_glosas || 0;
+                const valorInicialExport = dadosGeraisExport.valor_inicial_periodo || 0;
+                const valorAtualExport = dadosGeraisExport.valor_atual_periodo || 0;
+                const valorTotalGlosasExport = valorInicialExport - valorAtualExport;
+                const percentualExport = totalAihsExport > 0 ? 
+                    ((aihsComGlosasExport / totalAihsExport) * 100).toFixed(2) : 0;
+
+                dados = [{
+                    'Total AIHs Período': totalAihsExport,
+                    'AIHs Com Glosas': aihsComGlosasExport,
+                    'Total Glosas': dadosGlosasExport.total_glosas || 0,
+                    'Valor Inicial Período': `R$ ${valorInicialExport.toFixed(2)}`,
+                    'Valor Atual Período': `R$ ${valorAtualExport.toFixed(2)}`,
+                    'Valor Total das Glosas': `R$ ${valorTotalGlosasExport.toFixed(2)}`,
+                    'Percentual AIHs Com Glosas': `${percentualExport}%`
+                }];
                 break;
 
             case 'valores-glosas-periodo':
@@ -2956,7 +3036,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 return res.status(400).json({ 
                     error: `Tipo de relatório não suportado para exportação: ${tipo}`,
                     tipos_suportados: [
-                        'tipos-glosa-periodo', 'aihs-profissional-periodo', 'glosas-profissional-periodo',
+                        'valores-por-periodo', 'tipos-glosa-periodo', 'aihs-profissional-periodo', 'glosas-profissional-periodo',
                         'valores-glosas-periodo', 'estatisticas-periodo', 'performance-competencias',
                         'logs-exclusao', 'analise-preditiva', 'detalhamento-status', 'ranking-glosas-frequentes',
                         'distribuicao-valores', 'analise-financeira', 'analise-valores-glosas',
