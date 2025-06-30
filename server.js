@@ -709,7 +709,7 @@ app.post('/api/pesquisar', verificarToken, async (req, res) => {
         // Filtro especial para AIHs em processamento por competência
         if (filtros.em_processamento_competencia) {
             const competencia = filtros.em_processamento_competencia;
-            
+
             // Buscar AIHs que tiveram entrada SUS mas não saída hospital na competência específica
             sql = `
                 SELECT a.*, COUNT(g.id) as total_glosas 
@@ -949,7 +949,7 @@ app.get('/api/backup', verificarToken, async (req, res) => {
     try {
         const fs = require('fs');
         const dbPath = path.join(__dirname, 'db', 'aih.db');
-        
+
         // Verificar se o arquivo existe
         if (!fs.existsSync(dbPath)) {
             return res.status(404).json({ error: 'Arquivo de banco de dados não encontrado' });
@@ -957,26 +957,26 @@ app.get('/api/backup', verificarToken, async (req, res) => {
 
         // Fazer checkpoint do WAL antes do backup para garantir consistência
         await run("PRAGMA wal_checkpoint(FULL)");
-        
+
         const nomeArquivo = `backup-aih-${new Date().toISOString().split('T')[0]}.db`;
-        
+
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
         res.setHeader('Cache-Control', 'no-cache');
-        
+
         // Usar createReadStream para arquivos grandes
         const fileStream = fs.createReadStream(dbPath);
         fileStream.pipe(res);
-        
+
         fileStream.on('error', (err) => {
             console.error('Erro ao fazer backup:', err);
             if (!res.headersSent) {
                 res.status(500).json({ error: 'Erro ao fazer backup do banco de dados' });
             }
         });
-        
+
         console.log(`Backup do banco iniciado: ${nomeArquivo}`);
-        
+
     } catch (err) {
         console.error('Erro no backup:', err);
         if (!res.headersSent) {
@@ -1009,7 +1009,7 @@ app.post('/api/admin/backup-completo', verificarToken, async (req, res) => {
 app.get('/api/export/:formato', verificarToken, async (req, res) => {
     try {
         console.log(`Iniciando exportação completa em formato: ${req.params.formato}`);
-        
+
         // Buscar TODOS os dados da base de dados
         const aihs = await all(`
             SELECT a.*, 
