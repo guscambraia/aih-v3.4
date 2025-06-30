@@ -1136,13 +1136,49 @@ tr:last-child {
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
     z-index: 1000;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal.ativo {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.2s ease;
+}
+
+/* Modal de confirmação de exclusão */
+#modalConfirmacaoExclusao .modal-content {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+#modalConfirmacaoExclusao .form-group {
+    margin-bottom: 1rem;
+}
+
+#modalConfirmacaoExclusao label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+#modalConfirmacaoExclusao input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+#modalConfirmacaoExclusao input:focus {
+    outline: none;
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
 
 .modal-content {
@@ -1990,7 +2026,7 @@ tr:last-child {
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     color: white;
     border: none;
-    padding: 0.875rem 2rem;
+    padding: 0.875rem 2rem,
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;

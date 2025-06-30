@@ -1501,7 +1501,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as aprovacao_direta,
                         SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as aprovacao_indireta,
                         SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as em_discussao,
-                        SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as finalizada_pos_discussao,
+                        SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as finalizada_pos_discussão,
                         COUNT(*) as total
                     FROM aihs
                 `);
@@ -2201,7 +2201,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                         SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as aprovacao_direta,
                         SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as aprovacao_indireta,
                         SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as em_discussao,
-                        SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as finalizada_pos_discussao,
+                        SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as finalizada_pos_discussão,
                         COUNT(*) as total
                     FROM aihs
                 `);
