@@ -2102,8 +2102,8 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 break;
 
             case 'resumo-financeiro-periodo':
-                // Resumo financeiro do período
-                const resumoFinanceiro = await get(`
+                // Resumo financeiro do período - 6 métricas essenciais
+                const resumoFinanceiroPeriodo = await get(`
                     SELECT 
                         COUNT(*) as total_aihs_periodo,
                         SUM(a.valor_inicial) as soma_valor_inicial,
@@ -2113,7 +2113,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     WHERE 1=1 ${filtroWhere}
                 `, params);
 
-                const aihsComGlosas = await get(`
+                const aihsComGlosasPeriodo = await get(`
                     SELECT COUNT(DISTINCT a.id) as total_aihs_com_glosas
                     FROM aihs a
                     WHERE EXISTS (
@@ -2122,7 +2122,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ) ${filtroWhere}
                 `, params);
 
-                const totalGlosasRegistradas = await get(`
+                const totalGlosasRegistradasPeriodo = await get(`
                     SELECT COUNT(*) as total_glosas_registradas
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
@@ -2130,12 +2130,12 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 `, params);
 
                 resultado = {
-                    total_aihs_periodo: resumoFinanceiro.total_aihs_periodo || 0,
-                    total_aihs_com_glosas: aihsComGlosas.total_aihs_com_glosas || 0,
-                    total_glosas_registradas: totalGlosasRegistradas.total_glosas_registradas || 0,
-                    soma_valor_inicial: resumoFinanceiro.soma_valor_inicial || 0,
-                    soma_valor_atual: resumoFinanceiro.soma_valor_atual || 0,
-                    valor_total_glosas: resumoFinanceiro.valor_total_glosas || 0
+                    total_aihs_periodo: resumoFinanceiroPeriodo.total_aihs_periodo || 0,
+                    total_aihs_com_glosas: aihsComGlosasPeriodo.total_aihs_com_glosas || 0,
+                    total_glosas_registradas: totalGlosasRegistradasPeriodo.total_glosas_registradas || 0,
+                    soma_valor_inicial: resumoFinanceiroPeriodo.soma_valor_inicial || 0,
+                    soma_valor_atual: resumoFinanceiroPeriodo.soma_valor_atual || 0,
+                    valor_total_glosas: resumoFinanceiroPeriodo.valor_total_glosas || 0
                 };
                 break;
 
@@ -2469,199 +2469,11 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(*) DESC
                 `, params);
                 break;
-            case 'analise-valores-glosas':
-                // Análise financeira detalhada das glosas para exportação
-                const analiseValoresGlosasExport = await get(`
-                    SELECT 
-                        COUNT(DISTINCT a.id) as aihs_com_glosas,
-                        COUNT(g.id) as total_glosas,
-                        SUM(a.valor_inicial) as valor_inicial_total,
-                        SUM(a.valor_atual) as valor_atual_total,
-                        SUM(a.valor_inicial - a.valor_atual) as valor_total_glosas,
-                        AVG(a.valor_inicial - a.valor_atual) as media_glosa_por_aih,
-                        MIN(a.valor_inicial - a.valor_atual) as menor_impacto,
-                        MAX(a.valor_inicial - a.valor_atual) as maior_impacto
-                    FROM aihs a
-                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
-                    WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
-                    ${filtroWhere.replace('criado_em', 'a.criado_em')}
-                `, params);
-
-                const glosasFrequentesExport = await all(`
-                    SELECT 
-                        g.tipo as 'Tipo de Glosa',
-                        COUNT(*) as 'Ocorrências',
-                        ROUND(SUM(a.valor_inicial - a.valor_atual), 2) as 'Impacto Financeiro (R$)',
-                        ROUND(AVG(a.valor_inicial - a.valor_atual), 2) as 'Impacto Médio (R$)',
-                        COUNT(DISTINCT g.aih_id) as 'AIHs Afetadas',
-                        GROUP_CONCAT(DISTINCT g.profissional) as 'Profissionais Envolvidos'
-                    FROM glosas g
-                    JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
-                    GROUP BY g.tipo
-                    ORDER BY SUM(a.valor_inicial - a.valor_atual) DESC
-                `, params);
-
-                // Criar workbook com múltiplas abas
-                const workbookGlosas = XLSX.utils.book_new();
-
-                // Aba 1: Resumo Financeiro
-                const resumoFinanceiroGlosas = [{
-                    'Métrica': 'AIHs com Glosas',
-                    'Valor': analiseValoresGlosasExport.aihs_com_glosas || 0,
-                    'Observação': 'Quantidade de AIHs que possuem glosas ativas'
-                }, {
-                    'Métrica': 'Total de Glosas',
-                    'Valor': analiseValoresGlosasExport.total_glosas || 0,
-                    'Observação': 'Quantidade total de glosas identificadas'
-                }, {
-                    'Métrica': 'Valor Inicial Total',
-                    'Valor': `R$ ${(analiseValoresGlosasExport.valor_inicial_total || 0).toFixed(2)}`,
-                    'Observação': 'Soma dos valores iniciais das AIHs com glosas'
-                }, {
-                    'Métrica': 'Valor Atual Total',
-                    'Valor': `R$ ${(analiseValoresGlosasExport.valor_atual_total || 0).toFixed(2)}`,
-                    'Observação': 'Soma dos valores atuais após aplicação das glosas'
-                }, {
-                    'Métrica': 'Total de Perdas por Glosas',
-                    'Valor': `R$ ${(analiseValoresGlosasExport.valor_total_glosas || 0).toFixed(2)}`,
-                    'Observação': 'Diferença entre valor inicial e atual'
-                }, {
-                    'Métrica': 'Perda Média por AIH',
-                    'Valor': `R$ ${(analiseValoresGlosasExport.media_glosa_por_aih || 0).toFixed(2)}`,
-                    'Observação': 'Impacto médio por AIH com glosas'
-                }, {
-                    'Métrica': 'Menor Impacto Individual',
-                    'Valor': `R$ ${(analiseValoresGlosasExport.menor_impacto || 0).toFixed(2)}`,
-                    'Observação': 'Menor perda registrada em uma AIH'
-                }, {
-                    'Métrica': 'Maior Impacto Individual',
-                    'Valor': `R$ ${(analiseValoresGlosasExport.maior_impacto || 0).toFixed(2)}`,
-                    'Observação': 'Maior perda registrada em uma AIH'
-                }];
-
-                const wsResumoGlosas = XLSX.utils.json_to_sheet(resumoFinanceiroGlosas);
-                XLSX.utils.book_append_sheet(workbookGlosas, wsResumoGlosas, 'Resumo Financeiro');
-
-                // Aba 2: Glosas por Impacto
-                if (glosasFrequentesExport.length > 0) {
-                    const wsGlosasImpacto = XLSX.utils.json_to_sheet(glosasFrequentesExport);
-                    XLSX.utils.book_append_sheet(workbookGlosas, wsGlosasImpacto, 'Glosas por Impacto');
-                }
-
-                const bufferGlosas = XLSX.write(workbookGlosas, { type: 'buffer', bookType: 'xls' });
-
-                res.setHeader('Content-Type', 'application/vnd.ms-excel');
-                res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
-                res.setHeader('Cache-Control', 'no-cache');
-                return res.send(bufferGlosas);
-
-            case 'analise-financeira':
-                // Análise financeira completa para exportação
-                const analiseFinanceiraExport = await get(`
-                    SELECT 
-                        COUNT(*) as total_aihs,
-                        SUM(a.valor_inicial) as valor_inicial_geral,
-                        SUM(a.valor_atual) as valor_atual_geral,
-                        SUM(a.valor_inicial - a.valor_atual) as perdas_glosas,
-                        AVG(a.valor_inicial) as valor_inicial_medio,
-                        AVG(a.valor_atual) as valor_atual_medio,
-                        AVG(a.valor_inicial - a.valor_atual) as perda_media_por_aih,
-                        MIN(a.valor_inicial) as menor_valor_inicial,
-                        MAX(a.valor_inicial) as maior_valor_inicial,
-                        MIN(a.valor_atual) as menor_valor_atual,
-                        MAX(a.valor_atual) as maior_valor_atual
-                    FROM aihs a
-                    WHERE 1=1 ${filtroWhere}
-                `, params);
-
-                const faixasValorExport = await all(`
-                    SELECT 
-                        CASE 
-                            WHEN a.valor_inicial <= 1000 THEN 'Até R$ 1.000'
-                            WHEN a.valor_inicial <= 5000 THEN 'R$ 1.001 - R$ 5.000'
-                            WHEN a.valor_inicial <= 10000 THEN 'R$ 5.001 - R$ 10.000'
-                            WHEN a.valor_inicial <= 50000 THEN 'R$ 10.001 - R$ 50.000'
-                            ELSE 'Acima de R$ 50.000'
-                        END as 'Faixa de Valor',
-                        COUNT(*) as 'Quantidade',
-                        ROUND(SUM(a.valor_inicial), 2) as 'Valor Total da Faixa (R$)',
-                        ROUND(SUM(a.valor_inicial - a.valor_atual), 2) as 'Glosas da Faixa (R$)',
-                        ROUND(AVG(a.valor_inicial), 2) as 'Valor Inicial Médio (R$)',
-                        ROUND(AVG(a.valor_atual), 2) as 'Valor Atual Médio (R$)'
-                    FROM aihs a
-                    WHERE 1=1 ${filtroWhere}
-                    GROUP BY CASE 
-                        WHEN a.valor_inicial <= 1000 THEN 'Até R$ 1.000'
-                        WHEN a.valor_inicial <= 5000 THEN 'R$ 1.001 - R$ 5.000'
-                        WHEN a.valor_inicial <= 10000 THEN 'R$ 5.001 - R$ 10.000'
-                        WHEN a.valor_inicial <= 50000 THEN 'R$ 10.001 - R$ 50.000'
-                        ELSE 'Acima de R$ 50.000'
-                    END
-                    ORDER BY MIN(a.valor_inicial)
-                `, params);
-
-                // Criar workbook com múltiplas abas
-                const workbookFinanceira = XLSX.utils.book_new();
-
-                // Aba 1: Resumo Geral
-                const resumoGeralFinanceira = [{
-                    'Métrica': 'Total de AIHs',
-                    'Valor': analiseFinanceiraExport.total_aihs || 0,
-                    'Observação': 'Quantidade total de AIHs no período'
-                }, {
-                    'Métrica': 'Valor Inicial Total',
-                    'Valor': `R$ ${(analiseFinanceiraExport.valor_inicial_geral || 0).toFixed(2)}`,
-                    'Observação': 'Soma de todos os valores iniciais'
-                }, {
-                    'Métrica': 'Valor Atual Total',
-                    'Valor': `R$ ${(analiseFinanceiraExport.valor_atual_geral || 0).toFixed(2)}`,
-                    'Observação': 'Soma de todos os valores atuais'
-                }, {
-                    'Métrica': 'Total de Perdas',
-                    'Valor': `R$ ${(analiseFinanceiraExport.perdas_glosas || 0).toFixed(2)}`,
-                    'Observação': 'Diferença entre valores iniciais e atuais'
-                }, {
-                    'Métrica': 'Valor Inicial Médio',
-                    'Valor': `R$ ${(analiseFinanceiraExport.valor_inicial_medio || 0).toFixed(2)}`,
-                    'Observação': 'Média dos valores iniciais'
-                }, {
-                    'Métrica': 'Valor Atual Médio',
-                    'Valor': `R$ ${(analiseFinanceiraExport.valor_atual_medio || 0).toFixed(2)}`,
-                    'Observação': 'Média dos valores atuais'
-                }, {
-                    'Métrica': 'Perda Média por AIH',
-                    'Valor': `R$ ${(analiseFinanceiraExport.perda_media_por_aih || 0).toFixed(2)}`,
-                    'Observação': 'Impacto médio por AIH'
-                }, {
-                    'Métrica': 'Menor Valor Inicial',
-                    'Valor': `R$ ${(analiseFinanceiraExport.menor_valor_inicial || 0).toFixed(2)}`,
-                    'Observação': 'Menor valor inicial registrado'
-                }, {
-                    'Métrica': 'Maior Valor Inicial',
-                    'Valor': `R$ ${(analiseFinanceiraExport.maior_valor_inicial || 0).toFixed(2)}`,
-                    'Observação': 'Maior valor inicial registrado'
-                }];
-
-                const wsResumoFinanceira = XLSX.utils.json_to_sheet(resumoGeralFinanceira);
-                XLSX.utils.book_append_sheet(workbookFinanceira, wsResumoFinanceira, 'Resumo Geral');
-
-                // Aba 2: Distribuição por Faixas
-                if (faixasValorExport.length > 0) {
-                    const wsFaixasValor = XLSX.utils.json_to_sheet(faixasValorExport);
-                    XLSX.utils.book_append_sheet(workbookFinanceira, wsFaixasValor, 'Distribuição por Faixas');
-                }
-
-                const bufferFinanceira = XLSX.write(workbookFinanceira, { type: 'buffer', bookType: 'xls' });
-
-                res.setHeader('Content-Type', 'application/vnd.ms-excel');
-                res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
-                res.setHeader('Cache-Control', 'no-cache');
-                return res.send(bufferFinanceira);
+            
 
             case 'resumo-financeiro-periodo':
-                // Exportação do resumo financeiro do período
-                const resumoFinanceiroExport = await get(`
+                // Exportação do resumo financeiro do período - 6 métricas essenciais
+                const resumoFinanceiroExportacao = await get(`
                     SELECT 
                         COUNT(*) as total_aihs_periodo,
                         SUM(a.valor_inicial) as soma_valor_inicial,
@@ -2671,7 +2483,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     WHERE 1=1 ${filtroWhere}
                 `, params);
 
-                const aihsComGlosasExport = await get(`
+                const aihsComGlosasExportacao = await get(`
                     SELECT COUNT(DISTINCT a.id) as total_aihs_com_glosas
                     FROM aihs a
                     WHERE EXISTS (
@@ -2680,50 +2492,50 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ) ${filtroWhere}
                 `, params);
 
-                const totalGlosasRegistradasExport = await get(`
+                const totalGlosasRegistradasExportacao = await get(`
                     SELECT COUNT(*) as total_glosas_registradas
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
                     WHERE g.ativa = 1 ${filtroWhere}
                 `, params);
 
-                // Criar dados formatados para exportação
-                const dadosExportacao = [{
-                    'Métrica': 'Total de AIHs no Período',
-                    'Valor': resumoFinanceiroExport.total_aihs_periodo || 0,
+                // Criar dados formatados para exportação das 6 métricas
+                const dadosExportacaoResumo = [{
+                    'Métrica': 'Total de AIHs do Período',
+                    'Valor': resumoFinanceiroExportacao.total_aihs_periodo || 0,
                     'Observação': 'Quantidade total de AIHs cadastradas no período'
                 }, {
                     'Métrica': 'Total de AIHs com Glosas',
-                    'Valor': aihsComGlosasExport.total_aihs_com_glosas || 0,
+                    'Valor': aihsComGlosasExportacao.total_aihs_com_glosas || 0,
                     'Observação': 'Quantidade de AIHs que possuem pelo menos uma glosa ativa'
                 }, {
                     'Métrica': 'Total de Glosas Registradas',
-                    'Valor': totalGlosasRegistradasExport.total_glosas_registradas || 0,
+                    'Valor': totalGlosasRegistradasExportacao.total_glosas_registradas || 0,
                     'Observação': 'Quantidade total de glosas ativas registradas em todas as AIHs'
                 }, {
                     'Métrica': 'Soma do Valor Inicial',
-                    'Valor': `R$ ${(resumoFinanceiroExport.soma_valor_inicial || 0).toFixed(2)}`,
+                    'Valor': `R$ ${(resumoFinanceiroExportacao.soma_valor_inicial || 0).toFixed(2)}`,
                     'Observação': 'Soma dos valores iniciais de todas as AIHs do período'
                 }, {
                     'Métrica': 'Soma do Valor Atual',
-                    'Valor': `R$ ${(resumoFinanceiroExport.soma_valor_atual || 0).toFixed(2)}`,
-                    'Observação': 'Soma dos valores atuais de todas as AIHs do período'
+                    'Valor': `R$ ${(resumoFinanceiroExportacao.soma_valor_atual || 0).toFixed(2)}`,
+                    'Observação': 'Soma dos valores atuais (último valor registrado) de todas as AIHs'
                 }, {
                     'Métrica': 'Valor Total das Glosas',
-                    'Valor': `R$ ${(resumoFinanceiroExport.valor_total_glosas || 0).toFixed(2)}`,
+                    'Valor': `R$ ${(resumoFinanceiroExportacao.valor_total_glosas || 0).toFixed(2)}`,
                     'Observação': 'Diferença entre a soma dos valores iniciais e a soma dos valores atuais'
                 }];
 
-                const worksheetResumo = XLSX.utils.json_to_sheet(dadosExportacao);
-                const workbookResumo = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbookResumo, worksheetResumo, 'Resumo Financeiro');
+                const worksheetResumoFin = XLSX.utils.json_to_sheet(dadosExportacaoResumo);
+                const workbookResumoFin = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbookResumoFin, worksheetResumoFin, 'Resumo Financeiro do Período');
 
-                const bufferResumo = XLSX.write(workbookResumo, { type: 'buffer', bookType: 'xls' });
+                const bufferResumoFin = XLSX.write(workbookResumoFin, { type: 'buffer', bookType: 'xls' });
 
                 res.setHeader('Content-Type', 'application/vnd.ms-excel');
                 res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
                 res.setHeader('Cache-Control', 'no-cache');
-                return res.send(bufferResumo);
+                return res.send(bufferResumoFin);
 
             case 'analise-financeira-completa':
                 // Análise financeira completa unificada - para exportação
