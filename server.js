@@ -1893,7 +1893,6 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
                     ${filtroWhere}
                 `, params);
-
                 const totalAihsPeriodo = dadosGeraisPeriodo.total_aihs_periodo || 0;
                 const aihsComGlosas = dadosGlosasPeriodo.aihs_com_glosas || 0;
                 const valorInicialPeriodo = dadosGeraisPeriodo.valor_inicial_periodo || 0;
