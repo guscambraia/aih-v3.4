@@ -278,7 +278,7 @@ const initDB = () => {
             data_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
         )`);
-        
+
         // Criar tabela de tipos de glosa se não existir
         db.run(`
             CREATE TABLE IF NOT EXISTS tipos_glosa (
@@ -322,7 +322,6 @@ const initDB = () => {
             ('Divergência de valores')`);
 
         // Criar administrador padrão (senha: admin)
-        const bcrypt = require('bcryptjs');
         bcrypt.hash('admin', 10, (err, hash) => {
             if (!err) {
                 db.run(`INSERT OR IGNORE INTO administradores (usuario, senha_hash) VALUES (?, ?)`, 
