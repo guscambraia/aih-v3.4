@@ -578,6 +578,110 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
     }
 };
 
+// Carregar dados para movimentação
+const carregarDadosMovimentacao = async () => {
+    try {
+        // Carregar profissionais para os selects
+        const profissionais = await api('/profissionais');
+        
+        if (profissionais && profissionais.profissionais) {
+            const especialidades = {
+                'Medicina': 'movProfMedicina',
+                'Enfermagem': 'movProfEnfermagem', 
+                'Fisioterapia': 'movProfFisioterapia',
+                'Bucomaxilo': 'movProfBucomaxilo'
+            };
+            
+            // Limpar e preencher selects de profissionais
+            Object.entries(especialidades).forEach(([especialidade, selectId]) => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    // Manter primeira opção
+                    const primeiraOpcao = select.querySelector('option').outerHTML;
+                    select.innerHTML = primeiraOpcao;
+                    
+                    // Adicionar profissionais da especialidade
+                    profissionais.profissionais
+                        .filter(p => p.especialidade === especialidade)
+                        .forEach(prof => {
+                            const option = document.createElement('option');
+                            option.value = prof.nome;
+                            option.textContent = prof.nome;
+                            select.appendChild(option);
+                        });
+                }
+            });
+        }
+        
+        // Carregar glosas atuais se existirem
+        if (state.aihAtual && state.aihAtual.id) {
+            const glosas = await api(`/aih/${state.aihAtual.id}/glosas`);
+            
+            const listaGlosas = document.getElementById('listaGlosas');
+            if (listaGlosas && glosas && glosas.glosas) {
+                if (glosas.glosas.length > 0) {
+                    listaGlosas.innerHTML = `
+                        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 1rem;">
+                            <h5 style="color: #92400e; margin-bottom: 0.5rem;">
+                                ⚠️ Glosas Ativas (${glosas.glosas.length})
+                            </h5>
+                            ${glosas.glosas.map(g => `
+                                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px;">
+                                    <strong>${g.linha}</strong> - ${g.tipo}
+                                    <span style="color: #64748b; font-size: 0.875rem; margin-left: 1rem;">
+                                        Por: ${g.profissional}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    listaGlosas.innerHTML = `
+                        <p style="color: #64748b; font-style: italic;">
+                            Nenhuma glosa ativa para esta AIH
+                        </p>
+                    `;
+                }
+            }
+        }
+        
+        // Mostrar status atual da AIH
+        const statusAtualDiv = document.getElementById('statusAtualAIH');
+        if (statusAtualDiv && state.aihAtual) {
+            statusAtualDiv.innerHTML = `
+                <div style="background: #f0f9ff; border: 1px solid #0284c7; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <h4 style="color: #0284c7; margin-bottom: 0.5rem;">📋 Status Atual da AIH</h4>
+                    <p style="margin: 0;">
+                        <strong>AIH:</strong> ${state.aihAtual.numero_aih} | 
+                        <strong>Status:</strong> <span class="status-badge status-${state.aihAtual.status}">${getStatusDescricao(state.aihAtual.status)}</span> | 
+                        <strong>Valor Atual:</strong> R$ ${state.aihAtual.valor_atual.toFixed(2)}
+                    </p>
+                </div>
+            `;
+        }
+        
+        // Mostrar lembrete sobre status
+        const lembreteDiv = document.getElementById('lembreteStatus');
+        if (lembreteDiv) {
+            lembreteDiv.innerHTML = `
+                <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <h5 style="color: #92400e; margin-bottom: 0.5rem;">💡 Lembrete sobre Status</h5>
+                    <ul style="margin: 0; padding-left: 1.5rem; color: #92400e;">
+                        <li><strong>Status 1:</strong> Finalizada com aprovação direta</li>
+                        <li><strong>Status 2:</strong> Ativa com aprovação indireta</li>
+                        <li><strong>Status 3:</strong> Ativa em discussão</li>
+                        <li><strong>Status 4:</strong> Finalizada após discussão</li>
+                    </ul>
+                </div>
+            `;
+        }
+        
+    } catch (err) {
+        console.error('Erro ao carregar dados da movimentação:', err);
+        alert('Erro ao carregar dados: ' + err.message);
+    }
+};
+
 // Função auxiliar para animar os números
 const animarNumeros = () => {
     const numeros = document.querySelectorAll('.stat-number');
@@ -1414,6 +1518,64 @@ window.exportarRelatorioPeriodo = (tipo, filtros) => {
     document.body.removeChild(form);
 };
 
+// Função para carregar glosas
+const carregarGlosas = async () => {
+    if (!state.aihAtual) return;
+    
+    try {
+        const [glosas, tipos, profissionais] = await Promise.all([
+            api(`/aih/${state.aihAtual.id}/glosas`),
+            api('/tipos-glosa'),
+            api('/profissionais')
+        ]);
+        
+        // Atualizar glosas atuais
+        const container = document.getElementById('glosasAtuais');
+        if (container && glosas.glosas) {
+            container.innerHTML = `
+                <h4>📋 Glosas Atuais</h4>
+                ${glosas.glosas.length > 0 ? glosas.glosas.map(g => `
+                    <div class="glosa-item">
+                        <div>
+                            <strong>${g.linha}</strong> - ${g.tipo}
+                            <br>
+                            <span style="color: #64748b;">Por: ${g.profissional}</span>
+                        </div>
+                        <button onclick="removerGlosa(${g.id})" class="btn-danger">Remover</button>
+                    </div>
+                `).join('') : '<p>Nenhuma glosa ativa</p>'}
+            `;
+        }
+        
+        // Preencher select de tipos de glosa
+        const tipoSelect = document.getElementById('glosaTipo');
+        if (tipoSelect && tipos.tipos) {
+            tipoSelect.innerHTML = '<option value="">Selecione o tipo de pendência/glosa</option>';
+            tipos.tipos.forEach(tipo => {
+                const option = document.createElement('option');
+                option.value = tipo.descricao;
+                option.textContent = tipo.descricao;
+                tipoSelect.appendChild(option);
+            });
+        }
+        
+        // Preencher select de profissionais
+        const profSelect = document.getElementById('glosaProfissional');
+        if (profSelect && profissionais.profissionais) {
+            profSelect.innerHTML = '<option value="">Selecione o profissional</option>';
+            profissionais.profissionais.forEach(prof => {
+                const option = document.createElement('option');
+                option.value = prof.nome;
+                option.textContent = `${prof.nome} (${prof.especialidade})`;
+                profSelect.appendChild(option);
+            });
+        }
+        
+    } catch (err) {
+        console.error('Erro ao carregar glosas:', err);
+    }
+};
+
 // Função para limpar filtros (corrigindo erro do console)
 window.limparFiltros = () => {
     // Limpar campos da pesquisa avançada
@@ -1680,6 +1842,68 @@ const carregarTiposGlosaConfig = async () => {
     }
 };
 
+// Event listener para Nova Movimentação
+document.getElementById('btnNovaMovimentacao').addEventListener('click', async () => {
+    if (!state.aihAtual) {
+        alert('Nenhuma AIH selecionada');
+        return;
+    }
+
+    try {
+        // Buscar próxima movimentação possível
+        const proximaMovimentacao = await api(`/aih/${state.aihAtual.id}/proxima-movimentacao`);
+        
+        // Definir tela anterior
+        state.telaAnterior = 'telaInfoAIH';
+        
+        // Ir para tela de movimentação
+        mostrarTela('telaMovimentacao');
+        
+        // Carregar dados da movimentação
+        await carregarDadosMovimentacao();
+        
+        // Configurar campos com base na próxima movimentação
+        if (proximaMovimentacao) {
+            const tipoSelect = document.getElementById('movTipo');
+            const explicacaoDiv = document.getElementById('explicacaoMovimentacao');
+            
+            if (tipoSelect) {
+                tipoSelect.value = proximaMovimentacao.proximo_tipo;
+                tipoSelect.disabled = true; // Bloquear alteração
+            }
+            
+            if (explicacaoDiv) {
+                explicacaoDiv.innerHTML = `
+                    <div style="background: #e0f2fe; border: 1px solid #0284c7; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                        <h4 style="color: #0284c7; margin-bottom: 0.5rem;">
+                            ℹ️ ${proximaMovimentacao.descricao}
+                        </h4>
+                        <p style="color: #0369a1; margin: 0;">
+                            ${proximaMovimentacao.explicacao}
+                        </p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Preencher competência padrão
+        const competenciaField = document.getElementById('movCompetencia');
+        if (competenciaField && !competenciaField.value) {
+            competenciaField.value = getCompetenciaAtual();
+        }
+        
+        // Preencher valor atual da AIH
+        const valorField = document.getElementById('movValor');
+        if (valorField && state.aihAtual.valor_atual) {
+            valorField.value = state.aihAtual.valor_atual;
+        }
+        
+    } catch (err) {
+        console.error('Erro ao iniciar nova movimentação:', err);
+        alert('Erro ao iniciar nova movimentação: ' + err.message);
+    }
+});
+
 // Event listeners para configurações
 document.getElementById('formNovoProfissional').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1749,3 +1973,56 @@ window.excluirTipoGlosa = async (id) => {
         alert('Erro ao excluir tipo de glosa: ' + err.message);
     }
 };
+
+// Event listeners para movimentação
+document.getElementById('btnCancelarMovimentacao')?.addEventListener('click', () => {
+    voltarTelaAnterior();
+});
+
+document.getElementById('btnGerenciarGlosas')?.addEventListener('click', () => {
+    state.telaAnterior = 'telaMovimentacao';
+    mostrarTela('telaPendencias');
+    carregarGlosas();
+});
+
+// Formulário de movimentação
+document.getElementById('formMovimentacao')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    if (!state.aihAtual) {
+        alert('Nenhuma AIH selecionada');
+        return;
+    }
+    
+    try {
+        const dados = {
+            tipo: document.getElementById('movTipo').value,
+            status_aih: parseInt(document.getElementById('movStatus').value),
+            valor_conta: parseFloat(document.getElementById('movValor').value),
+            competencia: document.getElementById('movCompetencia').value,
+            prof_medicina: document.getElementById('movProfMedicina').value || null,
+            prof_enfermagem: document.getElementById('movProfEnfermagem').value || null,
+            prof_fisioterapia: document.getElementById('movProfFisioterapia').value || null,
+            prof_bucomaxilo: document.getElementById('movProfBucomaxilo').value || null,
+            observacoes: document.getElementById('movObservacoes').value || null
+        };
+        
+        await api(`/aih/${state.aihAtual.id}/movimentacao`, {
+            method: 'POST',
+            body: JSON.stringify(dados)
+        });
+        
+        alert('Movimentação salva com sucesso!');
+        
+        // Recarregar AIH atualizada
+        const aihAtualizada = await api(`/aih/${state.aihAtual.numero_aih}`);
+        state.aihAtual = aihAtualizada;
+        
+        // Voltar para informações da AIH
+        mostrarInfoAIH(aihAtualizada);
+        
+    } catch (err) {
+        console.error('Erro ao salvar movimentação:', err);
+        alert('Erro ao salvar movimentação: ' + err.message);
+    }
+});
