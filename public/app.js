@@ -792,8 +792,7 @@ const mostrarInfoAIH = (aih) => {
                                     </span>
                                 </td>
                                 <td><span class="status-badge status-${mov.status_aih}">${getStatusDescricao(mov.status_aih)}</span></td>
-                                <td>```text
-R$ ${(mov.valor_conta || 0).toFixed(2)}</td>
+                                <td>R$ ${(mov.valor_conta || 0).toFixed(2)}</td>
                                 <td style="font-size: 0.875rem;">${profissionais.join(' | ') || '-'}</td>
                             </tr>
                         `;
