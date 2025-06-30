@@ -671,25 +671,72 @@ const carregarDadosMovimentacao = async () => {
             if (listaGlosas && glosas && glosas.glosas) {
                 if (glosas.glosas.length > 0) {
                     listaGlosas.innerHTML = `
-                        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 1rem;">
-                            <h5 style="color: #92400e; margin-bottom: 0.5rem;">
-                                ⚠️ Glosas Ativas (${glosas.glosas.length})
-                            </h5>
-                            ${glosas.glosas.map(g => `
-                                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: white; border-radius: 4px;">
-                                    <strong>${g.linha}</strong> - ${g.tipo}
-                                    <span style="color: #64748b; font-size: 0.875rem; margin-left: 1rem;">
-                                        Por: ${g.profissional}
-                                    </span>
+                        <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 1.5rem; margin-top: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                                <h5 style="color: #92400e; margin: 0; font-size: 1.125rem; font-weight: 600;">
+                                    ⚠️ Glosas Ativas (${glosas.glosas.length})
+                                </h5>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button onclick="exportarGlosasAIH('csv')" 
+                                            style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
+                                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
+                                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
+                                                   transition: all 0.2s ease; font-weight: 500;"
+                                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                                        📄 CSV
+                                    </button>
+                                    <button onclick="exportarGlosasAIH('excel')" 
+                                            style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); 
+                                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
+                                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
+                                                   transition: all 0.2s ease; font-weight: 500;"
+                                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                                        📊 Excel
+                                    </button>
                                 </div>
-                            `).join('')}
+                            </div>
+                            <div style="background: white; border-radius: 8px; padding: 1rem; border: 1px solid #fbbf24;">
+                                ${glosas.glosas.map((g, index) => `
+                                    <div style="margin-bottom: ${index === glosas.glosas.length - 1 ? '0' : '0.75rem'}; 
+                                                padding: 0.75rem; 
+                                                background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); 
+                                                border-radius: 6px; 
+                                                border-left: 4px solid #f59e0b;
+                                                box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
+                                            <div style="flex: 1; min-width: 200px;">
+                                                <div style="font-weight: 600; color: #92400e; margin-bottom: 0.25rem; font-size: 1rem;">
+                                                    📍 ${g.linha}
+                                                </div>
+                                                <div style="color: #7c2d12; font-weight: 500; margin-bottom: 0.5rem;">
+                                                    🏷️ ${g.tipo}
+                                                </div>
+                                                <div style="color: #64748b; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;">
+                                                    👨‍⚕️ <span style="font-weight: 500;">${g.profissional}</span>
+                                                </div>
+                                            </div>
+                                            <div style="text-align: right; font-size: 0.75rem; color: #92400e; opacity: 0.8;">
+                                                📅 ${new Date(g.criado_em).toLocaleDateString('pt-BR')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     `;
                 } else {
                     listaGlosas.innerHTML = `
-                        <p style="color: #64748b; font-style: italic;">
-                            Nenhuma glosa ativa para esta AIH
-                        </p>
+                        <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 12px; padding: 1.5rem; margin-top: 1rem; text-align: center;">
+                            <div style="font-size: 3rem; margin-bottom: 0.5rem;">✅</div>
+                            <p style="color: #166534; font-weight: 600; margin: 0; font-size: 1.125rem;">
+                                Nenhuma glosa ativa para esta AIH
+                            </p>
+                            <p style="color: #22c55e; font-size: 0.875rem; margin: 0.5rem 0 0 0; font-style: italic;">
+                                Esta AIH está livre de pendências
+                            </p>
+                        </div>
                     `;
                 }
             }
@@ -1751,6 +1798,93 @@ window.exportarResultadosPesquisa = async (formato) => {
     } catch (err) {
         console.error('Erro na exportação:', err);
         alert('Erro ao exportar resultados: ' + err.message);
+    }
+};
+
+// Função para exportar glosas da AIH atual
+window.exportarGlosasAIH = async (formato) => {
+    if (!state.aihAtual) {
+        alert('Nenhuma AIH selecionada');
+        return;
+    }
+
+    try {
+        // Buscar glosas atuais
+        const response = await api(`/aih/${state.aihAtual.id}/glosas`);
+        const glosas = response.glosas || [];
+
+        if (glosas.length === 0) {
+            alert('Esta AIH não possui glosas ativas para exportar');
+            return;
+        }
+
+        // Preparar dados para exportação
+        const dadosExportacao = glosas.map((glosa, index) => ({
+            'Sequência': index + 1,
+            'AIH': state.aihAtual.numero_aih,
+            'Linha da Glosa': glosa.linha,
+            'Tipo de Glosa': glosa.tipo,
+            'Profissional Responsável': glosa.profissional,
+            'Quantidade': glosa.quantidade || 1,
+            'Data de Criação': new Date(glosa.criado_em).toLocaleString('pt-BR'),
+            'Status': glosa.ativa ? 'Ativa' : 'Inativa'
+        }));
+
+        const dataAtual = new Date().toISOString().split('T')[0];
+        const nomeArquivo = `glosas-AIH-${state.aihAtual.numero_aih}-${dataAtual}`;
+
+        if (formato === 'csv') {
+            // Gerar CSV
+            const cabecalhos = Object.keys(dadosExportacao[0]);
+            const linhasCsv = [
+                cabecalhos.join(','),
+                ...dadosExportacao.map(linha => 
+                    cabecalhos.map(cabecalho => `"${linha[cabecalho]}"`).join(',')
+                )
+            ];
+
+            const csvContent = '\ufeff' + linhasCsv.join('\n'); // BOM para UTF-8
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${nomeArquivo}.csv`;
+            link.click();
+
+            URL.revokeObjectURL(link.href);
+
+        } else if (formato === 'excel') {
+            // Para Excel, usar a API do servidor
+            const responseExcel = await fetch('/api/export/excel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.token}`
+                },
+                body: JSON.stringify({
+                    dados: dadosExportacao,
+                    titulo: `Glosas da AIH ${state.aihAtual.numero_aih}`,
+                    tipo: 'glosas-aih'
+                })
+            });
+
+            if (responseExcel.ok) {
+                const blob = await responseExcel.blob();
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${nomeArquivo}.xls`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+            } else {
+                throw new Error('Erro ao gerar arquivo Excel');
+            }
+        }
+
+        alert(`Glosas da AIH ${state.aihAtual.numero_aih} exportadas com sucesso em formato ${formato.toUpperCase()}!`);
+
+    } catch (err) {
+        console.error('Erro ao exportar glosas:', err);
+        alert('Erro ao exportar glosas: ' + err.message);
     }
 };
 
