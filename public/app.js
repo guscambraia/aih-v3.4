@@ -1980,49 +1980,302 @@ const carregarRelatorios = () => {
 // Gerar relatório
 window.gerarRelatorio = async (tipo) => {
     try {
+        // Mostrar indicador de carregamento
+        const loadingModal = document.createElement('div');
+        loadingModal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+            background: rgba(0,0,0,0.7); display: flex; align-items: center; 
+            justify-content: center; z-index: 9999;
+        `;
+        loadingModal.innerHTML = `
+            <div style="background: white; padding: 2rem; border-radius: 8px; text-align: center;">
+                <div style="border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+                <p>Gerando relatório...</p>
+            </div>
+        `;
+        document.body.appendChild(loadingModal);
+
+        // Coletar filtros se existirem
+        const filtros = coletarFiltrosRelatorio();
+
         const response = await api(`/relatorios/${tipo}`, {
             method: 'POST',
-            body: JSON.stringify({})
+            body: JSON.stringify(filtros)
         });
 
-        exibirRelatorio(tipo, response.resultado);
+        // Remover loading
+        document.body.removeChild(loadingModal);
+
+        // Exibir relatório em interface dedicada
+        exibirRelatorioMelhorado(tipo, response.resultado, filtros);
     } catch (err) {
+        // Remover loading se existir
+        const loadingModal = document.querySelector('[style*="position: fixed"]');
+        if (loadingModal) {
+            document.body.removeChild(loadingModal);
+        }
         alert('Erro ao gerar relatório: ' + err.message);
     }
 };
 
-// Exibir relatório
-const exibirRelatorio = (tipo, dados) => {
+// Exibir relatório melhorado
+const exibirRelatorioMelhorado = (tipo, dados, filtros = {}) => {
     const container = document.getElementById('resultadoRelatorio');
-    let html = `<h3>📊 ${getTituloRelatorio(tipo)}</h3>`;
-
-    if (Array.isArray(dados)) {
-        html += `
-            <div style="margin-bottom: 1rem;">
-                <button onclick="exportarRelatorio('${tipo}')" class="btn-success">
-                    📊 Exportar Excel
-                </button>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        ${Object.keys(dados[0] || {}).map(key => `<th>${key}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-                    ${dados.map(item => `
-                        <tr>
-                            ${Object.values(item).map(value => `<td>${value}</td>`).join('')}
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
+    const titulo = getTituloRelatorio(tipo);
+    
+    // Formatar período dos filtros
+    let periodoInfo = '';
+    if (filtros.competencia) {
+        periodoInfo = `Competência: ${filtros.competencia}`;
+    } else if (filtros.data_inicio && filtros.data_fim) {
+        periodoInfo = `Período: ${filtros.data_inicio} até ${filtros.data_fim}`;
+    } else if (filtros.data_inicio) {
+        periodoInfo = `A partir de: ${filtros.data_inicio}`;
+    } else if (filtros.data_fim) {
+        periodoInfo = `Até: ${filtros.data_fim}`;
     } else {
-        html += `<pre>${JSON.stringify(dados, null, 2)}</pre>`;
+        periodoInfo = 'Todos os dados disponíveis';
     }
 
+    let html = `
+        <div class="relatorio-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 2rem;">
+            <!-- Cabeçalho do Relatório -->
+            <div class="relatorio-header" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 2rem; border-radius: 12px 12px 0 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">📊 ${titulo}</h2>
+                        <p style="margin: 0; opacity: 0.9; font-size: 0.9rem;">${periodoInfo}</p>
+                        <p style="margin: 0.5rem 0 0 0; opacity: 0.8; font-size: 0.8rem;">Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+                    </div>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button onclick="exportarRelatorio('${tipo}', ${JSON.stringify(filtros).replace(/"/g, '&quot;')})" 
+                                class="btn-export-relatorio"
+                                style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); color: white; border: 2px solid rgba(255,255,255,0.3); padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;"
+                                onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                                onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                            📊 Exportar Excel
+                        </button>
+                        <button onclick="voltarListaRelatorios()" 
+                                style="background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); color: white; border: 2px solid rgba(255,255,255,0.3); padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;"
+                                onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                                onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                            ← Voltar aos Relatórios
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conteúdo do Relatório -->
+            <div class="relatorio-content" style="padding: 2rem;">
+    `;
+
+    // Processar diferentes tipos de dados
+    if (Array.isArray(dados) && dados.length > 0) {
+        // Relatório tabular
+        html += gerarTabelaRelatorio(dados, tipo);
+    } else if (dados && typeof dados === 'object' && !Array.isArray(dados)) {
+        // Relatório com estrutura complexa
+        html += gerarRelatorioComplexo(dados, tipo);
+    } else if (Array.isArray(dados) && dados.length === 0) {
+        html += `
+            <div style="text-align: center; padding: 3rem; color: #64748b;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                <h3>Nenhum dado encontrado</h3>
+                <p>Não há dados disponíveis para os filtros selecionados.</p>
+            </div>
+        `;
+    } else {
+        // Dados simples
+        html += `
+            <div style="background: #f8fafc; border-radius: 8px; padding: 2rem;">
+                <pre style="margin: 0; white-space: pre-wrap; font-family: 'Courier New', monospace;">${JSON.stringify(dados, null, 2)}</pre>
+            </div>
+        `;
+    }
+
+    html += `
+            </div>
+        </div>
+    `;
+
     container.innerHTML = html;
+    
+    // Scroll suave para o relatório
+    container.scrollIntoView({ behavior: 'smooth' });
+};
+
+// Gerar tabela para relatórios
+const gerarTabelaRelatorio = (dados, tipo) => {
+    const cabecalhos = Object.keys(dados[0]);
+    
+    return `
+        <div style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="color: #374151; margin: 0;">📋 Resultados (${dados.length} registro${dados.length !== 1 ? 's' : ''})</h3>
+            </div>
+            
+            <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <table style="width: 100%; border-collapse: collapse; background: white;">
+                    <thead style="background: #f9fafb;">
+                        <tr>
+                            ${cabecalhos.map(header => `
+                                <th style="padding: 1rem; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; white-space: nowrap;">
+                                    ${formatarCabecalho(header)}
+                                </th>
+                            `).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${dados.map((item, index) => `
+                            <tr style="border-bottom: 1px solid #f3f4f6; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='white'">
+                                ${cabecalhos.map(header => `
+                                    <td style="padding: 1rem; color: #374151; border-bottom: 1px solid #f3f4f6;">
+                                        ${formatarValorTabela(item[header], header)}
+                                    </td>
+                                `).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+};
+
+// Gerar relatório complexo (com subseções)
+const gerarRelatorioComplexo = (dados, tipo) => {
+    let html = '';
+    
+    if (tipo === 'analise-valores-glosas' && dados.resumo_financeiro && dados.glosas_por_impacto) {
+        // Relatório de análise de valores
+        html += `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1.5rem; text-align: center;">
+                    <h4 style="color: #92400e; margin: 0 0 0.5rem 0;">AIHs com Glosas</h4>
+                    <p style="font-size: 2rem; font-weight: bold; color: #92400e; margin: 0;">${dados.resumo_financeiro.aihs_com_glosas || 0}</p>
+                </div>
+                <div style="background: #fef2f2; border: 1px solid #ef4444; border-radius: 8px; padding: 1.5rem; text-align: center;">
+                    <h4 style="color: #dc2626; margin: 0 0 0.5rem 0;">Total de Glosas</h4>
+                    <p style="font-size: 2rem; font-weight: bold; color: #dc2626; margin: 0;">R$ ${(dados.resumo_financeiro.valor_total_glosas || 0).toFixed(2)}</p>
+                </div>
+                <div style="background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 8px; padding: 1.5rem; text-align: center;">
+                    <h4 style="color: #2563eb; margin: 0 0 0.5rem 0;">Média por AIH</h4>
+                    <p style="font-size: 2rem; font-weight: bold; color: #2563eb; margin: 0;">R$ ${(dados.resumo_financeiro.media_glosa_por_aih || 0).toFixed(2)}</p>
+                </div>
+            </div>
+        `;
+        
+        if (dados.glosas_por_impacto && dados.glosas_por_impacto.length > 0) {
+            html += `<h3 style="color: #374151; margin: 2rem 0 1rem 0;">📊 Glosas por Impacto Financeiro</h3>`;
+            html += gerarTabelaRelatorio(dados.glosas_por_impacto, 'glosas_impacto');
+        }
+    } else if (tipo === 'analise-financeira' && dados.resumo_geral && dados.distribuicao_por_faixa) {
+        // Análise financeira completa
+        const resumo = dados.resumo_geral;
+        html += `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <div style="background: #f0fdf4; border: 1px solid #22c55e; border-radius: 8px; padding: 1.5rem;">
+                    <h4 style="color: #166534; margin: 0 0 1rem 0;">💰 Valores Iniciais</h4>
+                    <p style="margin: 0.5rem 0;"><strong>Total:</strong> R$ ${(resumo.valor_inicial_geral || 0).toFixed(2)}</p>
+                    <p style="margin: 0.5rem 0;"><strong>Média:</strong> R$ ${(resumo.valor_inicial_medio || 0).toFixed(2)}</p>
+                    <p style="margin: 0.5rem 0;"><strong>Menor:</strong> R$ ${(resumo.menor_valor_inicial || 0).toFixed(2)}</p>
+                    <p style="margin: 0.5rem 0;"><strong>Maior:</strong> R$ ${(resumo.maior_valor_inicial || 0).toFixed(2)}</p>
+                </div>
+                <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1.5rem;">
+                    <h4 style="color: #92400e; margin: 0 0 1rem 0;">📉 Valores Atuais</h4>
+                    <p style="margin: 0.5rem 0;"><strong>Total:</strong> R$ ${(resumo.valor_atual_geral || 0).toFixed(2)}</p>
+                    <p style="margin: 0.5rem 0;"><strong>Média:</strong> R$ ${(resumo.valor_atual_medio || 0).toFixed(2)}</p>
+                    <p style="margin: 0.5rem 0;"><strong>Menor:</strong> R$ ${(resumo.menor_valor_atual || 0).toFixed(2)}</p>
+                    <p style="margin: 0.5rem 0;"><strong>Maior:</strong> R$ ${(resumo.maior_valor_atual || 0).toFixed(2)}</p>
+                </div>
+                <div style="background: #fef2f2; border: 1px solid #ef4444; border-radius: 8px; padding: 1.5rem;">
+                    <h4 style="color: #dc2626; margin: 0 0 1rem 0;">📊 Perdas (Glosas)</h4>
+                    <p style="margin: 0.5rem 0;"><strong>Total:</strong> R$ ${(resumo.perdas_glosas || 0).toFixed(2)}</p>
+                    <p style="margin: 0.5rem 0;"><strong>Média por AIH:</strong> R$ ${(resumo.perda_media_por_aih || 0).toFixed(2)}</p>
+                    <p style="margin: 0.5rem 0;"><strong>Total de AIHs:</strong> ${resumo.total_aihs || 0}</p>
+                </div>
+            </div>
+        `;
+        
+        if (dados.distribuicao_por_faixa && dados.distribuicao_por_faixa.length > 0) {
+            html += `<h3 style="color: #374151; margin: 2rem 0 1rem 0;">📊 Distribuição por Faixa de Valor</h3>`;
+            html += gerarTabelaRelatorio(dados.distribuicao_por_faixa, 'distribuicao_faixas');
+        }
+    } else {
+        // Outros tipos de relatórios complexos
+        Object.keys(dados).forEach(chave => {
+            const valor = dados[chave];
+            if (Array.isArray(valor) && valor.length > 0) {
+                html += `<h3 style="color: #374151; margin: 2rem 0 1rem 0;">${formatarCabecalho(chave)}</h3>`;
+                html += gerarTabelaRelatorio(valor, chave);
+            } else if (typeof valor === 'object' && valor !== null) {
+                html += `
+                    <div style="background: #f8fafc; border-radius: 8px; padding: 1.5rem; margin: 1rem 0;">
+                        <h4 style="color: #374151; margin: 0 0 1rem 0;">${formatarCabecalho(chave)}</h4>
+                        <pre style="margin: 0; white-space: pre-wrap; font-family: 'Courier New', monospace; color: #4b5563;">${JSON.stringify(valor, null, 2)}</pre>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; margin: 0.25rem 0; background: #f8fafc; border-radius: 6px; border-left: 4px solid #6366f1;">
+                        <span style="font-weight: 600; color: #374151;">${formatarCabecalho(chave)}:</span>
+                        <span style="color: #6366f1; font-weight: 600;">${formatarValorTabela(valor, chave)}</span>
+                    </div>
+                `;
+            }
+        });
+    }
+    
+    return html;
+};
+
+// Formatار cabeçalho da tabela
+const formatarCabecalho = (header) => {
+    return header
+        .replace(/_/g, ' ')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+};
+
+// Formatear valor da tabela
+const formatarValorTabela = (valor, header) => {
+    if (valor === null || valor === undefined) return '-';
+    
+    // Campos de valor monetário
+    if (header.includes('valor') || header.includes('impacto') || header.includes('total') || header.includes('media')) {
+        if (typeof valor === 'number') {
+            return `R$ ${valor.toFixed(2)}`;
+        }
+    }
+    
+    // Campos de data
+    if (header.includes('data') || header.includes('Data')) {
+        if (typeof valor === 'string' && valor.includes('-')) {
+            try {
+                return new Date(valor).toLocaleDateString('pt-BR');
+            } catch (e) {
+                return valor;
+            }
+        }
+    }
+    
+    // Campos de porcentagem
+    if (header.includes('percentual') || header.includes('Percentual')) {
+        if (typeof valor === 'number') {
+            return `${valor.toFixed(1)}%`;
+        }
+    }
+    
+    return valor.toString();
+};
+
+// Voltar para lista de relatórios
+window.voltarListaRelatorios = () => {
+    const container = document.getElementById('resultadoRelatorio');
+    container.innerHTML = '';
+    container.scrollIntoView({ behavior: 'smooth' });
 };
 
 // Obter título do relatório
@@ -2037,12 +2290,62 @@ const getTituloRelatorio = (tipo) => {
     return titulos[tipo] || 'Relatório';
 };
 
+// Coletar filtros de relatórios
+const coletarFiltrosRelatorio = () => {
+    const filtros = {};
+    
+    const dataInicio = document.getElementById('relatorioDataInicio')?.value;
+    if (dataInicio) filtros.data_inicio = dataInicio;
+    
+    const dataFim = document.getElementById('relatorioDataFim')?.value;
+    if (dataFim) filtros.data_fim = dataFim;
+    
+    const competencia = document.getElementById('relatorioCompetencia')?.value;
+    if (competencia) filtros.competencia = competencia;
+    
+    return filtros;
+};
+
 // Exportar relatório
-window.exportarRelatorio = (tipo) => {
-    const link = document.createElement('a');
-    link.href = `/api/relatorios/${tipo}/export`;
-    link.download = `relatorio-${tipo}-${new Date().toISOString().split('T')[0]}.xls`;
-    link.click();
+window.exportarRelatorio = async (tipo, filtros = {}) => {
+    try {
+        // Mostrar indicador de carregamento
+        const botaoExport = event.target;
+        const textoOriginal = botaoExport.textContent;
+        botaoExport.textContent = '⏳ Exportando...';
+        botaoExport.disabled = true;
+
+        const response = await fetch(`/api/relatorios/${tipo}/export`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${state.token}`
+            },
+            body: JSON.stringify(filtros)
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao exportar relatório');
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `relatorio-${tipo}-${new Date().toISOString().split('T')[0]}.xls`;
+        link.click();
+        URL.revokeObjectURL(url);
+
+        alert('Relatório exportado com sucesso!');
+    } catch (err) {
+        alert('Erro ao exportar relatório: ' + err.message);
+    } finally {
+        // Restaurar botão
+        if (event.target) {
+            event.target.textContent = textoOriginal;
+            event.target.disabled = false;
+        }
+    }
 };
 
 // Mostrar relatórios com filtro de período
