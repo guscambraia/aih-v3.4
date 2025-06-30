@@ -1232,103 +1232,11 @@ tr:last-child {
 }
 
 /* Relatórios */
-.relatorios-menu {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.categoria-relatorios {
-    margin-bottom: 2rem;
-    background: #f8fafc;
-    border-radius: 8px;
-    padding: 1.5rem;
-    border-left: 4px solid #6366f1;
-}
-
-.categoria-relatorios h4 {
-    margin: 0 0 1rem 0;
-    color: #374151;
-    font-size: 1.1rem;
-}
-
 .relatorios-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1rem;
-}
-
-.relatorio-card-btn {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    text-align: left;
-    width: 100%;
-}
-
-.relatorio-card-btn:hover {
-    border-color: #6366f1;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
-    background: #f0f9ff;
-}
-
-.relatorio-card-btn .relatorio-icon {
-    font-size: 2rem;
-    flex-shrink: 0;
-}
-
-.relatorio-card-btn strong {
-    display: block;
-    color: #374151;
-    margin-bottom: 0.25rem;
-}
-
-.relatorio-card-btn p {
-    color: #6b7280;
-    font-size: 0.875rem;
-    margin: 0;
-}
-
-.filtros-periodo {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    background: white;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-}
-
-.filtro-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.filtro-item label {
-    font-weight: 500;
-    color: #374151;
-    font-size: 0.875rem;
-}
-
-.filtro-item input {
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    font-size: 0.875rem;
-}
-
-.filtro-item input:focus {
-    outline: none;
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    margin-bottom: 2rem;
 }
 
 /* Estilos para tela de alteração da BD */
@@ -2041,7 +1949,7 @@ tr:last-child {
     border: none;
     padding: 0.75rem 1.5rem;
     border-radius: 8px;
-    cursor: pointer;```text
+    cursor: pointer;
     font-size: 1rem;
     transition: all 0.3s ease;
 }
@@ -2119,7 +2027,7 @@ tr:last-child {
     border: none;
     padding: 0.875rem;
     border-radius: 8px;
-    font-weight: 600;
+The provided change adds a CSS animation for a loading indicator.    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     margin: 0;
@@ -2496,103 +2404,78 @@ tr:last-child {
 }
 
 /* Estilos para Relatórios */
-.relatorios-menu {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.categoria-relatorios {
-    margin-bottom: 2rem;
-    background: #f8fafc;
-    border-radius: 8px;
-    padding: 1.5rem;
-    border-left: 4px solid #6366f1;
-}
-
-.categoria-relatorios h4 {
-    margin: 0 0 1rem 0;
-    color: #374151;
-    font-size: 1.1rem;
-}
-
 .relatorios-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
+    margin-bottom: 2rem;
 }
 
-.relatorio-card-btn {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 1rem;
+.relatorio-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
     cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    text-align: left;
-    width: 100%;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.relatorio-card-btn:hover {
-    border-color: #6366f1;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
-    background: #f0f9ff;
+.relatorio-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary);
 }
 
-.relatorio-card-btn .relatorio-icon {
-    font-size: 2rem;
-    flex-shrink: 0;
+.relatorio-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
 }
 
-.relatorio-card-btn strong {
-    display: block;
-    color: #374151;
-    margin-bottom: 0.25rem;
+.relatorio-card h4 {
+    color: var(--primary);
+    margin-bottom: 0.5rem;
 }
 
-.relatorio-card-btn p {
-    color: #6b7280;
+.relatorio-card p {
+    color: #64748b;
     font-size: 0.875rem;
-    margin: 0;
 }
 
+/* Filtros de período */
 .filtros-periodo {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.relatorios-periodo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.relatorio-periodo-btn {
+    background: linear-gradient(135deg, var(--primary) 0%, #4338ca 100%);
+    color: white;
+    border: none;
     padding: 1rem;
-    background: white;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
-}
-
-.filtro-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.filtro-item label {
+    border-radius: 8px;
+    cursor: pointer;
     font-weight: 500;
-    color: #374151;
-    font-size: 0.875rem;
+    transition: all 0.3s ease;
 }
 
-.filtro-item input {
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    font-size: 0.875rem;
-}
-
-.filtro-item input:focus {
-    outline: none;
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+.relatorio-periodo-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 /* Estilos para busca rápida */
