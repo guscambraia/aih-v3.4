@@ -2126,7 +2126,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     SELECT COUNT(*) as total_glosas_registradas
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere}
+                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                 `, params);
 
                 resultado = {
