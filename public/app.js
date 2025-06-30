@@ -209,7 +209,7 @@ document.getElementById('formLogin').addEventListener('submit', async (e) => {
         submitButton.textContent = originalText;
         submitButton.disabled = false;
     }
-        });
+});
 
 // Link para gerenciar usuários
 document.getElementById('linkGerenciarUsuarios').addEventListener('click', (e) => {
@@ -266,8 +266,6 @@ document.getElementById('formLoginAdmin').addEventListener('submit', async (e) =
     } finally {
         submitButton.textContent = originalText;
         submitButton.disabled = false;
-    }
-        });
     }
 });
 
@@ -801,7 +799,8 @@ const mostrarInfoAIH = (aih) => {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                 <p><strong>Status:</strong> <span class="status-badge status-${aih.status}">${getStatusDescricao(aih.status)}</span></p>
                 <p><strong>Competência:</strong> ${aih.competencia}</p>
-                <p><strong>Valor Inicial:</strong> R$ ${aih.valor_inicial.toFixed(2)}</p><previous_generation                <p><strong>Valor Atual:</strong> R$ ${aih.valor_atual.toFixed(2)}</p>
+                <p><strong>Valor Inicial:</strong> R$ ${aih.valor_inicial.toFixed(2)}</p>
+                <p><strong>Valor Atual:</strong> R$ ${aih.valor_atual.toFixed(2)}</p>
                 <p><strong>Diferença:</strong> <span style="color: ${diferencaValor > 0 ? '#ef4444' : '#10b981'}">
                     R$ ${Math.abs(diferencaValor).toFixed(2)} (${percentualDiferenca}%)
                 </span></p>
@@ -1508,7 +1507,7 @@ window.mostrarRelatoriosPeriodo = () => {
         <div class="relatorios-periodo-grid">
             <button onclick="gerarRelatorioPeriodo('estatisticas-periodo')" class="relatorio-periodo-btn">
                 📊 Estatísticas Gerais
-                        </button>
+            </button>
             <button onclick="gerarRelatorioPeriodo('valores-glosas-periodo')" class="relatorio-periodo-btn">
                 💰 Análise Financeira
             </button>
@@ -2190,14 +2189,25 @@ window.gerenciarGlosasMovimentacao = () => {
     carregarGlosas();
 };
 
-document.getElementById('btnCancelarMovimentacao')?.addEventListener('click', () => {
-    voltarTelaAnterior();
-});
+// Event listeners para os botões na tela de movimentação
+document.addEventListener('DOMContentLoaded', () => {
+    // Botão cancelar movimentação
+    const btnCancelar = document.getElementById('btnCancelarMovimentacao');
+    if (btnCancelar) {
+        btnCancelar.addEventListener('click', () => {
+            voltarTelaAnterior();
+        });
+    }
 
-document.getElementById('btnGerenciarGlosas')?.addEventListener('click', () => {
-    state.telaAnterior = 'telaMovimentacao';
-    mostrarTela('telaPendencias');
-    carregarGlosas();
+    // Botão gerenciar glosas
+    const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
+    if (btnGerenciarGlosas) {
+        btnGerenciarGlosas.addEventListener('click', () => {
+            state.telaAnterior = 'telaMovimentacao';
+            mostrarTela('telaPendencias');
+            carregarGlosas();
+        });
+    }
 });
 
 // Função para validar profissionais obrigatórios
@@ -2323,4 +2333,3 @@ window.removerGlosa = async (id) => {
 document.getElementById('btnSalvarGlosas')?.addEventListener('click', () => {
     voltarTelaAnterior();
 });
-</script>

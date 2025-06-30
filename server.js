@@ -92,11 +92,11 @@ app.post('/api/login', async (req, res) => {
     try {
         console.log('Tentativa de login:', req.body?.nome);
         const { nome, senha } = req.body;
-        
+
         if (!nome || !senha) {
             return res.status(400).json({ error: 'Nome e senha são obrigatórios' });
         }
-        
+
         const result = await login(nome, senha);
         await logAcao(result.usuario.id, 'Login');
         console.log('Login bem-sucedido:', result.usuario.nome);
@@ -112,11 +112,11 @@ app.post('/api/admin/login', async (req, res) => {
     try {
         console.log('Tentativa de login admin:', req.body?.usuario);
         const { usuario, senha } = req.body;
-        
+
         if (!usuario || !senha) {
             return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
         }
-        
+
         const result = await loginAdmin(usuario, senha);
         console.log('Login admin bem-sucedido:', result.admin.usuario);
         res.json(result);
@@ -632,20 +632,20 @@ app.get('/api/aih/:id/glosas', verificarToken, async (req, res) => {
 app.post('/api/aih/:id/glosas', verificarToken, async (req, res) => {
     try {
         const { linha, tipo, profissional, quantidade } = req.body;
-        
+
         // Validar dados obrigatórios
         if (!linha || !tipo || !profissional) {
             return res.status(400).json({ error: 'Linha, tipo e profissional são obrigatórios' });
         }
-        
+
         const result = await run(
             'INSERT INTO glosas (aih_id, linha, tipo, profissional, quantidade) VALUES (?, ?, ?, ?, ?)',
             [req.params.id, linha, tipo, profissional, quantidade || 1]
         );
-        
+
         // Log da ação
         await logAcao(req.usuario.id, `Adicionou glosa na AIH ID ${req.params.id}: ${linha} - ${tipo}`);
-        
+
         res.json({ success: true, id: result.id });
     } catch (err) {
         console.error('Erro ao adicionar glosa:', err);
@@ -656,10 +656,10 @@ app.post('/api/aih/:id/glosas', verificarToken, async (req, res) => {
 app.delete('/api/glosas/:id', verificarToken, async (req, res) => {
     try {
         await run('UPDATE glosas SET ativa = 0 WHERE id = ?', [req.params.id]);
-        
+
         // Log da ação
         await logAcao(req.usuario.id, `Removeu glosa ID ${req.params.id}`);
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error('Erro ao remover glosa:', err);
@@ -961,7 +961,7 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
 app.post('/api/export/:formato', verificarToken, async (req, res) => {
     try {
         const { dados, titulo, tipo } = req.body;
-        
+
         if (!dados || !Array.isArray(dados) || dados.length === 0) {
             return res.status(400).json({ error: 'Dados não fornecidos ou inválidos' });
         }
@@ -1651,7 +1651,7 @@ app.get('/api/aih/:id/movimentacoes/export/:formato', verificarToken, async (req
                 const profBuco = m.prof_bucomaxilo || '';
                 const usuario = m.usuario_nome || '';
                 const obs = (m.observacoes || '').replace(/"/g, '""');
-                
+
                 return `"${data}","${tipo}","${status}","R$ ${valor}","${competencia}","${profMed}","${profEnf}","${profFisio}","${profBuco}","${usuario}","${obs}"`;
             });
 
@@ -1679,7 +1679,7 @@ app.get('/api/aih/:id/movimentacoes/export/:formato', verificarToken, async (req
             }));
 
             const worksheet = XLSX.utils.json_to_sheet(dadosFormatados);
-            
+
             // Configurar largura das colunas
             worksheet['!cols'] = [
                 { wch: 10 }, // Sequência
@@ -1705,7 +1705,7 @@ app.get('/api/aih/:id/movimentacoes/export/:formato', verificarToken, async (req
             res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}.xls"`);
             res.setHeader('Cache-Control', 'no-cache');
             res.send(buffer);
-            
+
         } else {
             return res.status(400).json({ error: 'Formato não suportado. Use "csv" ou "xlsx"' });
         }
@@ -1888,105 +1888,6 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 break;
 
             // Relatórios originais (sem filtros)
-            case 'acessos':
-                dados = await all(`
-                    SELECT u.nome as Usuario, COUNT(l.id) as 'Total Acessos', 
-                           MAX(l.data_hora) as 'Ultimo Acesso'
-                    FROM logs_acesso l
-                    JOIN usuarios u ON l.usuario_id = u.id
-                    WHERE l.acao = 'Login'
-                    GROUP BY u.id
-                    ORDER BY COUNT(l.id) DESC
-                `);
-                break;
-
-            case 'glosas-profissional':
-                dados = await all(`
-                    SELECT profissional as Profissional, 
-                           COUNT(*) as 'Total Glosas',
-                           SUM(quantidade) as 'Quantidade Total'
-                    FROM glosas
-                    WHERE ativa = 1
-                    GROUP BY profissional
-                    ORDER BY COUNT(*) DESC
-                `);
-                break;
-
-            case 'aihs-profissional':
-                dados = await all(`
-                    SELECT 
-                        COALESCE(prof_medicina, prof_enfermagem, prof_fisioterapia, prof_bucomaxilo) as Profissional,
-                        COUNT(DISTINCT aih_id) as 'Total AIHs',
-                        COUNT(*) as 'Total Movimentacoes'
-                    FROM movimentacoes
-                    WHERE prof_medicina IS NOT NULL 
-                       OR prof_enfermagem IS NOT NULL 
-                       OR prof_fisioterapia IS NOT NULL 
-                       OR prof_bucomaxilo IS NOT NULL
-                    GROUP BY Profissional
-                    ORDER BY COUNT(DISTINCT aih_id) DESC
-                `);
-                break;
-
-            case 'aprovacoes':
-                const aprovacoes = await get(`
-                    SELECT 
-                        SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as aprovacao_direta,
-                        SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as aprovacao_indireta,
-                        SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as em_discussao,
-                        SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as finalizada_pos_discussao,
-                        COUNT(*) as total
-                    FROM aihs
-                `);
-                dados = [
-                    { Tipo: 'Aprovação Direta', Quantidade: aprovacoes.aprovacao_direta, Percentual: ((aprovacoes.aprovacao_direta/aprovacoes.total)*100).toFixed(1) + '%' },
-                    { Tipo: 'Aprovação Indireta', Quantidade: aprovacoes.aprovacao_indireta, Percentual: ((aprovacoes.aprovacao_indireta/aprovacoes.total)*100).toFixed(1) + '%' },
-                    { Tipo: 'Em Discussão', Quantidade: aprovacoes.em_discussao, Percentual: ((aprovacoes.em_discussao/aprovacoes.total)*100).toFixed(1) + '%' },
-                    { Tipo: 'Finalizada Pós-Discussão', Quantidade: aprovacoes.finalizada_pos_discussao, Percentual: ((aprovacoes.finalizada_pos_discussao/aprovacoes.total)*100).toFixed(1) + '%' }
-                ];
-                break;
-
-            case 'tipos-glosa':
-                dados = await all(`
-                    SELECT tipo as 'Tipo de Glosa', 
-                           COUNT(*) as 'Total Ocorrencias', 
-                           SUM(quantidade) as 'Quantidade Total'
-                    FROM glosas
-                    WHERE ativa = 1
-                    GROUP BY tipo
-                    ORDER BY COUNT(*) DESC
-                `);
-                break;
-        }
-
-        if (dados.length === 0) {
-            return res.status(404).json({ error: 'Nenhum dado encontrado para o período selecionado' });
-        }
-
-        // Criar Excel real (XLS compatível)
-        const worksheet = XLSX.utils.json_to_sheet(dados);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, tipo.charAt(0).toUpperCase() + tipo.slice(1));
-
-        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
-
-        res.setHeader('Content-Type', 'application/vnd.ms-excel');
-        res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
-        res.send(buffer);
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Exportar relatórios originais (sem filtros) - mantém compatibilidade
-app.get('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
-    try {
-        const tipo = req.params.tipo;
-        let dados = [];
-        let nomeArquivo = `relatorio-${tipo}-${new Date().toISOString().split('T')[0]}`;
-
-        switch(tipo) {
             case 'acessos':
                 dados = await all(`
                     SELECT u.nome as Usuario, COUNT(l.id) as 'Total Acessos', 
