@@ -2,9 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const XLSX = require('xlsx');
-const { initDB, run, get, all } = require('./database');
+const { initDB, run, get, all, runTransaction, validateAIH, validateMovimentacao, clearCache, getDbStats, createBackup } = require('./database');
 const { verificarToken, login, cadastrarUsuario, loginAdmin, alterarSenhaAdmin, listarUsuarios, excluirUsuario } = require('./auth');
-const { rateLimitMiddleware, validateInput, clearRateLimit } = require('./middleware');
+const { rateLimitMiddleware, validateInput, clearRateLimit, detectSuspiciousActivity, getSecurityLogs } = require('./middleware');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -20,6 +20,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Aplicar rate limiting globalmente
 app.use(rateLimitMiddleware);
+
+// Detectar atividade suspeita
+app.use(detectSuspiciousActivity);
 
 // Validação de entrada
 app.use('/api', validateInput);
@@ -47,6 +50,31 @@ scheduleMaintenance();
 // Inicializar monitoramento
 const { logPerformance } = require('./monitor');
 setTimeout(logPerformance, 30000); // Log inicial após 30s
+
+// Backup automático diário
+const scheduleBackups = () => {
+    const BACKUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 horas
+    
+    const performBackup = async () => {
+        try {
+            console.log('🔄 Iniciando backup automático...');
+            const backupPath = await createBackup();
+            console.log(`✅ Backup automático concluído: ${backupPath}`);
+        } catch (err) {
+            console.error('❌ Erro no backup automático:', err);
+        }
+    };
+    
+    // Primeiro backup após 1 hora
+    setTimeout(performBackup, 60 * 60 * 1000);
+    
+    // Backups subsequentes a cada 24 horas
+    setInterval(performBackup, BACKUP_INTERVAL);
+    
+    console.log('📅 Backup automático agendado (diário)');
+};
+
+scheduleBackups();
 
 // Middleware para logs
 const logAcao = async (usuarioId, acao) => {
@@ -300,92 +328,114 @@ app.get('/api/aih/:numero', verificarToken, async (req, res) => {
     }
 });
 
-// Cadastrar AIH
+// Cadastrar AIH com transação robusta
 app.post('/api/aih', verificarToken, async (req, res) => {
     try {
-        const { numero_aih, valor_inicial, competencia, atendimentos } = req.body;
+        const dadosAIH = { ...req.body };
         
         console.log('📝 Dados recebidos no servidor:', { 
-            numero_aih, 
-            valor_inicial, 
-            competencia, 
-            atendimentos, 
-            tipo_atendimentos: typeof atendimentos,
-            eh_array: Array.isArray(atendimentos)
+            numero_aih: dadosAIH.numero_aih, 
+            valor_inicial: dadosAIH.valor_inicial, 
+            competencia: dadosAIH.competencia, 
+            atendimentos: dadosAIH.atendimentos, 
+            tipo_atendimentos: typeof dadosAIH.atendimentos,
+            eh_array: Array.isArray(dadosAIH.atendimentos)
         });
         
-        // Validar dados de entrada
-        if (!numero_aih || !valor_inicial || !competencia) {
-            console.log('❌ Dados obrigatórios faltando');
-            return res.status(400).json({ error: 'Dados obrigatórios não informados' });
+        // Validações rigorosas usando função específica
+        const validationErrors = validateAIH(dadosAIH);
+        if (validationErrors.length > 0) {
+            console.log('❌ Erros de validação:', validationErrors);
+            return res.status(400).json({ error: validationErrors.join(', ') });
         }
+        
+        const { numero_aih, valor_inicial, competencia, atendimentos } = dadosAIH;
         
         // Processar atendimentos - aceitar array, string ou objeto
         let atendimentosProcessados = [];
         
         if (typeof atendimentos === 'string') {
-            // Se vier como string, separar por vírgula ou quebra de linha
             atendimentosProcessados = atendimentos.split(/[,\n\r]/)
                 .map(a => a.trim())
-                .filter(a => a);
+                .filter(a => a && a.length > 0 && a.length <= 50); // Limitar tamanho
         } else if (Array.isArray(atendimentos)) {
             atendimentosProcessados = atendimentos
                 .map(a => String(a).trim())
-                .filter(a => a);
+                .filter(a => a && a.length > 0 && a.length <= 50);
         } else if (typeof atendimentos === 'object' && atendimentos !== null) {
-            // Se vier como objeto (ex: {'0': '120'}), extrair os valores
             atendimentosProcessados = Object.values(atendimentos)
                 .map(a => String(a).trim())
-                .filter(a => a);
+                .filter(a => a && a.length > 0 && a.length <= 50);
         }
         
         console.log('🔄 Atendimentos processados:', atendimentosProcessados);
         
         if (atendimentosProcessados.length === 0) {
             console.log('❌ Nenhum atendimento válido encontrado');
-            return res.status(400).json({ error: 'Pelo menos um número de atendimento deve ser informado' });
+            return res.status(400).json({ error: 'Pelo menos um número de atendimento válido deve ser informado' });
         }
         
-        // Verificar se já existe
-        const existe = await get('SELECT id FROM aihs WHERE numero_aih = ?', [numero_aih]);
+        if (atendimentosProcessados.length > 100) {
+            return res.status(400).json({ error: 'Muitos atendimentos informados (máximo 100)' });
+        }
+        
+        // Verificar se já existe (com cache para performance)
+        const existe = await get('SELECT id FROM aihs WHERE numero_aih = ?', [numero_aih], true);
         if (existe) {
             console.log('❌ AIH já existe');
             return res.status(400).json({ error: 'AIH já cadastrada' });
         }
         
-        // Inserir AIH com status 3 (Ativa em discussão)
-        const result = await run(
-            `INSERT INTO aihs (numero_aih, valor_inicial, valor_atual, competencia, usuario_cadastro_id, status) 
-             VALUES (?, ?, ?, ?, ?, 3)`,
-            [numero_aih, parseFloat(valor_inicial), parseFloat(valor_inicial), competencia, req.usuario.id]
-        );
-        
-        // Inserir atendimentos processados
-        for (const atend of atendimentosProcessados) {
-            if (atend && atend.trim()) {
-                await run(
-                    'INSERT INTO atendimentos (aih_id, numero_atendimento) VALUES (?, ?)',
-                    [result.id, atend.trim()]
-                );
-                console.log(`📋 Atendimento inserido: ${atend.trim()}`);
+        // Usar transação para garantir consistência
+        const operations = [
+            {
+                sql: `INSERT INTO aihs (numero_aih, valor_inicial, valor_atual, competencia, usuario_cadastro_id, status) 
+                      VALUES (?, ?, ?, ?, ?, 3)`,
+                params: [numero_aih, parseFloat(valor_inicial), parseFloat(valor_inicial), competencia, req.usuario.id]
             }
+        ];
+        
+        const results = await runTransaction(operations);
+        const aihId = results[0].id;
+        
+        // Inserir atendimentos em lote (mais eficiente)
+        const atendimentosOperations = atendimentosProcessados.map(atend => ({
+            sql: 'INSERT INTO atendimentos (aih_id, numero_atendimento) VALUES (?, ?)',
+            params: [aihId, atend.trim()]
+        }));
+        
+        if (atendimentosOperations.length > 0) {
+            await runTransaction(atendimentosOperations);
         }
         
-        // Primeira movimentação (entrada SUS) - OBRIGATÓRIA para nova AIH
+        // Primeira movimentação (entrada SUS) - OBRIGATÓRIA
         await run(
             `INSERT INTO movimentacoes (aih_id, tipo, usuario_id, valor_conta, competencia, status_aih, observacoes, data_movimentacao) 
              VALUES (?, 'entrada_sus', ?, ?, ?, 3, ?, CURRENT_TIMESTAMP)`,
-            [result.id, req.usuario.id, parseFloat(valor_inicial), competencia, 'Entrada inicial da AIH na Auditoria SUS']
+            [aihId, req.usuario.id, parseFloat(valor_inicial), competencia, 'Entrada inicial da AIH na Auditoria SUS']
         );
         
+        // Log de auditoria
         await logAcao(req.usuario.id, `Cadastrou AIH ${numero_aih}`);
         
-        console.log(`✅ AIH ${numero_aih} cadastrada com sucesso - ID: ${result.id} - Atendimentos: ${atendimentosProcessados.length}`);
+        // Limpar cache relacionado
+        clearCache('aihs');
+        clearCache('dashboard');
         
-        res.json({ success: true, id: result.id, numero_aih, atendimentos_inseridos: atendimentosProcessados.length });
+        console.log(`✅ AIH ${numero_aih} cadastrada com sucesso - ID: ${aihId} - Atendimentos: ${atendimentosProcessados.length}`);
+        
+        res.json({ 
+            success: true, 
+            id: aihId, 
+            numero_aih, 
+            atendimentos_inseridos: atendimentosProcessados.length,
+            valor_inicial: parseFloat(valor_inicial),
+            competencia 
+        });
+        
     } catch (err) {
         console.error('❌ Erro ao cadastrar AIH:', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Erro interno do servidor ao cadastrar AIH' });
     }
 });
 
@@ -661,6 +711,91 @@ app.post('/api/admin/clear-rate-limit', verificarToken, (req, res) => {
         res.json({ success: true, message: 'Rate limit limpo com sucesso' });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// Estatísticas do sistema (admin)
+app.get('/api/admin/stats', verificarToken, async (req, res) => {
+    try {
+        if (req.usuario.tipo !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+        
+        const stats = await getDbStats();
+        res.json({ success: true, stats });
+    } catch (err) {
+        console.error('Erro ao obter estatísticas:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Logs de segurança (admin)
+app.get('/api/admin/security-logs', verificarToken, (req, res) => {
+    try {
+        if (req.usuario.tipo !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+        
+        const logs = getSecurityLogs();
+        res.json({ success: true, logs });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Limpar cache manualmente (admin)
+app.post('/api/admin/clear-cache', verificarToken, (req, res) => {
+    try {
+        if (req.usuario.tipo !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+        
+        const { pattern } = req.body;
+        clearCache(pattern);
+        res.json({ success: true, message: 'Cache limpo com sucesso' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Backup manual (admin)
+app.post('/api/admin/backup', verificarToken, async (req, res) => {
+    try {
+        if (req.usuario.tipo !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+        
+        const backupPath = await createBackup();
+        res.json({ success: true, message: 'Backup criado com sucesso', path: backupPath });
+    } catch (err) {
+        console.error('Erro ao criar backup:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+    try {
+        const stats = await getDbStats();
+        const health = {
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            database: {
+                total_aihs: stats?.total_aihs || 0,
+                db_size: stats?.db_size_mb || 0,
+                connections: stats?.pool_connections || 0
+            }
+        };
+        
+        res.json(health);
+    } catch (err) {
+        res.status(500).json({ 
+            status: 'error', 
+            timestamp: new Date().toISOString(),
+            error: err.message 
+        });
     }
 });
 

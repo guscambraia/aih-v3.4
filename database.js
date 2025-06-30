@@ -10,21 +10,99 @@ if (!fs.existsSync(dbDir)) {
 
 const dbPath = path.join(__dirname, 'db', 'aih.db');
 
-// Criar conexão com configurações otimizadas
+// Pool de conexões para alta concorrência
+class DatabasePool {
+    constructor(size = 10) {
+        this.size = size;
+        this.connections = [];
+        this.available = [];
+        this.waiting = [];
+        
+        // Criar pool inicial
+        for (let i = 0; i < size; i++) {
+            this.createConnection();
+        }
+        
+        console.log(`Pool de ${size} conexões criado`);
+    }
+    
+    createConnection() {
+        const conn = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+            if (err) {
+                console.error('Erro ao criar conexão:', err);
+                return;
+            }
+            
+            // Configurações otimizadas para cada conexão
+            conn.serialize(() => {
+                conn.run("PRAGMA journal_mode = WAL");
+                conn.run("PRAGMA synchronous = NORMAL");
+                conn.run("PRAGMA cache_size = 10000");
+                conn.run("PRAGMA temp_store = MEMORY");
+                conn.run("PRAGMA mmap_size = 268435456");
+                conn.run("PRAGMA foreign_keys = ON");
+                conn.run("PRAGMA busy_timeout = 30000");
+                conn.run("PRAGMA wal_autocheckpoint = 1000");
+                conn.run("PRAGMA optimize");
+            });
+        });
+        
+        this.connections.push(conn);
+        this.available.push(conn);
+        return conn;
+    }
+    
+    async getConnection() {
+        return new Promise((resolve, reject) => {
+            if (this.available.length > 0) {
+                const conn = this.available.pop();
+                resolve(conn);
+            } else {
+                this.waiting.push({ resolve, reject });
+            }
+        });
+    }
+    
+    releaseConnection(conn) {
+        this.available.push(conn);
+        if (this.waiting.length > 0) {
+            const waiter = this.waiting.shift();
+            const nextConn = this.available.pop();
+            waiter.resolve(nextConn);
+        }
+    }
+    
+    async closeAll() {
+        for (const conn of this.connections) {
+            await new Promise((resolve) => conn.close(resolve));
+        }
+        this.connections = [];
+        this.available = [];
+    }
+}
+
+// Criar pool de conexões
+const pool = new DatabasePool(15); // 15 conexões simultâneas
+
+// Conexão principal para operações especiais
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) console.error('Erro ao conectar:', err);
-    else console.log('Conectado ao banco SQLite');
+    else console.log('Conectado ao banco SQLite (conexão principal)');
 });
 
-// Configurações de performance do SQLite
+// Configurações de performance do SQLite para conexão principal
 db.serialize(() => {
-    // Configurações de performance
-    db.run("PRAGMA journal_mode = WAL");           // Write-Ahead Logging para melhor concorrência
-    db.run("PRAGMA synchronous = NORMAL");        // Balance entre performance e segurança
-    db.run("PRAGMA cache_size = 10000");          // Cache de 10MB
-    db.run("PRAGMA temp_store = MEMORY");         // Usar memória para tabelas temporárias
-    db.run("PRAGMA mmap_size = 268435456");       // 256MB de memory-mapped I/O
-    db.run("PRAGMA optimize");                    // Otimizar estatísticas do banco
+    // Configurações de performance e segurança
+    db.run("PRAGMA journal_mode = WAL");           
+    db.run("PRAGMA synchronous = NORMAL");        
+    db.run("PRAGMA cache_size = 20000");          // Cache maior para conexão principal
+    db.run("PRAGMA temp_store = MEMORY");         
+    db.run("PRAGMA mmap_size = 536870912");       // 512MB de memory-mapped I/O
+    db.run("PRAGMA foreign_keys = ON");           // Integridade referencial
+    db.run("PRAGMA busy_timeout = 30000");        // 30 segundos timeout
+    db.run("PRAGMA wal_autocheckpoint = 1000");   // Checkpoint automático
+    db.run("PRAGMA secure_delete = ON");          // Deletar dados de forma segura
+    db.run("PRAGMA optimize");                    
 });
 
 // Inicializar tabelas
@@ -188,32 +266,205 @@ const initDB = () => {
     });
 };
 
-// Funções auxiliares
-const run = (sql, params = []) => {
+// Cache para consultas frequentes
+const queryCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const MAX_CACHE_SIZE = 1000;
+
+const clearExpiredCache = () => {
+    const now = Date.now();
+    for (const [key, value] of queryCache.entries()) {
+        if (now - value.timestamp > CACHE_TTL) {
+            queryCache.delete(key);
+        }
+    }
+};
+
+// Limpar cache expirado a cada minuto
+setInterval(clearExpiredCache, 60000);
+
+// Funções auxiliares com pool de conexões
+const run = async (sql, params = []) => {
+    const conn = await pool.getConnection();
     return new Promise((resolve, reject) => {
-        db.run(sql, params, function(err) {
-            if (err) reject(err);
-            else resolve({ id: this.lastID, changes: this.changes });
+        conn.run(sql, params, function(err) {
+            pool.releaseConnection(conn);
+            if (err) {
+                console.error('Erro SQL:', { sql: sql.substring(0, 100), params, error: err.message });
+                reject(err);
+            } else {
+                resolve({ id: this.lastID, changes: this.changes });
+            }
         });
     });
 };
 
-const get = (sql, params = []) => {
+const get = async (sql, params = [], useCache = false) => {
+    // Verificar cache se solicitado
+    if (useCache) {
+        const cacheKey = sql + JSON.stringify(params);
+        const cached = queryCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+            return cached.data;
+        }
+    }
+    
+    const conn = await pool.getConnection();
     return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
+        conn.get(sql, params, (err, row) => {
+            pool.releaseConnection(conn);
+            if (err) {
+                console.error('Erro SQL:', { sql: sql.substring(0, 100), params, error: err.message });
+                reject(err);
+            } else {
+                // Adicionar ao cache se solicitado
+                if (useCache && row) {
+                    const cacheKey = sql + JSON.stringify(params);
+                    if (queryCache.size >= MAX_CACHE_SIZE) {
+                        // Remover entrada mais antiga
+                        const firstKey = queryCache.keys().next().value;
+                        queryCache.delete(firstKey);
+                    }
+                    queryCache.set(cacheKey, { data: row, timestamp: Date.now() });
+                }
+                resolve(row);
+            }
         });
     });
 };
 
-const all = (sql, params = []) => {
+const all = async (sql, params = [], useCache = false) => {
+    // Verificar cache se solicitado
+    if (useCache) {
+        const cacheKey = sql + JSON.stringify(params);
+        const cached = queryCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+            return cached.data;
+        }
+    }
+    
+    const conn = await pool.getConnection();
     return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
+        conn.all(sql, params, (err, rows) => {
+            pool.releaseConnection(conn);
+            if (err) {
+                console.error('Erro SQL:', { sql: sql.substring(0, 100), params, error: err.message });
+                reject(err);
+            } else {
+                // Adicionar ao cache se solicitado
+                if (useCache && rows) {
+                    const cacheKey = sql + JSON.stringify(params);
+                    if (queryCache.size >= MAX_CACHE_SIZE) {
+                        const firstKey = queryCache.keys().next().value;
+                        queryCache.delete(firstKey);
+                    }
+                    queryCache.set(cacheKey, { data: rows, timestamp: Date.now() });
+                }
+                resolve(rows);
+            }
         });
     });
+};
+
+// Função para transações robustas
+const runTransaction = async (operations) => {
+    const conn = await pool.getConnection();
+    
+    return new Promise((resolve, reject) => {
+        conn.serialize(() => {
+            conn.run("BEGIN IMMEDIATE TRANSACTION", async (err) => {
+                if (err) {
+                    pool.releaseConnection(conn);
+                    return reject(err);
+                }
+                
+                try {
+                    const results = [];
+                    
+                    for (const op of operations) {
+                        const result = await new Promise((resolveOp, rejectOp) => {
+                            conn.run(op.sql, op.params || [], function(opErr) {
+                                if (opErr) rejectOp(opErr);
+                                else resolveOp({ id: this.lastID, changes: this.changes });
+                            });
+                        });
+                        results.push(result);
+                    }
+                    
+                    conn.run("COMMIT", (commitErr) => {
+                        pool.releaseConnection(conn);
+                        if (commitErr) reject(commitErr);
+                        else resolve(results);
+                    });
+                    
+                } catch (error) {
+                    conn.run("ROLLBACK", (rollbackErr) => {
+                        pool.releaseConnection(conn);
+                        if (rollbackErr) console.error('Erro no rollback:', rollbackErr);
+                        reject(error);
+                    });
+                }
+            });
+        });
+    });
+};
+
+// Validações de dados
+const validateAIH = (data) => {
+    const errors = [];
+    
+    if (!data.numero_aih || typeof data.numero_aih !== 'string' || data.numero_aih.trim().length === 0) {
+        errors.push('Número da AIH é obrigatório');
+    }
+    
+    if (!data.valor_inicial || isNaN(parseFloat(data.valor_inicial)) || parseFloat(data.valor_inicial) <= 0) {
+        errors.push('Valor inicial deve ser um número positivo');
+    }
+    
+    if (!data.competencia || !/^\d{2}\/\d{4}$/.test(data.competencia)) {
+        errors.push('Competência deve estar no formato MM/AAAA');
+    }
+    
+    if (!data.atendimentos || (Array.isArray(data.atendimentos) && data.atendimentos.length === 0)) {
+        errors.push('Pelo menos um atendimento deve ser informado');
+    }
+    
+    return errors;
+};
+
+const validateMovimentacao = (data) => {
+    const errors = [];
+    
+    if (!data.tipo || !['entrada_sus', 'saida_hospital'].includes(data.tipo)) {
+        errors.push('Tipo de movimentação inválido');
+    }
+    
+    if (!data.status_aih || ![1, 2, 3, 4].includes(parseInt(data.status_aih))) {
+        errors.push('Status da AIH inválido');
+    }
+    
+    if (data.valor_conta && (isNaN(parseFloat(data.valor_conta)) || parseFloat(data.valor_conta) < 0)) {
+        errors.push('Valor da conta deve ser um número não negativo');
+    }
+    
+    return errors;
+};
+
+// Limpar cache quando necessário
+const clearCache = (pattern = null) => {
+    if (!pattern) {
+        queryCache.clear();
+        console.log('Cache de consultas limpo');
+    } else {
+        let cleared = 0;
+        for (const key of queryCache.keys()) {
+            if (key.includes(pattern)) {
+                queryCache.delete(key);
+                cleared++;
+            }
+        }
+        console.log(`Cache limpo: ${cleared} entradas removidas`);
+    }
 };
 
 // Se executado diretamente, inicializa o banco
@@ -225,4 +476,99 @@ if (require.main === module) {
     initDB();
 }
 
-module.exports = { db, initDB, run, get, all };
+// Estatísticas do banco
+const getDbStats = async () => {
+    try {
+        const stats = await get(`
+            SELECT 
+                (SELECT COUNT(*) FROM aihs) as total_aihs,
+                (SELECT COUNT(*) FROM movimentacoes) as total_movimentacoes,
+                (SELECT COUNT(*) FROM glosas WHERE ativa = 1) as total_glosas_ativas,
+                (SELECT COUNT(*) FROM usuarios) as total_usuarios,
+                (SELECT COUNT(*) FROM logs_acesso) as total_logs
+        `, [], true); // Usar cache
+        
+        const dbSize = await get("SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()");
+        const walSize = fs.existsSync(dbPath + '-wal') ? fs.statSync(dbPath + '-wal').size : 0;
+        
+        return {
+            ...stats,
+            db_size_mb: Math.round((dbSize.size || 0) / (1024 * 1024) * 100) / 100,
+            wal_size_mb: Math.round(walSize / (1024 * 1024) * 100) / 100,
+            cache_entries: queryCache.size,
+            pool_connections: pool.connections.length,
+            available_connections: pool.available.length,
+            timestamp: new Date().toISOString()
+        };
+    } catch (err) {
+        console.error('Erro ao obter estatísticas:', err);
+        return null;
+    }
+};
+
+// Backup automático
+const createBackup = async () => {
+    try {
+        const backupDir = path.join(__dirname, 'backups');
+        if (!fs.existsSync(backupDir)) {
+            fs.mkdirSync(backupDir, { recursive: true });
+        }
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+        const backupPath = path.join(backupDir, `aih-backup-${timestamp}.db`);
+        
+        // Fazer checkpoint do WAL antes do backup
+        await run("PRAGMA wal_checkpoint(FULL)");
+        
+        // Copiar arquivo
+        fs.copyFileSync(dbPath, backupPath);
+        
+        console.log(`Backup criado: ${backupPath}`);
+        
+        // Limpar backups antigos (manter apenas os últimos 7)
+        const backups = fs.readdirSync(backupDir)
+            .filter(f => f.startsWith('aih-backup-') && f.endsWith('.db'))
+            .sort()
+            .reverse();
+            
+        if (backups.length > 7) {
+            for (let i = 7; i < backups.length; i++) {
+                fs.unlinkSync(path.join(backupDir, backups[i]));
+                console.log(`Backup antigo removido: ${backups[i]}`);
+            }
+        }
+        
+        return backupPath;
+    } catch (err) {
+        console.error('Erro ao criar backup:', err);
+        throw err;
+    }
+};
+
+// Fechar pool graciosamente
+const closePool = async () => {
+    console.log('Fechando pool de conexões...');
+    await pool.closeAll();
+    db.close();
+    console.log('Pool fechado');
+};
+
+// Interceptar sinais para fechar conexões
+process.on('SIGINT', closePool);
+process.on('SIGTERM', closePool);
+
+module.exports = { 
+    db, 
+    pool,
+    initDB, 
+    run, 
+    get, 
+    all, 
+    runTransaction,
+    validateAIH,
+    validateMovimentacao,
+    clearCache,
+    getDbStats,
+    createBackup,
+    closePool
+};
