@@ -580,6 +580,11 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
 // Carregar dados para movimentação
 const carregarDadosMovimentacao = async () => {
     try {
+        // Configurar event listeners dos botões
+        setTimeout(() => {
+            configurarEventListenersMovimentacao();
+        }, 100);
+
         // Carregar profissionais para os selects
         const profissionais = await api('/profissionais');
 
@@ -2068,6 +2073,11 @@ document.getElementById('btnNovaMovimentacao').addEventListener('click', async (
         // Carregar dados da movimentação
         await carregarDadosMovimentacao();
 
+        // Garantir que os event listeners estão configurados
+        setTimeout(() => {
+            configurarEventListenersMovimentacao();
+        }, 200);
+
         // Configurar campos com base na próxima movimentação
         if (proximaMovimentacao) {
             const tipoSelect = document.getElementById('movTipo');
@@ -2182,33 +2192,41 @@ window.excluirTipoGlosa = async (id) => {
 
 // Event listeners para movimentação
 
-// Adicionando a função gerenciarGlosasMovimentacao
+// Função global para gerenciar glosas na movimentação
 window.gerenciarGlosasMovimentacao = () => {
     state.telaAnterior = 'telaMovimentacao';
     mostrarTela('telaPendencias');
     carregarGlosas();
 };
 
+// Função global para cancelar movimentação
+window.cancelarMovimentacao = () => {
+    voltarTelaAnterior();
+};
+
 // Event listeners para os botões na tela de movimentação
-document.addEventListener('DOMContentLoaded', () => {
+const configurarEventListenersMovimentacao = () => {
     // Botão cancelar movimentação
     const btnCancelar = document.getElementById('btnCancelarMovimentacao');
     if (btnCancelar) {
-        btnCancelar.addEventListener('click', () => {
+        btnCancelar.onclick = () => {
             voltarTelaAnterior();
-        });
+        };
     }
 
     // Botão gerenciar glosas
     const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
     if (btnGerenciarGlosas) {
-        btnGerenciarGlosas.addEventListener('click', () => {
+        btnGerenciarGlosas.onclick = () => {
             state.telaAnterior = 'telaMovimentacao';
             mostrarTela('telaPendencias');
             carregarGlosas();
-        });
+        };
     }
-});
+};
+
+// Chamar configuração quando a página carregar
+document.addEventListener('DOMContentLoaded', configurarEventListenersMovimentacao);
 
 // Função para validar profissionais obrigatórios
 const validarProfissionaisObrigatorios = () => {
