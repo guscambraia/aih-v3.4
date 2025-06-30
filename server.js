@@ -496,6 +496,32 @@ app.get('/api/aih/:id/proxima-movimentacao', verificarToken, async (req, res) =>
     }
 });
 
+// Obter última movimentação completa de uma AIH (para pré-selecionar profissionais)
+app.get('/api/aih/:id/ultima-movimentacao', verificarToken, async (req, res) => {
+    try {
+        const aihId = req.params.id;
+
+        const ultimaMovimentacao = await get(
+            `SELECT prof_medicina, prof_enfermagem, prof_fisioterapia, prof_bucomaxilo, 
+                    tipo, data_movimentacao, valor_conta, competencia
+             FROM movimentacoes 
+             WHERE aih_id = ? 
+             ORDER BY data_movimentacao DESC 
+             LIMIT 1`,
+            [aihId]
+        );
+
+        if (!ultimaMovimentacao) {
+            return res.status(404).json({ error: 'Nenhuma movimentação encontrada para esta AIH' });
+        }
+
+        res.json(ultimaMovimentacao);
+    } catch (err) {
+        console.error('Erro ao buscar última movimentação:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Nova movimentação
 app.post('/api/aih/:id/movimentacao', verificarToken, async (req, res) => {
     try {
@@ -504,6 +530,26 @@ app.post('/api/aih/:id/movimentacao', verificarToken, async (req, res) => {
             tipo, status_aih, valor_conta, competencia,
             prof_medicina, prof_enfermagem, prof_fisioterapia, prof_bucomaxilo, observacoes
         } = req.body;
+
+        // Validação de profissionais obrigatórios
+        const erros = [];
+
+        // Enfermagem sempre obrigatório
+        if (!prof_enfermagem || prof_enfermagem.trim() === '') {
+            erros.push('Profissional de Enfermagem é obrigatório');
+        }
+
+        // Medicina OU Bucomaxilo (pelo menos um)
+        if ((!prof_medicina || prof_medicina.trim() === '') && 
+            (!prof_bucomaxilo || prof_bucomaxilo.trim() === '')) {
+            erros.push('Pelo menos um profissional deve ser informado: Medicina OU Bucomaxilo');
+        }
+
+        if (erros.length > 0) {
+            return res.status(400).json({ 
+                error: 'Validação de profissionais falhou: ' + erros.join(', ')
+            });
+        }
 
         // Validar se o tipo está correto conforme a sequência
         const ultimaMovimentacao = await get(
@@ -542,8 +588,12 @@ app.post('/api/aih/:id/movimentacao', verificarToken, async (req, res) => {
             [status_aih, valor_conta, aihId]
         );
 
+        // Log da ação
+        await logAcao(req.usuario.id, `Movimentação ${tipo} - AIH ID ${aihId} - Status ${status_aih}`);
+
         res.json({ success: true });
     } catch (err) {
+        console.error('Erro ao salvar movimentação:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -596,6 +646,107 @@ app.delete('/api/glosas/:id', verificarToken, async (req, res) => {
     } catch (err) {
         console.error('Erro ao remover glosa:', err);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// Exportar glosas/pendências de uma AIH específica
+app.get('/api/aih/:id/glosas/export/:formato', verificarToken, async (req, res) => {
+    try {
+        const aihId = req.params.id;
+        const formato = req.params.formato;
+
+        console.log(`📊 Exportando glosas da AIH ID ${aihId} em formato ${formato}`);
+
+        // Buscar dados da AIH
+        const aih = await get('SELECT numero_aih FROM aihs WHERE id = ?', [aihId]);
+        if (!aih) {
+            console.log(`❌ AIH com ID ${aihId} não encontrada`);
+            return res.status(404).json({ error: 'AIH não encontrada' });
+        }
+
+        // Buscar glosas ativas
+        const glosas = await all(`
+            SELECT 
+                g.*
+            FROM glosas g
+            WHERE g.aih_id = ? AND g.ativa = 1
+            ORDER BY g.criado_em DESC
+        `, [aihId]);
+
+        console.log(`📋 Encontradas ${glosas.length} glosas/pendências para a AIH ${aih.numero_aih}`);
+
+        if (glosas.length === 0) {
+            return res.status(404).json({ error: 'Nenhuma glosa/pendência ativa encontrada para esta AIH' });
+        }
+
+        const nomeArquivo = `glosas-pendencias-AIH-${aih.numero_aih}-${new Date().toISOString().split('T')[0]}`;
+
+        if (formato === 'csv') {
+            const cabecalhos = 'ID,Linha,Tipo,Profissional_Responsavel,Quantidade,Data_Identificacao';
+            const linhas = glosas.map(g => {
+                const data = new Date(g.criado_em).toLocaleString('pt-BR');
+                const linha = (g.linha || '').replace(/"/g, '""');
+                const tipo = (g.tipo || '').replace(/"/g, '""');
+                const profissional = (g.profissional || '').replace(/"/g, '""');
+                const quantidade = g.quantidade || 1;
+                
+                return `"${g.id}","${linha}","${tipo}","${profissional}","${quantidade}","${data}"`;
+            });
+
+            const csv = [cabecalhos, ...linhas].join('\n');
+
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}.csv"`);
+            res.setHeader('Cache-Control', 'no-cache');
+            res.send('\ufeff' + csv); // BOM para UTF-8
+
+        } else if (formato === 'excel') {
+            const dadosFormatados = glosas.map((g, index) => ({
+                'Sequência': index + 1,
+                'ID da Glosa': g.id,
+                'AIH': aih.numero_aih,
+                'Linha/Item': g.linha || 'Não informado',
+                'Tipo de Glosa/Pendência': g.tipo || 'Não informado',
+                'Profissional Responsável': g.profissional || 'Não informado',
+                'Quantidade': g.quantidade || 1,
+                'Data de Identificação': new Date(g.criado_em).toLocaleString('pt-BR'),
+                'Status': 'Ativa'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dadosFormatados);
+            
+            // Configurar largura das colunas
+            worksheet['!cols'] = [
+                { wch: 10 }, // Sequência
+                { wch: 12 }, // ID
+                { wch: 15 }, // AIH
+                { wch: 20 }, // Linha
+                { wch: 30 }, // Tipo
+                { wch: 25 }, // Profissional
+                { wch: 12 }, // Quantidade
+                { wch: 20 }, // Data
+                { wch: 10 }  // Status
+            ];
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, `Glosas AIH ${aih.numero_aih}`);
+
+            const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
+
+            res.setHeader('Content-Type', 'application/vnd.ms-excel');
+            res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}.xls"`);
+            res.setHeader('Cache-Control', 'no-cache');
+            res.send(buffer);
+            
+        } else {
+            return res.status(400).json({ error: 'Formato não suportado. Use "csv" ou "excel"' });
+        }
+
+        console.log(`✅ Glosas da AIH ${aih.numero_aih} exportadas com sucesso em formato ${formato}`);
+
+    } catch (err) {
+        console.error('❌ Erro ao exportar glosas:', err);
+        res.status(500).json({ error: 'Erro interno do servidor ao exportar glosas' });
     }
 });
 
