@@ -2254,5 +2254,7 @@ app.get('*', (req, res) => {
 
 // Iniciar servidor
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor rodando em http://0.0.0.0:${PORT}`);
+    console.log(`🚀 Servidor AIH rodando em http://0.0.0.0:${PORT}`);
+    console.log(`📊 Dashboard disponível em: http://0.0.0.0:${PORT}`);
+    console.log(`🔧 Ambiente: ${process.env.NODE_ENV || 'development'}`);
 });
