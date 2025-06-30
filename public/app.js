@@ -2212,27 +2212,6 @@ const gerarRelatorioComplexo = (dados, tipo) => {
                     <p style="font-size: 2rem; font-weight: bold; color: #dc2626; margin: 0; line-height: 1;">R$ ${(dados.resumo_financeiro.valor_total_glosas || 0).toFixed(2)}</p>
                     <p style="font-size: 0.875rem; color: #ef4444; margin: 0.5rem 0 0 0; font-style: italic;">Diferença entre valor inicial e atual (perda financeira)</p>
                 </div>
-                
-                <div style="background: #f0f9ff; border: 1px solid #3b82f6; border-radius: 12px; padding: 2rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📊</div>
-                    <h4 style="color: #2563eb; margin: 0 0 0.75rem 0; font-size: 1.1rem;">Média de Glosa por AIH</h4>
-                    <p style="font-size: 2rem; font-weight: bold; color: #2563eb; margin: 0; line-height: 1;">R$ ${(dados.resumo_financeiro.media_glosa_por_aih || 0).toFixed(2)}</p>
-                    <p style="font-size: 0.875rem; color: #3b82f6; margin: 0.5rem 0 0 0; font-style: italic;">Valor médio de perda por AIH</p>
-                </div>
-                
-                <div style="background: #f0fdf4; border: 1px solid #22c55e; border-radius: 12px; padding: 2rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📉</div>
-                    <h4 style="color: #166534; margin: 0 0 0.75rem 0; font-size: 1.1rem;">Menor Impacto</h4>
-                    <p style="font-size: 2rem; font-weight: bold; color: #166534; margin: 0; line-height: 1;">R$ ${(dados.resumo_financeiro.menor_impacto || 0).toFixed(2)}</p>
-                    <p style="font-size: 0.875rem; color: #22c55e; margin: 0.5rem 0 0 0; font-style: italic;">Valor mínimo de impacto individual</p>
-                </div>
-                
-                <div style="background: #fdf4ff; border: 1px solid #a855f7; border-radius: 12px; padding: 2rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📈</div>
-                    <h4 style="color: #7c2d12; margin: 0 0 0.75rem 0; font-size: 1.1rem;">Maior Impacto</h4>
-                    <p style="font-size: 2rem; font-weight: bold; color: #7c2d12; margin: 0; line-height: 1;">R$ ${(dados.resumo_financeiro.maior_impacto || 0).toFixed(2)}</p>
-                    <p style="font-size: 0.875rem; color: #a855f7; margin: 0.5rem 0 0 0; font-style: italic;">Valor máximo de impacto individual</p>
-                </div>
             </div>
         `;
     } else if (tipo === 'analise-financeira' && dados.resumo_geral && dados.distribuicao_por_faixa) {
