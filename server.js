@@ -1838,19 +1838,41 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
 
             case 'analise-valores-glosas':
                 // Análise financeira detalhada das glosas - apenas 3 métricas principais
-                const analiseValoresGlosas = await get(`
-                    SELECT 
-                        COUNT(DISTINCT a.id) as aihs_com_glosas,
-                        COUNT(g.id) as total_glosas,
-                        SUM(a.valor_inicial - a.valor_atual) as valor_total_glosas
+                
+                // AIHs com glosas (apenas as que têm glosas ativas)
+                const aihsComGlosas = await get(`
+                    SELECT COUNT(DISTINCT a.id) as aihs_com_glosas
                     FROM aihs a
-                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
-                    WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
+                    WHERE EXISTS (SELECT 1 FROM glosas g WHERE g.aih_id = a.id AND g.ativa = 1)
+                    ${filtroWhere.replace('criado_em', 'a.criado_em')}
+                `, params);
+
+                // Total de glosas (apenas contar as glosas ativas)
+                const totalGlosas = await get(`
+                    SELECT COUNT(g.id) as total_glosas
+                    FROM glosas g
+                    JOIN aihs a ON g.aih_id = a.id
+                    WHERE g.ativa = 1
+                    ${filtroWhere.replace('criado_em', 'a.criado_em')}
+                `, params);
+
+                // Valor total das glosas = diferença entre soma total de valores iniciais e valores atuais de TODAS as AIHs
+                const valorTotalGlosas = await get(`
+                    SELECT 
+                        SUM(a.valor_inicial) as soma_valores_iniciais,
+                        SUM(a.valor_atual) as soma_valores_atuais,
+                        SUM(a.valor_inicial) - SUM(a.valor_atual) as valor_total_glosas
+                    FROM aihs a
+                    WHERE 1=1
                     ${filtroWhere.replace('criado_em', 'a.criado_em')}
                 `, params);
 
                 resultado = {
-                    resumo_financeiro: analiseValoresGlosas
+                    resumo_financeiro: {
+                        aihs_com_glosas: aihsComGlosas.aihs_com_glosas || 0,
+                        total_glosas: totalGlosas.total_glosas || 0,
+                        valor_total_glosas: valorTotalGlosas.valor_total_glosas || 0
+                    }
                 };
                 break;
 
@@ -2609,25 +2631,40 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 break;
 
             case 'analise-valores-glosas':
-                const analiseValoresCompleta = await get(`
-                    SELECT 
-                        COUNT(DISTINCT a.id) as aihs_com_glosas,
-                        COUNT(g.id) as total_glosas,
-                        SUM(a.valor_inicial) as valor_inicial_total,
-                        SUM(a.valor_atual) as valor_atual_total,
-                        SUM(a.valor_inicial - a.valor_atual) as valor_total_glosas
+                // AIHs com glosas (apenas as que têm glosas ativas)
+                const aihsComGlosasExport = await get(`
+                    SELECT COUNT(DISTINCT a.id) as aihs_com_glosas
                     FROM aihs a
-                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
-                    WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
+                    WHERE EXISTS (SELECT 1 FROM glosas g WHERE g.aih_id = a.id AND g.ativa = 1)
+                    ${filtroWhere.replace('criado_em', 'a.criado_em')}
+                `, params);
+
+                // Total de glosas (apenas contar as glosas ativas)
+                const totalGlosasExport = await get(`
+                    SELECT COUNT(g.id) as total_glosas
+                    FROM glosas g
+                    JOIN aihs a ON g.aih_id = a.id
+                    WHERE g.ativa = 1
+                    ${filtroWhere.replace('criado_em', 'a.criado_em')}
+                `, params);
+
+                // Valor total das glosas = diferença entre soma total de valores iniciais e valores atuais de TODAS as AIHs
+                const valorTotalGlosasExport = await get(`
+                    SELECT 
+                        SUM(a.valor_inicial) as soma_valores_iniciais,
+                        SUM(a.valor_atual) as soma_valores_atuais,
+                        SUM(a.valor_inicial) - SUM(a.valor_atual) as valor_total_glosas
+                    FROM aihs a
+                    WHERE 1=1
                     ${filtroWhere.replace('criado_em', 'a.criado_em')}
                 `, params);
 
                 dados = [{
-                    'AIHs com Glosas': analiseValoresCompleta.aihs_com_glosas || 0,
-                    'Total de Glosas': analiseValoresCompleta.total_glosas || 0,
-                    'Valor Inicial Total': `R$ ${(analiseValoresCompleta.valor_inicial_total || 0).toFixed(2)}`,
-                    'Valor Atual Total': `R$ ${(analiseValoresCompleta.valor_atual_total || 0).toFixed(2)}`,
-                    'Valor Total Glosas': `R$ ${(analiseValoresCompleta.valor_total_glosas || 0).toFixed(2)}`
+                    'AIHs com Glosas': aihsComGlosasExport.aihs_com_glosas || 0,
+                    'Total de Glosas': totalGlosasExport.total_glosas || 0,
+                    'Valor Inicial Total (Todas AIHs)': `R$ ${(valorTotalGlosasExport.soma_valores_iniciais || 0).toFixed(2)}`,
+                    'Valor Atual Total (Todas AIHs)': `R$ ${(valorTotalGlosasExport.soma_valores_atuais || 0).toFixed(2)}`,
+                    'Valor Total Glosas (Diferença Geral)': `R$ ${(valorTotalGlosasExport.valor_total_glosas || 0).toFixed(2)}`
                 }];
                 break;
 
