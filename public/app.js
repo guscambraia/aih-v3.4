@@ -2289,7 +2289,9 @@ const formatarValorTabela = (valor, header) => {
     if (header.includes('AIHs') || header.includes('Qtd') || header.includes('Quantidade') || 
         header.includes('Saldo Mensal') || header.includes('Movimentações') || header.includes('movimentacoes') ||
         header.includes('Total Movimentacoes') || header.includes('Total AIHs') || 
-        header.includes('Auditadas') || header.includes('auditadas')) {
+        header.includes('Auditadas') || header.includes('auditadas') ||
+        header.includes('Total Glosas') || header.includes('total_glosas') ||
+        header.includes('Ocorrencias') || header.includes('total_ocorrencias')) {
         if (typeof valor === 'number') {
             return valor.toString();
         }
@@ -2297,7 +2299,7 @@ const formatarValorTabela = (valor, header) => {
     }
     
     // Campos de valor monetário
-    if (header.includes('valor') || header.includes('impacto') || header.includes('total') || header.includes('media')) {
+    if (header.includes('valor') || header.includes('impacto') || header.includes('media')) {
         if (typeof valor === 'number') {
             return `R$ ${valor.toFixed(2)}`;
         }
