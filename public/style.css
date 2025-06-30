@@ -431,8 +431,54 @@ header h2 {
 
 .stat-detail {
     font-size: 0.75rem;
-    color: var(--gray-500);
+    color: #64748b;
+    margin: 0;
+}
+
+.stat-extra {
+    font-size: 0.7rem;
+    color: #94a3b8;
     font-style: italic;
+    margin: 0.5rem 0 0 0;
+    opacity: 0.8;
+}
+
+.clickable-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.clickable-card::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+}
+
+.clickable-card:hover::before {
+    opacity: 1;
+}
+
+.clickable-card:hover .stat-extra {
+    opacity: 1;
+    color: #3b82f6;
+    font-weight: 500;
+}
+
+.clickable-card:active {
+    transform: translateY(1px) !important;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Resumo Financeiro */
@@ -1057,7 +1103,7 @@ tr:last-child {
 
 .glosas-section h3 {
     color: #78350f;
-    margin-bottom: 1rem;```
+    margin-bottom: 1rem;
     font-size: 1.125rem;
 }
 
@@ -1695,24 +1741,24 @@ tr:last-child {
     .status-grid-detalhado {
         grid-template-columns: 1fr;
     }
-    
+
     .form-row {
         grid-template-columns: 1fr;
     }
-    
+
     .profissionais-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .glosas-header {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .form-buttons {
         flex-direction: column;
     }
-    
+
     .form-section {
         padding: 1.5rem;
     }

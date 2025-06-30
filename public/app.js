@@ -489,57 +489,81 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
         const dashboard = document.querySelector('.dashboard');
         dashboard.innerHTML = `
             <!-- Card 1: Em Processamento na Competência -->
-            <div class="stat-card">
+            <div class="stat-card clickable-card" onclick="visualizarAIHsPorCategoria('em_processamento', '${competencia}')" 
+                 style="cursor: pointer; transition: all 0.3s ease;"
+                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
+                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">📊</div>
                 <h3>Em Processamento</h3>
                 <p class="stat-number" id="emProcessamentoCompetencia">${dados.em_processamento_competencia}</p>
                 <p class="stat-subtitle">AIHs em análise em ${competencia}</p>
-                <p class="stat-detail">Entradas SUS - Saídas Hospital</p>
+                <p class="stat-detail">📋 Estas AIHs estão na Auditoria SUS em processamento</p>
+                <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
             </div>
 
             <!-- Card 2: Finalizadas na Competência -->
-            <div class="stat-card success">
+            <div class="stat-card success clickable-card" onclick="visualizarAIHsPorCategoria('finalizadas', '${competencia}')"
+                 style="cursor: pointer; transition: all 0.3s ease;"
+                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
+                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">✅</div>
                 <h3>Finalizadas</h3>
                 <p class="stat-number" id="finalizadasCompetencia">${dados.finalizadas_competencia}</p>
                 <p class="stat-subtitle">AIHs concluídas em ${competencia}</p>
-                <p class="stat-detail">Status 1 e 4</p>
+                <p class="stat-detail">🤝 Estas AIHs já tiveram sua auditoria concluída com concordância de ambas auditorias</p>
+                <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
             </div>
 
             <!-- Card 3: Com Pendências na Competência -->
-            <div class="stat-card warning">
+            <div class="stat-card warning clickable-card" onclick="visualizarAIHsPorCategoria('com_pendencias', '${competencia}')"
+                 style="cursor: pointer; transition: all 0.3s ease;"
+                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
+                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">⚠️</div>
                 <h3>Com Pendências</h3>
                 <p class="stat-number" id="comPendenciasCompetencia">${dados.com_pendencias_competencia}</p>
                 <p class="stat-subtitle">AIHs com glosas em ${competencia}</p>
-                <p class="stat-detail">Status 2 e 3</p>
+                <p class="stat-detail">🔄 Estas AIHs estão com alguma pendência passível de recurso e discussão pelas partes envolvidas</p>
+                <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
             </div>
 
             <!-- Card 4: Total Geral em Processamento -->
-            <div class="stat-card info">
+            <div class="stat-card info clickable-card" onclick="visualizarAIHsPorCategoria('total_processamento', 'geral')"
+                 style="cursor: pointer; transition: all 0.3s ease;"
+                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
+                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">🏥</div>
                 <h3>Total em Processamento</h3>
                 <p class="stat-number" id="totalProcessamentoGeral">${dados.total_em_processamento_geral}</p>
                 <p class="stat-subtitle">Desde o início do sistema</p>
-                <p class="stat-detail">Total: ${dados.total_entradas_sus} entradas - ${dados.total_saidas_hospital} saídas</p>
+                <p class="stat-detail">📊 Total: ${dados.total_entradas_sus} entradas - ${dados.total_saidas_hospital} saídas</p>
+                <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
             </div>
 
             <!-- Card 5: Total Finalizadas (Histórico Geral) -->
-            <div class="stat-card success" style="border-left: 4px solid #10b981;">
+            <div class="stat-card success clickable-card" onclick="visualizarAIHsPorCategoria('total_finalizadas', 'geral')" 
+                 style="border-left: 4px solid #10b981; cursor: pointer; transition: all 0.3s ease;"
+                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
+                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">🎯</div>
                 <h3>Total Finalizadas</h3>
                 <p class="stat-number" id="totalFinalizadasGeral">${dados.total_finalizadas_geral}</p>
                 <p class="stat-subtitle">Desde o início do sistema</p>
-                <p class="stat-detail">AIHs concluídas (Status 1 e 4)</p>
+                <p class="stat-detail">✅ AIHs concluídas com auditoria finalizada</p>
+                <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
             </div>
 
             <!-- Card 6: Total Geral Cadastradas -->
-            <div class="stat-card" style="border-left: 4px solid #6366f1;">
+            <div class="stat-card clickable-card" onclick="visualizarAIHsPorCategoria('total_cadastradas', 'geral')" 
+                 style="border-left: 4px solid #6366f1; cursor: pointer; transition: all 0.3s ease;"
+                 onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'"
+                 onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">
                 <div class="stat-icon">📈</div>
                 <h3>Total Cadastradas</h3>
                 <p class="stat-number" id="totalAIHsGeral">${dados.total_aihs_geral}</p>
                 <p class="stat-subtitle">Desde o início do sistema</p>
-                <p class="stat-detail">Todas as AIHs do sistema</p>
+                <p class="stat-detail">📋 Todas as AIHs registradas no sistema</p>
+                <p class="stat-extra">✨ Clique para ver a lista detalhada</p>
             </div>
         `;
 
@@ -1481,6 +1505,205 @@ window.visualizarAIH = async (numeroAIH) => {
         mostrarInfoAIH(aih);
     } catch (err) {
         alert('Erro ao carregar AIH: ' + err.message);
+    }
+};
+
+// Função para visualizar AIHs por categoria do dashboard
+window.visualizarAIHsPorCategoria = async (categoria, periodo) => {
+    try {
+        console.log(`Carregando AIHs da categoria: ${categoria}, período: ${periodo}`);
+        
+        // Mostrar indicador de carregamento
+        const loadingModal = document.createElement('div');
+        loadingModal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+            background: rgba(0,0,0,0.7); display: flex; align-items: center; 
+            justify-content: center; z-index: 9999;
+        `;
+        loadingModal.innerHTML = `
+            <div style="background: white; padding: 2rem; border-radius: 8px; text-align: center;">
+                <div style="border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+                <p>Carregando AIHs...</p>
+            </div>
+        `;
+        document.body.appendChild(loadingModal);
+
+        // Construir filtros baseados na categoria
+        let filtros = {};
+        
+        switch(categoria) {
+            case 'em_processamento':
+                // AIHs em processamento = entradas SUS - saídas hospital na competência
+                filtros = { em_processamento_competencia: periodo };
+                break;
+            case 'finalizadas':
+                filtros = { status: [1, 4] };
+                if (periodo !== 'geral') {
+                    filtros.competencia = periodo;
+                }
+                break;
+            case 'com_pendencias':
+                filtros = { status: [2, 3] };
+                if (periodo !== 'geral') {
+                    filtros.competencia = periodo;
+                }
+                break;
+            case 'total_processamento':
+                filtros = { em_processamento_geral: true };
+                break;
+            case 'total_finalizadas':
+                filtros = { status: [1, 4] };
+                break;
+            case 'total_cadastradas':
+                filtros = {}; // Todas as AIHs
+                break;
+        }
+
+        // Fazer requisição para buscar AIHs
+        const response = await api('/pesquisar', {
+            method: 'POST',
+            body: JSON.stringify({ filtros })
+        });
+
+        // Remover loading
+        document.body.removeChild(loadingModal);
+
+        // Definir título baseado na categoria
+        let titulo = '';
+        let descricao = '';
+        
+        switch(categoria) {
+            case 'em_processamento':
+                titulo = `📊 AIHs Em Processamento - ${periodo}`;
+                descricao = 'AIHs que estão atualmente na Auditoria SUS em processamento';
+                break;
+            case 'finalizadas':
+                titulo = `✅ AIHs Finalizadas${periodo !== 'geral' ? ` - ${periodo}` : ' (Histórico Geral)'}`;
+                descricao = 'AIHs que já tiveram sua auditoria concluída com concordância de ambas auditorias';
+                break;
+            case 'com_pendencias':
+                titulo = `⚠️ AIHs Com Pendências${periodo !== 'geral' ? ` - ${periodo}` : ' (Histórico Geral)'}`;
+                descricao = 'AIHs que estão com alguma pendência passível de recurso e discussão pelas partes envolvidas';
+                break;
+            case 'total_processamento':
+                titulo = '🏥 Total de AIHs Em Processamento (Geral)';
+                descricao = 'Todas as AIHs que estão em processamento desde o início do sistema';
+                break;
+            case 'total_finalizadas':
+                titulo = '🎯 Total de AIHs Finalizadas (Geral)';
+                descricao = 'Todas as AIHs finalizadas desde o início do sistema';
+                break;
+            case 'total_cadastradas':
+                titulo = '📈 Total de AIHs Cadastradas (Geral)';
+                descricao = 'Todas as AIHs registradas no sistema desde o início';
+                break;
+        }
+
+        // Ir para tela de pesquisa e exibir resultados
+        mostrarTela('telaPesquisa');
+        
+        // Aguardar um pouco para garantir que a tela foi carregada
+        setTimeout(() => {
+            // Armazenar resultados globalmente
+            window.ultimosResultadosPesquisa = response.resultados;
+            
+            // Customizar o container de resultados com título específico
+            const container = document.getElementById('resultadosPesquisa');
+            if (!container) {
+                console.error('Container de resultados não encontrado');
+                return;
+            }
+
+            if (!response.resultados || response.resultados.length === 0) {
+                container.innerHTML = `
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 2rem; text-align: center; margin-top: 2rem;">
+                        <h3 style="color: #64748b; margin-bottom: 1rem;">${titulo}</h3>
+                        <p style="color: #64748b; margin-bottom: 1rem;">${descricao}</p>
+                        <p style="color: #64748b;">📭 Nenhuma AIH encontrada nesta categoria.</p>
+                        <button onclick="voltarTelaPrincipal()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            ← Voltar ao Dashboard
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 1.5rem; margin-top: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h3 style="color: #0369a1; margin: 0 0 0.5rem 0;">${titulo}</h3>
+                            <p style="color: #0369a1; margin: 0; font-size: 0.9rem; font-style: italic;">${descricao}</p>
+                            <p style="color: #0284c7; margin: 0.5rem 0 0 0; font-weight: 600;">Total encontrado: ${response.resultados.length} AIH${response.resultados.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button onclick="voltarTelaPrincipal()" style="padding: 0.5rem 1rem; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">
+                                ← Voltar ao Dashboard
+                            </button>
+                            <button onclick="exportarResultadosPesquisa('csv')" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                                📄 Exportar CSV
+                            </button>
+                            <button onclick="exportarResultadosPesquisa('excel')" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                                📊 Exportar Excel
+                            </button>
+                            <button onclick="limparResultados()" class="btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                                🗑️ Limpar Resultados
+                            </button>
+                        </div>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                            <thead>
+                                <tr style="background: #f1f5f9;">
+                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">AIH</th>
+                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Status</th>
+                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Competência</th>
+                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Valor Inicial</th>
+                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Valor Atual</th>
+                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Glosas</th>
+                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${response.resultados.map((aih, index) => `
+                                    <tr style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='white'">
+                                        <td style="padding: 1rem; font-weight: 500; color: #1e293b;">${aih.numero_aih || 'N/A'}</td>
+                                        <td style="padding: 1rem;"><span class="status-badge status-${aih.status}">${getStatusDescricao(aih.status)}</span></td>
+                                        <td style="padding: 1rem; color: #64748b;">${aih.competencia || 'N/A'}</td>
+                                        <td style="padding: 1rem; color: #059669; font-weight: 500;">R$ ${(aih.valor_inicial || 0).toFixed(2)}</td>
+                                        <td style="padding: 1rem; color: ${(aih.valor_atual < aih.valor_inicial) ? '#dc2626' : '#059669'}; font-weight: 500;">R$ ${(aih.valor_atual || 0).toFixed(2)}</td>
+                                        <td style="padding: 1rem; text-align: center;">
+                                            <span style="background: ${(aih.total_glosas > 0) ? '#fef3c7' : '#f0fdf4'}; color: ${(aih.total_glosas > 0) ? '#92400e' : '#166534'}; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500;">
+                                                ${aih.total_glosas || 0}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 1rem;">
+                                            <button onclick="visualizarAIH('${aih.numero_aih}')" 
+                                                    style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
+                                                           color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
+                                                           cursor: pointer; font-weight: 500; transition: all 0.2s;">
+                                                👁️ Ver Detalhes
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }, 200);
+
+    } catch (err) {
+        console.error('Erro ao carregar AIHs por categoria:', err);
+        
+        // Remover loading se existir
+        const loadingModal = document.querySelector('[style*="position: fixed"]');
+        if (loadingModal) {
+            document.body.removeChild(loadingModal);
+        }
+        
+        alert('Erro ao carregar AIHs: ' + err.message);
     }
 };
 

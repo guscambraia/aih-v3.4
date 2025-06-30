@@ -706,57 +706,102 @@ app.post('/api/pesquisar', verificarToken, async (req, res) => {
                    WHERE 1=1`;
         const params = [];
 
-        if (filtros.status?.length) {
-            sql += ` AND a.status IN (${filtros.status.map(() => '?').join(',')})`;
-            params.push(...filtros.status);
+        // Filtro especial para AIHs em processamento por competência
+        if (filtros.em_processamento_competencia) {
+            const competencia = filtros.em_processamento_competencia;
+            
+            // Buscar AIHs que tiveram entrada SUS mas não saída hospital na competência específica
+            sql = `
+                SELECT a.*, COUNT(g.id) as total_glosas 
+                FROM aihs a 
+                LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1 
+                WHERE a.id IN (
+                    SELECT DISTINCT m1.aih_id 
+                    FROM movimentacoes m1 
+                    WHERE m1.tipo = 'entrada_sus' 
+                    AND m1.competencia = ?
+                    AND m1.aih_id NOT IN (
+                        SELECT DISTINCT m2.aih_id 
+                        FROM movimentacoes m2 
+                        WHERE m2.tipo = 'saida_hospital' 
+                        AND m2.competencia = ?
+                    )
+                )
+            `;
+            params.push(competencia, competencia);
         }
-
-        if (filtros.competencia) {
-            sql += ' AND a.competencia = ?';
-            params.push(filtros.competencia);
+        // Filtro especial para AIHs em processamento geral
+        else if (filtros.em_processamento_geral) {
+            sql = `
+                SELECT a.*, COUNT(g.id) as total_glosas 
+                FROM aihs a 
+                LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1 
+                WHERE a.id IN (
+                    SELECT DISTINCT m1.aih_id 
+                    FROM movimentacoes m1 
+                    WHERE m1.tipo = 'entrada_sus' 
+                    AND m1.aih_id NOT IN (
+                        SELECT DISTINCT m2.aih_id 
+                        FROM movimentacoes m2 
+                        WHERE m2.tipo = 'saida_hospital'
+                    )
+                )
+            `;
         }
+        else {
+            // Filtros normais
+            if (filtros.status?.length) {
+                sql += ` AND a.status IN (${filtros.status.map(() => '?').join(',')})`;
+                params.push(...filtros.status);
+            }
 
-        if (filtros.data_inicio) {
-            sql += ' AND a.criado_em >= ?';
-            params.push(filtros.data_inicio);
-        }
+            if (filtros.competencia) {
+                sql += ' AND a.competencia = ?';
+                params.push(filtros.competencia);
+            }
 
-        if (filtros.data_fim) {
-            sql += ' AND a.criado_em <= ?';
-            params.push(filtros.data_fim + ' 23:59:59');
-        }
+            if (filtros.data_inicio) {
+                sql += ' AND a.criado_em >= ?';
+                params.push(filtros.data_inicio);
+            }
 
-        if (filtros.valor_min) {
-            sql += ' AND a.valor_atual >= ?';
-            params.push(filtros.valor_min);
-        }
+            if (filtros.data_fim) {
+                sql += ' AND a.criado_em <= ?';
+                params.push(filtros.data_fim + ' 23:59:59');
+            }
 
-        if (filtros.valor_max) {
-            sql += ' AND a.valor_atual <= ?';
-            params.push(filtros.valor_max);
-        }
+            if (filtros.valor_min) {
+                sql += ' AND a.valor_atual >= ?';
+                params.push(filtros.valor_min);
+            }
 
-        if (filtros.numero_aih) {
-            sql += ' AND a.numero_aih LIKE ?';
-            params.push(`%${filtros.numero_aih}%`);
-        }
+            if (filtros.valor_max) {
+                sql += ' AND a.valor_atual <= ?';
+                params.push(filtros.valor_max);
+            }
 
-        if (filtros.numero_atendimento) {
-            sql += ` AND a.id IN (
-                SELECT DISTINCT aih_id FROM atendimentos 
-                WHERE numero_atendimento LIKE ?
-            )`;
-            params.push(`%${filtros.numero_atendimento}%`);
-        }
+            if (filtros.numero_aih) {
+                sql += ' AND a.numero_aih LIKE ?';
+                params.push(`%${filtros.numero_aih}%`);
+            }
 
-        if (filtros.profissional) {
-            sql += ` AND a.id IN (
-                SELECT DISTINCT aih_id FROM movimentacoes 
-                WHERE prof_medicina LIKE ? OR prof_enfermagem LIKE ? 
-                OR prof_fisioterapia LIKE ? OR prof_bucomaxilo LIKE ?
-            )`;
-            const prof = `%${filtros.profissional}%`;
-            params.push(prof, prof, prof, prof);
+            if (filtros.numero_atendimento) {
+                sql += ` AND a.id IN (
+                    SELECT DISTINCT aih_id FROM atendimentos 
+                    WHERE numero_atendimento LIKE ?
+                )`;
+                params.push(`%${filtros.numero_atendimento}%`);
+            }
+
+            if (filtros.profissional) {
+                sql += ` AND a.id IN (
+                    SELECT DISTINCT aih_id FROM movimentacoes 
+                    WHERE prof_medicina LIKE ? OR prof_enfermagem LIKE ? 
+                    OR prof_fisioterapia LIKE ? OR prof_bucomaxilo LIKE ?
+                )`;
+                const prof = `%${filtros.profissional}%`;
+                params.push(prof, prof, prof, prof);
+            }
         }
 
         sql += ' GROUP BY a.id ORDER BY a.criado_em DESC';
