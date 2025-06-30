@@ -709,7 +709,7 @@ app.post('/api/pesquisar', verificarToken, async (req, res) => {
         // Filtro especial para AIHs em processamento por competência
         if (filtros.em_processamento_competencia) {
             const competencia = filtros.em_processamento_competencia;
-
+            
             // Buscar AIHs que tiveram entrada SUS mas não saída hospital na competência específica
             sql = `
                 SELECT a.*, COUNT(g.id) as total_glosas 
@@ -949,7 +949,7 @@ app.get('/api/backup', verificarToken, async (req, res) => {
     try {
         const fs = require('fs');
         const dbPath = path.join(__dirname, 'db', 'aih.db');
-
+        
         // Verificar se o arquivo existe
         if (!fs.existsSync(dbPath)) {
             return res.status(404).json({ error: 'Arquivo de banco de dados não encontrado' });
@@ -957,26 +957,26 @@ app.get('/api/backup', verificarToken, async (req, res) => {
 
         // Fazer checkpoint do WAL antes do backup para garantir consistência
         await run("PRAGMA wal_checkpoint(FULL)");
-
+        
         const nomeArquivo = `backup-aih-${new Date().toISOString().split('T')[0]}.db`;
-
+        
         res.setHeader('Content-Type', 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
         res.setHeader('Cache-Control', 'no-cache');
-
+        
         // Usar createReadStream para arquivos grandes
         const fileStream = fs.createReadStream(dbPath);
         fileStream.pipe(res);
-
+        
         fileStream.on('error', (err) => {
             console.error('Erro ao fazer backup:', err);
             if (!res.headersSent) {
                 res.status(500).json({ error: 'Erro ao fazer backup do banco de dados' });
             }
         });
-
+        
         console.log(`Backup do banco iniciado: ${nomeArquivo}`);
-
+        
     } catch (err) {
         console.error('Erro no backup:', err);
         if (!res.headersSent) {
@@ -1005,239 +1005,11 @@ app.post('/api/admin/backup-completo', verificarToken, async (req, res) => {
     }
 });
 
-// Buscar movimentações detalhadas de uma AIH
-app.get('/api/aih/:numero/movimentacoes-detalhadas', verificarToken, async (req, res) => {
-    try {
-        const numeroAIH = req.params.numero;
-
-        // Buscar AIH
-        const aih = await get('SELECT id FROM aihs WHERE numero_aih = ?', [numeroAIH]);
-        if (!aih) {
-            return res.status(404).json({ error: 'AIH não encontrada' });
-        }
-
-        // Buscar movimentações da AIH
-        const movimentacoes = await all(`
-            SELECT 
-                m.*,
-                u.nome as usuario_nome
-            FROM movimentacoes m
-            LEFT JOIN usuarios u ON m.usuario_id = u.id
-            WHERE m.aih_id = ?
-            ORDER BY m.data_movimentacao DESC
-        `, [aih.id]);
-
-        res.json({
-            success: true,
-            movimentacoes: movimentacoes
-        });
-    } catch (err) {
-        console.error('Erro ao buscar movimentações:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Deletar movimentação específica
-app.delete('/api/admin/deletar-movimentacao', verificarToken, async (req, res) => {
-    try {
-        console.log('Usuário tentando deletar movimentação:', req.usuario);
-        console.log('Tipo de usuário detectado:', req.usuario.tipo);
-        console.log('Verificação de admin:', req.usuario.tipo === 'admin');
-
-        if (req.usuario.tipo !== 'admin') {
-            console.log('Acesso negado - tipo de usuário:', req.usuario.tipo);
-            console.log('Usuário completo:', JSON.stringify(req.usuario, null, 2));
-            return res.status(403).json({ error: 'Acesso negado - apenas administradores podem realizar esta operação' });
-        }
-
-        const { numero_aih, movimentacao_id, justificativa, senha_admin } = req.body;
-
-        // Validar campos obrigatórios
-        if (!numero_aih || !movimentacao_id || !justificativa || !senha_admin) {
-            return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
-        }
-
-        // Verificar senha do usuário logado
-        const { get } = require('./database');
-        const bcrypt = require('bcryptjs');
-
-        const usuario = await get('SELECT * FROM usuarios WHERE id = ?', [req.usuario.id]);
-        if (!usuario) {
-            return res.status(404).json({ error: 'Usuário não encontrado' });
-        }
-
-        const senhaValida = await bcrypt.compare(senha_admin, usuario.senha_hash);
-        if (!senhaValida) {
-            return res.status(401).json({ error: 'Senha do usuário incorreta' });
-        }
-
-        // Buscar AIH
-        const aih = await get('SELECT id FROM aihs WHERE numero_aih = ?', [numero_aih]);
-        if (!aih) {
-            return res.status(404).json({ error: 'AIH não encontrada' });
-        }
-
-        // Buscar movimentação
-        const movimentacao = await get('SELECT * FROM movimentacoes WHERE id = ? AND aih_id = ?', [movimentacao_id, aih.id]);
-        if (!movimentacao) {
-            return res.status(404).json({ error: 'Movimentação não encontrada' });
-        }
-
-        // Realizar exclusão em transação
-        const operations = [
-            {
-                sql: 'DELETE FROM movimentacoes WHERE id = ?',
-                params: [movimentacao_id]
-            },
-            {
-                sql: `INSERT INTO logs_operacoes_criticas 
-                      (tipo, usuario, justificativa, detalhes) 
-                      VALUES (?, ?, ?, ?)`,
-                params: [
-                    'DELETE_MOVIMENTACAO',
-                    req.usuario.nome || 'admin',
-                    justificativa,
-                    `AIH: ${numero_aih}, Movimentação ID: ${movimentacao_id}, Tipo: ${movimentacao.tipo}, Data: ${movimentacao.data_movimentacao}`
-                ]
-            }
-        ];
-
-        await runTransaction(operations);
-
-        console.log(`Movimentação ${movimentacao_id} da AIH ${numero_aih} excluída por ${req.usuario.nome}`);
-
-        res.json({
-            success: true,
-            message: 'Movimentação excluída com sucesso'
-        });
-
-    } catch (err) {
-        console.error('Erro ao deletar movimentação:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Deletar AIH completa
-app.delete('/api/admin/deletar-aih', verificarToken, async (req, res) => {
-    try {
-        console.log('Usuário tentando deletar AIH:', req.usuario);
-        console.log('Tipo de usuário detectado:', req.usuario.tipo);
-        console.log('Verificação de admin:', req.usuario.tipo === 'admin');
-
-        if (req.usuario.tipo !== 'admin') {
-            console.log('Acesso negado - tipo de usuário:', req.usuario.tipo);
-            console.log('Usuário completo:', JSON.stringify(req.usuario, null, 2));
-            return res.status(403).json({ error: 'Acesso negado - apenas administradores podem realizar esta operação' });
-        }
-
-        const { numero_aih, justificativa, senha_admin } = req.body;
-
-        // Validar campos obrigatórios
-        if (!numero_aih || !justificativa || !senha_admin) {
-            return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
-        }
-
-        // Verificar senha do usuário logado
-        const { get } = require('./database');
-        const bcrypt = require('bcryptjs');
-
-        const usuario = await get('SELECT * FROM usuarios WHERE id = ?', [req.usuario.id]);
-        if (!usuario) {
-            return res.status(404).json({ error: 'Usuário não encontrado' });
-        }
-
-        const senhaValida = await bcrypt.compare(senha_admin, usuario.senha_hash);
-        if (!senhaValida) {
-            return res.status(401).json({ error: 'Senha do usuário incorreta' });
-        }
-
-        // Buscar AIH
-        const aih = await get('SELECT * FROM aihs WHERE numero_aih = ?', [numero_aih]);
-        if (!aih) {
-            return res.status(404).json({ error: 'AIH não encontrada' });
-        }
-
-        // Contar dados relacionados para o log
-        const movimentacoes = await get('SELECT COUNT(*) as count FROM movimentacoes WHERE aih_id = ?', [aih.id]);
-        const glosas = await get('SELECT COUNT(*) as count FROM glosas WHERE aih_id = ?', [aih.id]);
-        const atendimentos = await get('SELECT COUNT(*) as count FROM atendimentos WHERE aih_id = ?', [aih.id]);
-
-        // Realizar exclusão em transação (ordem importante para integridade referencial)
-        const operations = [
-            {
-                sql: 'DELETE FROM glosas WHERE aih_id = ?',
-                params: [aih.id]
-            },
-            {
-                sql: 'DELETE FROM movimentacoes WHERE aih_id = ?',
-                params: [aih.id]
-            },
-            {
-                sql: 'DELETE FROM atendimentos WHERE aih_id = ?',
-                params: [aih.id]
-            },
-            {
-                sql: 'DELETE FROM aihs WHERE id = ?',
-                params: [aih.id]
-            },
-            {
-                sql: `INSERT INTO logs_operacoes_criticas 
-                      (tipo, usuario, justificativa, detalhes) 
-                      VALUES (?, ?, ?, ?)`,
-                params: [
-                    'DELETE_AIH',
-                    req.usuario.nome || 'admin',
-                    justificativa,
-                    `AIH: ${numero_aih}, Valor: R$ ${aih.valor_inicial}, Competência: ${aih.competencia}, Movimentações: ${movimentacoes.count}, Glosas: ${glosas.count}, Atendimentos: ${atendimentos.count}`
-                ]
-            }
-        ];
-
-        await runTransaction(operations);
-
-        console.log(`AIH ${numero_aih} excluída completamente por ${req.usuario.nome}`);
-
-        res.json({
-            success: true,
-            message: 'AIH excluída com sucesso'
-        });
-
-    } catch (err) {
-        console.error('Erro ao deletar AIH:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Buscar histórico de operações críticas
-app.get('/api/admin/historico-operacoes', verificarToken, async (req, res) => {
-    try {
-        if (req.usuario.tipo !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado' });
-        }
-
-        const historico = await all(`
-            SELECT *
-            FROM logs_operacoes_criticas
-            ORDER BY data_operacao DESC
-            LIMIT 100
-        `);
-
-        res.json({
-            success: true,
-            historico: historico
-        });
-
-    } catch (err) {
-        console.error('Erro ao buscar histórico:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
 // Export completo de todos os dados da base
 app.get('/api/export/:formato', verificarToken, async (req, res) => {
     try {
         console.log(`Iniciando exportação completa em formato: ${req.params.formato}`);
-
+        
         // Buscar TODOS os dados da base de dados
         const aihs = await all(`
             SELECT a.*, 
@@ -1729,7 +1501,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as aprovacao_direta,
                         SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as aprovacao_indireta,
                         SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as em_discussao,
-                        SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as finalizada_pos_discussão,
+                        SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as finalizada_pos_discussao,
                         COUNT(*) as total
                     FROM aihs
                 `);
@@ -2232,7 +2004,8 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
         } else if (data_inicio && data_fim) {
             filtroWhere = ' AND DATE(criado_em) BETWEEN ? AND ?';
             params.push(data_inicio, data_fim);
-            nomeArquivo += `-${data_inicio}-a-${data_fim}`;        } else if (data_inicio) {
+            nomeArquivo += `-${data_inicio}-a-${data_fim}`;
+        } else if (data_inicio) {
             filtroWhere = ' AND DATE(criado_em) >= ?';
             params.push(data_inicio);
             nomeArquivo += `-a-partir-${data_inicio}`;
@@ -2428,7 +2201,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                         SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as aprovacao_direta,
                         SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) as aprovacao_indireta,
                         SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as em_discussao,
-                        SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as finalizada_pos_discussão,
+                        SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as finalizada_pos_discussao,
                         COUNT(*) as total
                     FROM aihs
                 `);
@@ -2436,7 +2209,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     { Tipo: 'Aprovação Direta', Quantidade: aprovacoes.aprovacao_direta, Percentual: ((aprovacoes.aprovacao_direta/aprovacoes.total)*100).toFixed(1) + '%' },
                     { Tipo: 'Aprovação Indireta', Quantidade: aprovacoes.aprovacao_indireta, Percentual: ((aprovacoes.aprovacao_indireta/aprovacoes.total)*100).toFixed(1) + '%' },
                     { Tipo: 'Em Discussão', Quantidade: aprovacoes.em_discussao, Percentual: ((aprovacoes.em_discussao/aprovacoes.total)*100).toFixed(1) + '%' },
-                    { Tipo: 'Finalizada Pós-Discussão', Quantidade: aprovacoes.finalizada_pos_discussão, Percentual: ((aprovacoes.finalizada_pos_discussao/aprovacoes.total)*100).toFixed(1) + '%' }
+                    { Tipo: 'Finalizada Pós-Discussão', Quantidade: aprovacoes.finalizada_pos_discussao, Percentual: ((aprovacoes.finalizada_pos_discussao/aprovacoes.total)*100).toFixed(1) + '%' }
                 ];
                 break;
 
@@ -2481,7 +2254,5 @@ app.get('*', (req, res) => {
 
 // Iniciar servidor
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor AIH rodando em http://0.0.0.0:${PORT}`);
-    console.log(`📊 Dashboard disponível em: http://0.0.0.0:${PORT}`);
-    console.log(`🔧 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Servidor rodando em http://0.0.0.0:${PORT}`);
 });

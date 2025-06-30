@@ -12,7 +12,7 @@ localPort = 5000
 externalPort = 80
 
 [workflows]
-runButton = "Iniciar Sistema AIH"
+runButton = "Servidor AIH"
 
 [[workflows.workflow]]
 name = "Servidor AIH"
@@ -30,23 +30,6 @@ args = "fuser -k 5000/tcp || true"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "sleep 2"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node server.js"
-
-[[workflows.workflow]]
-name = "Iniciar Sistema AIH"
-author = 44254326
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pkill -f \"node server.js\" || true"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "sleep 1"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

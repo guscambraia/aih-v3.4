@@ -96,16 +96,9 @@ const loginAdmin = async (usuario, senha) => {
         throw new Error('Senha incorreta');
     }
 
-    // Criar objeto de usuário admin com tipo explícito
-    const adminUser = { 
-        id: admin.id, 
-        nome: admin.usuario, 
-        tipo: 'admin' 
-    };
-
     return {
-        token: gerarToken(adminUser),
-        admin: { id: admin.id, usuario: admin.usuario, tipo: 'admin' }
+        token: gerarToken({ id: admin.id, nome: admin.usuario, tipo: 'admin' }),
+        admin: { id: admin.id, usuario: admin.usuario }
     };
 };
 

@@ -1136,49 +1136,13 @@ tr:last-child {
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
     z-index: 1000;
-    align-items: center;
-    justify-content: center;
 }
 
 .modal.ativo {
     display: flex;
-}
-
-/* Modal de confirmação de exclusão */
-#modalConfirmacaoExclusao .modal-content {
-    background: var(--white);
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-    max-width: 500px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-#modalConfirmacaoExclusao .form-group {
-    margin-bottom: 1rem;
-}
-
-#modalConfirmacaoExclusao label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: var(--gray-700);
-}
-
-#modalConfirmacaoExclusao input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--gray-300);
-    border-radius: 6px;
-    font-size: 1rem;
-}
-
-#modalConfirmacaoExclusao input:focus {
-    outline: none;
-    border-color: #dc2626;
-    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
 }
 
 .modal-content {
@@ -2026,7 +1990,7 @@ tr:last-child {
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     color: white;
     border: none;
-    padding: 0.875rem 2rem,
+    padding: 0.875rem 2rem;
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
@@ -2506,171 +2470,38 @@ tr:last-child {
     background: #f8fafc;
 }
 
-/* Estilos para Alteração de BD */
-.operacoes-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    margin-bottom: 2rem;
-}
-
-.operacao-card {
-    background: var(--white);
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--gray-200);
-    transition: all 0.2s;
-}
-
-.operacao-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-.operacao-card h3 {
-    color: #dc2626;
-    margin: 0 0 1rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1.1rem;
-}
-
-.operacao-card .form-group {
-    margin-bottom: 1rem;
-}
-
-.operacao-card label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: var(--gray-700);
-    font-size: 0.9rem;
-}
-
-.operacao-card input,
-.operacao-card select,
-.operacao-card textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--gray-300);
-    border-radius: 6px;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-}
-
-.operacao-card input:focus,
-.operacao-card select:focus,
-.operacao-card textarea:focus {
-    outline: none;
-    border-color: #dc2626;
-    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-}
-
-.operacao-card textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-.historico-operacoes {
-    background: var(--white);
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--gray-200);
-}
-
-.historico-operacoes h3 {
-    color: var(--gray-800);
-    margin: 0 0 1rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.historico-operacoes table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-}
-
-.historico-operacoes th {
-    background: var(--gray-50);
-    padding: 0.75rem;
-    text-align: left;
-    font-weight: 500;
-    color: var(--gray-700);
-    border-bottom: 1px solid var(--gray-200);
-}
-
-.historico-operacoes td {
-    padding: 0.75rem;
-    border-bottom: 1px solid var(--gray-100);
-    color: var(--gray-600);
-}
-
-.historico-operacoes tr:hover {
-    background: var(--gray-50);
-}
-
-/* Modal de Confirmação */
-#modalConfirmacaoExclusao .modal-content {
-    max-width: 500px;
-    padding: 2rem;
-}
-
-#modalConfirmacaoExclusao h3 {
-    color: #dc2626;
-    text-align: center;
-    margin: 0 0 1rem 0;
-    font-size: 1.25rem;
-}
-
-#detalhesExclusao {
-    margin-bottom: 1.5rem;
-    font-size: 0.9rem;
-    color: var(--gray-700);
-    line-height: 1.5;
-}
-
-#detalhesExclusao p {
-    margin: 0.5rem 0;
-}
-
-#detalhesExclusao strong {
-    color: var(--gray-900);
-}
-
-/* Responsividade para Alteração de BD */
+/* Responsividade */
 @media (max-width: 768px) {
-    .operacoes-grid {
+    .dashboard {
         grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .historico-operacoes {
-        overflow-x: auto;
-    }
-
-    .historico-operacoes table {
-        min-width: 600px;
-    }
-}
-
-/* Print */
-@media print {
-    body {
-        background: white;
-    }
-
-    header, .menu-principal, .btn-voltar, button {
-        display: none;
     }
 
     .container {
-        box-shadow: none;
-        border: none;
-        padding: 0;
+        padding: 1rem;
+    }
+
+    .modal-content {
+        margin: 10% auto;
+        width: 95%;
+    }
+
+    .relatorios-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .busca-rapida-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filtros-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filtros-periodo {
+        grid-template-columns: 1fr;
+    }
+
+    .relatorios-periodo-grid {
+        grid-template-columns: 1fr;
     }
 }
