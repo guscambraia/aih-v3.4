@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const XLSX = require('xlsx');
-const { initDB, run, get, all, runTransaction, validateAIH, validateMovimentacao, clearCache, getDbStats, createBackup } = require('./database');
+const { initDB, run, get, all, runTransaction, validateAIH, validateMovimentacao, clearCache, getDbStats, createBackup, getDashboardCached } = require('./database');
 const { verificarToken, login, cadastrarUsuario, loginAdmin, alterarSenhaAdmin, listarUsuarios, excluirUsuario } = require('./auth');
 const { rateLimitMiddleware, validateInput, clearRateLimit, detectSuspiciousActivity, getSecurityLogs } = require('./middleware');
 
@@ -386,16 +386,15 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
         // Pegar competência da query ou usar atual
         const competencia = req.query.competencia || getCompetenciaAtual();
 
-        // 1. AIH em processamento na competência
-        // (entrada_sus - saida_hospital) na competência específica
-        const entradasSUS = await get(`
+        // 1. AIH em processamento na competência (com cache agressivo)
+        const entradasSUS = await getDashboardCached(`
             SELECT COUNT(DISTINCT m.aih_id) as count 
             FROM movimentacoes m
             WHERE m.tipo = 'entrada_sus' 
             AND m.competencia = ?
         `, [competencia]);
 
-        const saidasHospital = await get(`
+        const saidasHospital = await getDashboardCached(`
             SELECT COUNT(DISTINCT m.aih_id) as count 
             FROM movimentacoes m
             WHERE m.tipo = 'saida_hospital' 
@@ -404,16 +403,16 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
 
         const emProcessamentoCompetencia = (entradasSUS.count || 0) - (saidasHospital.count || 0);
 
-        // 2. AIH finalizadas na competência (status 1 e 4)
-        const finalizadasCompetencia = await get(`
+        // 2. AIH finalizadas na competência (status 1 e 4) - com cache
+        const finalizadasCompetencia = await getDashboardCached(`
             SELECT COUNT(*) as count 
             FROM aihs 
             WHERE status IN (1, 4) 
             AND competencia = ?
         `, [competencia]);
 
-        // 3. AIH com pendências/glosas na competência (status 2 e 3)
-        const comPendenciasCompetencia = await get(`
+        // 3. AIH com pendências/glosas na competência (status 2 e 3) - com cache
+        const comPendenciasCompetencia = await getDashboardCached(`
             SELECT COUNT(*) as count 
             FROM aihs 
             WHERE status IN (2, 3) 
@@ -896,10 +895,11 @@ app.delete('/api/tipos-glosa/:id', verificarToken, async (req, res) => {
     }
 });
 
-// Pesquisa avançada
+// Pesquisa avançada com paginação
 app.post('/api/pesquisar', verificarToken, async (req, res) => {
     try {
-        const { filtros } = req.body;
+        const { filtros, pagina = 1, itensPorPagina = 50 } = req.body; // Paginação padrão
+        const offset = (pagina - 1) * itensPorPagina;
         let sql = `SELECT a.*, COUNT(g.id) as total_glosas 
                    FROM aihs a 
                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1 
@@ -1005,9 +1005,27 @@ app.post('/api/pesquisar', verificarToken, async (req, res) => {
         }
 
         sql += ' GROUP BY a.id ORDER BY a.criado_em DESC';
+        
+        // Contar total de registros (sem LIMIT)
+        const countSql = sql.replace('SELECT a.*, COUNT(g.id) as total_glosas', 'SELECT COUNT(DISTINCT a.id) as total');
+        const totalResult = await get(countSql.replace(/GROUP BY.*ORDER BY.*/, ''), params);
+        const total = totalResult?.total || 0;
+        
+        // Adicionar paginação
+        sql += ` LIMIT ? OFFSET ?`;
+        params.push(parseInt(itensPorPagina), offset);
 
         const resultados = await all(sql, params);
-        res.json({ resultados });
+        
+        res.json({ 
+            resultados,
+            paginacao: {
+                pagina: parseInt(pagina),
+                itensPorPagina: parseInt(itensPorPagina),
+                total: total,
+                totalPaginas: Math.ceil(total / itensPorPagina)
+            }
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

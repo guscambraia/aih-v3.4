@@ -81,8 +81,8 @@ class DatabasePool {
     }
 }
 
-// Criar pool de conexões
-const pool = new DatabasePool(15); // 15 conexões simultâneas
+// Criar pool de conexões otimizado para alto volume
+const pool = new DatabasePool(25); // 25 conexões simultâneas para 2000+ AIHs/mês
 
 // Conexão principal para operações especiais
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -269,6 +269,16 @@ const initDB = () => {
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_usuario_data ON logs_acesso(usuario_id, data_hora DESC)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_acao_data ON logs_acesso(acao, data_hora DESC)`);
         
+        // Índices otimizados para dashboard (alto volume)
+        db.run(`CREATE INDEX IF NOT EXISTS idx_dashboard_movim_count ON movimentacoes(tipo, competencia) WHERE tipo IN ('entrada_sus', 'saida_hospital')`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_dashboard_aihs_status ON aihs(status, competencia) WHERE status IN (1, 2, 3, 4)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_dashboard_valores ON aihs(competencia, valor_inicial, valor_atual)`);
+        
+        // Índices para pesquisas frequentes (performance crítica)
+        db.run(`CREATE INDEX IF NOT EXISTS idx_pesquisa_completa ON aihs(status, competencia, criado_em DESC)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_pesquisa_valores ON aihs(valor_atual, valor_inicial, competencia)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_movim_pesquisa ON movimentacoes(aih_id, tipo, competencia, data_movimentacao DESC)`);
+        
         // Índices para logs de exclusão
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_exclusao_usuario ON logs_exclusao(usuario_id, data_exclusao DESC)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_logs_exclusao_tipo ON logs_exclusao(tipo_exclusao, data_exclusao DESC)`);
@@ -284,18 +294,59 @@ const initDB = () => {
     });
 };
 
-// Cache para consultas frequentes
+// Cache otimizado para alto volume
 const queryCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-const MAX_CACHE_SIZE = 1000;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutos para reduzir consultas
+const MAX_CACHE_SIZE = 5000; // Cache maior para 2000+ AIHs/mês
+
+// Cache especializado para dashboard (mais agressivo)
+const dashboardCache = new Map();
+const DASHBOARD_CACHE_TTL = 2 * 60 * 1000; // 2 minutos
+const MAX_DASHBOARD_CACHE = 100;
 
 const clearExpiredCache = () => {
     const now = Date.now();
+    
+    // Limpar cache geral
     for (const [key, value] of queryCache.entries()) {
         if (now - value.timestamp > CACHE_TTL) {
             queryCache.delete(key);
         }
     }
+    
+    // Limpar cache do dashboard
+    for (const [key, value] of dashboardCache.entries()) {
+        if (now - value.timestamp > DASHBOARD_CACHE_TTL) {
+            dashboardCache.delete(key);
+        }
+    }
+};
+
+// Função especial para cache do dashboard
+const getDashboardCached = async (sql, params = []) => {
+    const cacheKey = 'dashboard_' + sql + JSON.stringify(params);
+    const cached = dashboardCache.get(cacheKey);
+    
+    if (cached && (Date.now() - cached.timestamp < DASHBOARD_CACHE_TTL)) {
+        return cached.data;
+    }
+    
+    const conn = await pool.getConnection();
+    return new Promise((resolve, reject) => {
+        conn.get(sql, params, (err, row) => {
+            pool.releaseConnection(conn);
+            if (err) {
+                reject(err);
+            } else {
+                if (dashboardCache.size >= MAX_DASHBOARD_CACHE) {
+                    const firstKey = dashboardCache.keys().next().value;
+                    dashboardCache.delete(firstKey);
+                }
+                dashboardCache.set(cacheKey, { data: row, timestamp: Date.now() });
+                resolve(row);
+            }
+        });
+    });
 };
 
 // Limpar cache expirado a cada minuto
@@ -588,5 +639,6 @@ module.exports = {
     clearCache,
     getDbStats,
     createBackup,
-    closePool
+    closePool,
+    getDashboardCached
 };
