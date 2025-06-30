@@ -675,31 +675,9 @@ const carregarDadosMovimentacao = async () => {
                     
                     listaGlosas.innerHTML = `
                         <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 1.5rem; margin-top: 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
-                                <h5 style="color: #92400e; margin: 0; font-size: 1.125rem; font-weight: 600;">
-                                    ⚠️ Glosas Ativas (${glosas.glosas.length})
-                                </h5>
-                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                    <button onclick="exportarGlosasAIH('csv')" 
-                                            style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
-                                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
-                                                   transition: all 0.2s ease; font-weight: 500;"
-                                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
-                                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                                        📄 CSV
-                                    </button>
-                                    <button onclick="exportarGlosasAIH('excel')" 
-                                            style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); 
-                                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
-                                                   transition: all 0.2s ease; font-weight: 500;"
-                                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
-                                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                                        📊 Excel
-                                    </button>
-                                </div>
-                            </div>
+                            <h5 style="color: #92400e; margin: 0 0 1rem 0; font-size: 1.125rem; font-weight: 600;">
+                                ⚠️ Glosas Ativas (${glosas.glosas.length})
+                            </h5>
                             <div style="background: white; border-radius: 8px; padding: 1rem; border: 1px solid #fbbf24;">
                                 ${glosasOrdenadas.map((g, index) => `
                                     <div style="padding: 0.75rem 0; ${index < glosasOrdenadas.length - 1 ? 'border-bottom: 1px solid #f3f4f6;' : ''} display: flex; justify-content: between; align-items: center; gap: 1rem;">
