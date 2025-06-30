@@ -405,12 +405,12 @@ document.getElementById('btnSair').addEventListener('click', () => {
 // Helpers
 const getStatusDescricao = (status) => {
     const descricoes = {
-        1: 'Finalizada com aprovação direta',
-        2: 'Ativa com aprovação indireta',
-        3: 'Ativa em discussão',
-        4: 'Finalizada após discussão'
+        1: '✅ Finalizada - Aprovação Direta (SUS aprovado)',
+        2: '🔄 Ativa - Aprovação Indireta (Aguardando hospital)',
+        3: '⚠️ Ativa - Em Discussão (Divergências identificadas)',
+        4: '✅ Finalizada - Após Discussão (Resolvida)'
     };
-    return descricoes[status] || 'Desconhecido';
+    return descricoes[status] || '❓ Status Desconhecido';
 };
 
 // Obter competência atual
@@ -596,9 +596,10 @@ const carregarDadosMovimentacao = async () => {
             Object.entries(especialidades).forEach(([especialidade, selectId]) => {
                 const select = document.getElementById(selectId);
                 if (select) {
-                    // Manter primeira opção
-                    const primeiraOpcao = select.querySelector('option').outerHTML;
-                    select.innerHTML = primeiraOpcao;
+                    // Verificar se existe primeira opção, senão criar
+                    const primeiraOpcao = select.querySelector('option');
+                    const opcaoInicial = primeiraOpcao ? primeiraOpcao.outerHTML : `<option value="">Selecione - ${especialidade}</option>`;
+                    select.innerHTML = opcaoInicial;
                     
                     // Adicionar profissionais da especialidade
                     profissionais.profissionais
@@ -1579,14 +1580,16 @@ const carregarGlosas = async () => {
 // Função para limpar filtros (corrigindo erro do console)
 window.limparFiltros = () => {
     // Limpar campos da pesquisa avançada
-    document.getElementById('pesquisaNumeroAIH').value = '';
-    document.getElementById('pesquisaNumeroAtendimento').value = '';
-    document.getElementById('pesquisaDataInicio').value = '';
-    document.getElementById('pesquisaDataFim').value = '';
-    document.getElementById('pesquisaCompetencia').value = '';
-    document.getElementById('pesquisaValorMin').value = '';
-    document.getElementById('pesquisaValorMax').value = '';
-    document.getElementById('pesquisaProfissional').value = '';
+    const campos = [
+        'pesquisaNumeroAIH', 'pesquisaNumeroAtendimento', 'pesquisaDataInicio', 
+        'pesquisaDataFim', 'pesquisaCompetencia', 'pesquisaValorMin', 
+        'pesquisaValorMax', 'pesquisaProfissional'
+    ];
+    
+    campos.forEach(campoId => {
+        const campo = document.getElementById(campoId);
+        if (campo) campo.value = '';
+    });
     
     // Desmarcar todos os checkboxes de status
     document.querySelectorAll('input[name="status"]').forEach(cb => cb.checked = false);
@@ -1598,6 +1601,16 @@ window.limparFiltros = () => {
     }
     
     alert('Filtros limpos com sucesso!');
+};
+
+// Função para limpar filtros de relatórios
+window.limparFiltrosRelatorio = () => {
+    const campos = ['relatorioDataInicio', 'relatorioDataFim', 'relatorioCompetencia'];
+    campos.forEach(campoId => {
+        const campo = document.getElementById(campoId);
+        if (campo) campo.value = '';
+    });
+    alert('Filtros de relatórios limpos!');
 };
 
 // Função para limpar resultados

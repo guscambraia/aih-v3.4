@@ -193,65 +193,157 @@
         <div id="telaMovimentacao" class="tela">
             <header>
                 <button class="btn-voltar" onclick="voltarTelaAnterior()">← Voltar</button>
-                <h2>Nova Movimentação</h2>
+                <h2>📝 Nova Movimentação</h2>
             </header>
             <div class="container">
                 <!-- Status atual da AIH destacado -->
                 <div id="statusAtualAIH"></div>
 
-                <!-- Lembrete sobre os status -->
-                <div id="lembreteStatus"></div>
-
                 <!-- Área de explicação da movimentação -->
                 <div id="explicacaoMovimentacao"></div>
 
-                <form id="formMovimentacao">
-                    <label>Status da AIH:</label>
-                    <select id="movStatus" required>
-                        <option value="1">1 - Finalizada com aprovação direta</option>
-                        <option value="2">2 - Ativa com aprovação indireta</option>
-                        <option value="3">3 - Ativa em discussão</option>
-                        <option value="4">4 - Finalizada após discussão</option>
-                    </select>
+                <!-- Lembrete sobre os status com design melhorado -->
+                <div class="status-guia-completo">
+                    <h4>📋 Guia Completo dos Status de AIH</h4>
+                    <div class="status-grid-detalhado">
+                        <div class="status-card status-1-card">
+                            <div class="status-header">
+                                <span class="status-numero">1</span>
+                                <h5>✅ Finalizada - Aprovação Direta</h5>
+                            </div>
+                            <p><strong>Significado:</strong> SUS aprovou diretamente, sem necessidade de discussão</p>
+                            <p><strong>Fluxo:</strong> AIH → Auditoria SUS → Aprovada → Finalizada</p>
+                            <p><strong>Ação:</strong> Processo concluído com sucesso</p>
+                        </div>
 
-                    <label>Tipo de Movimentação:</label>
-                    <select id="movTipo" required>
-                        <option value="entrada_sus">Entrada na Auditoria SUS</option>
-                        <option value="saida_hospital">Saída para Auditoria Hospital</option>
-                    </select>
+                        <div class="status-card status-2-card">
+                            <div class="status-header">
+                                <span class="status-numero">2</span>
+                                <h5>🔄 Ativa - Aprovação Indireta</h5>
+                            </div>
+                            <p><strong>Significado:</strong> SUS aprovou, mas enviou para auditoria hospitalar</p>
+                            <p><strong>Fluxo:</strong> AIH → Auditoria SUS → Aprovada → Hospital → Em análise</p>
+                            <p><strong>Ação:</strong> Aguardando retorno da auditoria hospitalar</p>
+                        </div>
 
-                    <label>Competência:</label>
-                    <input type="text" id="movCompetencia" pattern="\d{2}/\d{4}">
+                        <div class="status-card status-3-card">
+                            <div class="status-header">
+                                <span class="status-numero">3</span>
+                                <h5>⚠️ Ativa - Em Discussão</h5>
+                            </div>
+                            <p><strong>Significado:</strong> Há divergências entre auditorias que precisam ser resolvidas</p>
+                            <p><strong>Fluxo:</strong> AIH → Divergências identificadas → Discussão necessária</p>
+                            <p><strong>Ação:</strong> Resolução de pendências e glosas em andamento</p>
+                        </div>
 
-                    <label>Valor Atual da Conta:</label>
-                    <input type="number" id="movValor" step="0.01" required>
+                        <div class="status-card status-4-card">
+                            <div class="status-header">
+                                <span class="status-numero">4</span>
+                                <h5>✅ Finalizada - Após Discussão</h5>
+                            </div>
+                            <p><strong>Significado:</strong> Discussões concluídas, AIH finalizada</p>
+                            <p><strong>Fluxo:</strong> AIH → Discussão → Resolução → Finalizada</p>
+                            <p><strong>Ação:</strong> Processo concluído após resolução de divergências</p>
+                        </div>
+                    </div>
+                </div>
 
-                    <h3>Profissionais Auditores:</h3>
-                    <select id="movProfMedicina">
-                        <option value="">Selecione - Medicina</option>
-                    </select>
-                    <select id="movProfEnfermagem">
-                        <option value="">Selecione - Enfermagem</option>
-                    </select>
-                    <select id="movProfFisioterapia">
-                        <option value="">Selecione - Fisioterapia</option>
-                    </select>
-                    <select id="movProfBucomaxilo">
-                        <option value="">Selecione - Cirurgião Bucomaxilo</option>
-                    </select>
+                <form id="formMovimentacao" class="form-movimentacao-melhorado">
+                    <div class="form-section">
+                        <h3>📊 Informações da Movimentação</h3>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>🎯 Status da AIH:</label>
+                                <select id="movStatus" required>
+                                    <option value="">Selecione o status</option>
+                                    <option value="1">✅ Status 1 - Finalizada com aprovação direta</option>
+                                    <option value="2">🔄 Status 2 - Ativa com aprovação indireta</option>
+                                    <option value="3">⚠️ Status 3 - Ativa em discussão</option>
+                                    <option value="4">✅ Status 4 - Finalizada após discussão</option>
+                                </select>
+                            </div>
 
-                    <label>Observações:</label>
-                    <textarea id="movObservacoes" rows="3" placeholder="Observações sobre esta movimentação (opcional)"></textarea>
+                            <div class="form-group">
+                                <label>🔄 Tipo de Movimentação:</label>
+                                <select id="movTipo" required>
+                                    <option value="">Selecione o tipo</option>
+                                    <option value="entrada_sus">📥 Entrada na Auditoria SUS</option>
+                                    <option value="saida_hospital">📤 Saída para Auditoria Hospital</option>
+                                </select>
+                            </div>
+                        </div>
 
-                    <div class="glosas-section">
-                        <h3>Glosas/Pendências</h3>
-                        <div id="listaGlosas"></div>
-                        <button type="button" id="btnGerenciarGlosas">Gerenciar Glosas</button>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>📅 Competência (MM/AAAA):</label>
+                                <input type="text" id="movCompetencia" pattern="\d{2}/\d{4}" placeholder="06/2025">
+                            </div>
+
+                            <div class="form-group">
+                                <label>💰 Valor Atual da Conta:</label>
+                                <input type="number" id="movValor" step="0.01" placeholder="0.00" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>👨‍⚕️ Profissionais Auditores</h3>
+                        <p class="form-subtitle">Selecione os profissionais responsáveis pela auditoria desta movimentação</p>
+                        
+                        <div class="profissionais-grid">
+                            <div class="profissional-grupo">
+                                <label>🩺 Medicina:</label>
+                                <select id="movProfMedicina">
+                                    <option value="">Selecione - Medicina</option>
+                                </select>
+                            </div>
+
+                            <div class="profissional-grupo">
+                                <label>💉 Enfermagem:</label>
+                                <select id="movProfEnfermagem">
+                                    <option value="">Selecione - Enfermagem</option>
+                                </select>
+                            </div>
+
+                            <div class="profissional-grupo">
+                                <label>🏃‍♂️ Fisioterapia:</label>
+                                <select id="movProfFisioterapia">
+                                    <option value="">Selecione - Fisioterapia</option>
+                                </select>
+                            </div>
+
+                            <div class="profissional-grupo">
+                                <label>🦷 Cirurgião Bucomaxilo:</label>
+                                <select id="movProfBucomaxilo">
+                                    <option value="">Selecione - Bucomaxilo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>📝 Observações</h3>
+                        <textarea id="movObservacoes" rows="4" placeholder="Digite observações importantes sobre esta movimentação (opcional)..."></textarea>
+                    </div>
+
+                    <div class="glosas-section-melhorada">
+                        <div class="glosas-header">
+                            <h3>⚠️ Glosas e Pendências</h3>
+                            <button type="button" id="btnGerenciarGlosas" class="btn-glosas">
+                                📋 Gerenciar Glosas
+                            </button>
+                        </div>
+                        <div id="listaGlosas" class="lista-glosas-container"></div>
                     </div>
 
                     <div class="form-buttons">
-                        <button type="button" id="btnCancelarMovimentacao" class="btn-secondary">Cancelar</button>
-                        <button type="submit" class="btn-primary">Salvar Movimentação</button>
+                        <button type="button" id="btnCancelarMovimentacao" class="btn-cancelar">
+                            ❌ Cancelar
+                        </button>
+                        <button type="submit" class="btn-salvar">
+                            💾 Salvar Movimentação
+                        </button>
                     </div>
                 </form>
             </div>
