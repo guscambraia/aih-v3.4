@@ -2101,6 +2101,44 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 `, params);
                 break;
 
+            case 'resumo-financeiro-periodo':
+                // Resumo financeiro do período
+                const resumoFinanceiro = await get(`
+                    SELECT 
+                        COUNT(*) as total_aihs_periodo,
+                        SUM(a.valor_inicial) as soma_valor_inicial,
+                        SUM(a.valor_atual) as soma_valor_atual,
+                        (SUM(a.valor_inicial) - SUM(a.valor_atual)) as valor_total_glosas
+                    FROM aihs a
+                    WHERE 1=1 ${filtroWhere}
+                `, params);
+
+                const aihsComGlosas = await get(`
+                    SELECT COUNT(DISTINCT a.id) as total_aihs_com_glosas
+                    FROM aihs a
+                    WHERE EXISTS (
+                        SELECT 1 FROM glosas g 
+                        WHERE g.aih_id = a.id AND g.ativa = 1
+                    ) ${filtroWhere}
+                `, params);
+
+                const totalGlosasRegistradas = await get(`
+                    SELECT COUNT(*) as total_glosas_registradas
+                    FROM glosas g
+                    JOIN aihs a ON g.aih_id = a.id
+                    WHERE g.ativa = 1 ${filtroWhere}
+                `, params);
+
+                resultado = {
+                    total_aihs_periodo: resumoFinanceiro.total_aihs_periodo || 0,
+                    total_aihs_com_glosas: aihsComGlosas.total_aihs_com_glosas || 0,
+                    total_glosas_registradas: totalGlosasRegistradas.total_glosas_registradas || 0,
+                    soma_valor_inicial: resumoFinanceiro.soma_valor_inicial || 0,
+                    soma_valor_atual: resumoFinanceiro.soma_valor_atual || 0,
+                    valor_total_glosas: resumoFinanceiro.valor_total_glosas || 0
+                };
+                break;
+
             case 'analise-financeira-completa':
                 // Análise financeira completa
                 const analiseFinanceiraCompleta = await get(`
@@ -2157,7 +2195,8 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     'analise-valores-glosas', 'performance-competencias', 'ranking-glosas-frequentes',
                     'analise-temporal-cadastros', 'comparativo-auditorias', 'detalhamento-status',
                     'analise-financeira', 'eficiencia-processamento', 'cruzamento-profissional-glosas',
-                    'distribuicao-valores', 'analise-preditiva', 'logs-exclusao', 'analise-financeira-completa'
+                    'distribuicao-valores', 'analise-preditiva', 'logs-exclusao', 'analise-financeira-completa',
+                    'resumo-financeiro-periodo'
                 ]
             });
         }
@@ -2620,6 +2659,72 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 res.setHeader('Cache-Control', 'no-cache');
                 return res.send(bufferFinanceira);
 
+            case 'resumo-financeiro-periodo':
+                // Exportação do resumo financeiro do período
+                const resumoFinanceiroExport = await get(`
+                    SELECT 
+                        COUNT(*) as total_aihs_periodo,
+                        SUM(a.valor_inicial) as soma_valor_inicial,
+                        SUM(a.valor_atual) as soma_valor_atual,
+                        (SUM(a.valor_inicial) - SUM(a.valor_atual)) as valor_total_glosas
+                    FROM aihs a
+                    WHERE 1=1 ${filtroWhere}
+                `, params);
+
+                const aihsComGlosasExport = await get(`
+                    SELECT COUNT(DISTINCT a.id) as total_aihs_com_glosas
+                    FROM aihs a
+                    WHERE EXISTS (
+                        SELECT 1 FROM glosas g 
+                        WHERE g.aih_id = a.id AND g.ativa = 1
+                    ) ${filtroWhere}
+                `, params);
+
+                const totalGlosasRegistradasExport = await get(`
+                    SELECT COUNT(*) as total_glosas_registradas
+                    FROM glosas g
+                    JOIN aihs a ON g.aih_id = a.id
+                    WHERE g.ativa = 1 ${filtroWhere}
+                `, params);
+
+                // Criar dados formatados para exportação
+                const dadosExportacao = [{
+                    'Métrica': 'Total de AIHs no Período',
+                    'Valor': resumoFinanceiroExport.total_aihs_periodo || 0,
+                    'Observação': 'Quantidade total de AIHs cadastradas no período'
+                }, {
+                    'Métrica': 'Total de AIHs com Glosas',
+                    'Valor': aihsComGlosasExport.total_aihs_com_glosas || 0,
+                    'Observação': 'Quantidade de AIHs que possuem pelo menos uma glosa ativa'
+                }, {
+                    'Métrica': 'Total de Glosas Registradas',
+                    'Valor': totalGlosasRegistradasExport.total_glosas_registradas || 0,
+                    'Observação': 'Quantidade total de glosas ativas registradas em todas as AIHs'
+                }, {
+                    'Métrica': 'Soma do Valor Inicial',
+                    'Valor': `R$ ${(resumoFinanceiroExport.soma_valor_inicial || 0).toFixed(2)}`,
+                    'Observação': 'Soma dos valores iniciais de todas as AIHs do período'
+                }, {
+                    'Métrica': 'Soma do Valor Atual',
+                    'Valor': `R$ ${(resumoFinanceiroExport.soma_valor_atual || 0).toFixed(2)}`,
+                    'Observação': 'Soma dos valores atuais de todas as AIHs do período'
+                }, {
+                    'Métrica': 'Valor Total das Glosas',
+                    'Valor': `R$ ${(resumoFinanceiroExport.valor_total_glosas || 0).toFixed(2)}`,
+                    'Observação': 'Diferença entre a soma dos valores iniciais e a soma dos valores atuais'
+                }];
+
+                const worksheetResumo = XLSX.utils.json_to_sheet(dadosExportacao);
+                const workbookResumo = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbookResumo, worksheetResumo, 'Resumo Financeiro');
+
+                const bufferResumo = XLSX.write(workbookResumo, { type: 'buffer', bookType: 'xls' });
+
+                res.setHeader('Content-Type', 'application/vnd.ms-excel');
+                res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
+                res.setHeader('Cache-Control', 'no-cache');
+                return res.send(bufferResumo);
+
             case 'analise-financeira-completa':
                 // Análise financeira completa unificada - para exportação
 
@@ -2863,7 +2968,8 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                         'distribuicao-valores', 'analise-financeira', 'analise-valores-glosas',
                         'cruzamento-profissional-glosas', 'produtividade-auditores', 'comparativo-auditorias',
                         'eficiencia-processamento', 'analise-temporal-cadastros', 'fluxo-movimentacoes',
-                        'acessos', 'glosas-profissional', 'aihs-profissional', 'aprovacoes', 'tipos-glosa', 'analise-financeira-completa'
+                        'acessos', 'glosas-profissional', 'aihs-profissional', 'aprovacoes', 'tipos-glosa', 
+                        'analise-financeira-completa', 'resumo-financeiro-periodo'
                     ]
                 });
         }
