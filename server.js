@@ -54,7 +54,7 @@ setTimeout(logPerformance, 30000); // Log inicial após 30s
 // Backup automático diário
 const scheduleBackups = () => {
     const BACKUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 horas
-    
+
     const performBackup = async () => {
         try {
             console.log('🔄 Iniciando backup automático...');
@@ -64,13 +64,13 @@ const scheduleBackups = () => {
             console.error('❌ Erro no backup automático:', err);
         }
     };
-    
+
     // Primeiro backup após 1 hora
     setTimeout(performBackup, 60 * 60 * 1000);
-    
+
     // Backups subsequentes a cada 24 horas
     setInterval(performBackup, BACKUP_INTERVAL);
-    
+
     console.log('📅 Backup automático agendado (diário)');
 };
 
@@ -163,7 +163,7 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
     try {
         // Pegar competência da query ou usar atual
         const competencia = req.query.competencia || getCompetenciaAtual();
-        
+
         // 1. AIH em processamento na competência
         // (entrada_sus - saida_hospital) na competência específica
         const entradasSUS = await get(`
@@ -172,16 +172,16 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
             WHERE m.tipo = 'entrada_sus' 
             AND m.competencia = ?
         `, [competencia]);
-        
+
         const saidasHospital = await get(`
             SELECT COUNT(DISTINCT m.aih_id) as count 
             FROM movimentacoes m
             WHERE m.tipo = 'saida_hospital' 
             AND m.competencia = ?
         `, [competencia]);
-        
+
         const emProcessamentoCompetencia = (entradasSUS.count || 0) - (saidasHospital.count || 0);
-        
+
         // 2. AIH finalizadas na competência (status 1 e 4)
         const finalizadasCompetencia = await get(`
             SELECT COUNT(*) as count 
@@ -189,7 +189,7 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
             WHERE status IN (1, 4) 
             AND competencia = ?
         `, [competencia]);
-        
+
         // 3. AIH com pendências/glosas na competência (status 2 e 3)
         const comPendenciasCompetencia = await get(`
             SELECT COUNT(*) as count 
@@ -197,42 +197,42 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
             WHERE status IN (2, 3) 
             AND competencia = ?
         `, [competencia]);
-        
+
         // 4. Total geral de entradas SUS vs saídas Hospital (desde o início)
         const totalEntradasSUS = await get(`
             SELECT COUNT(DISTINCT aih_id) as count 
             FROM movimentacoes 
             WHERE tipo = 'entrada_sus'
         `);
-        
+
         const totalSaidasHospital = await get(`
             SELECT COUNT(DISTINCT aih_id) as count 
             FROM movimentacoes 
             WHERE tipo = 'saida_hospital'
         `);
-        
+
         const totalEmProcessamento = (totalEntradasSUS.count || 0) - (totalSaidasHospital.count || 0);
-        
+
         // 5. Total de AIHs finalizadas desde o início (status 1 e 4)
         const totalFinalizadasGeral = await get(`
             SELECT COUNT(*) as count 
             FROM aihs 
             WHERE status IN (1, 4)
         `);
-        
+
         // 6. Total de AIHs cadastradas desde o início
         const totalAIHsGeral = await get(`
             SELECT COUNT(*) as count 
             FROM aihs
         `);
-        
+
         // Dados adicionais para contexto
         const totalAIHsCompetencia = await get(`
             SELECT COUNT(*) as count 
             FROM aihs 
             WHERE competencia = ?
         `, [competencia]);
-        
+
         // Lista de competências disponíveis
         const competenciasDisponiveis = await all(`
             SELECT DISTINCT competencia 
@@ -241,7 +241,7 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
                 CAST(SUBSTR(competencia, 4, 4) AS INTEGER) DESC,
                 CAST(SUBSTR(competencia, 1, 2) AS INTEGER) DESC
         `);
-        
+
         // Estatísticas de valores para a competência
         const valoresCompetencia = await get(`
             SELECT 
@@ -251,24 +251,24 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
             FROM aihs 
             WHERE competencia = ?
         `, [competencia]);
-        
+
         res.json({
             competencia_selecionada: competencia,
             competencias_disponiveis: competenciasDisponiveis.map(c => c.competencia),
-            
+
             // Métricas da competência
             em_processamento_competencia: emProcessamentoCompetencia,
             finalizadas_competencia: finalizadasCompetencia.count,
             com_pendencias_competencia: comPendenciasCompetencia.count,
             total_aihs_competencia: totalAIHsCompetencia.count,
-            
+
             // Métricas gerais (desde o início)
             total_entradas_sus: totalEntradasSUS.count,
             total_saidas_hospital: totalSaidasHospital.count,
             total_em_processamento_geral: totalEmProcessamento,
             total_finalizadas_geral: totalFinalizadasGeral.count,
             total_aihs_geral: totalAIHsGeral.count,
-            
+
             // Valores financeiros da competência
             valores_competencia: {
                 inicial: valoresCompetencia.valor_inicial_total || 0,
@@ -297,26 +297,26 @@ app.get('/api/aih/:numero', verificarToken, async (req, res) => {
             'SELECT * FROM aihs WHERE numero_aih = ?',
             [req.params.numero]
         );
-        
+
         if (!aih) {
             return res.status(404).json({ error: 'AIH não encontrada' });
         }
-        
+
         const atendimentos = await all(
             'SELECT numero_atendimento FROM atendimentos WHERE aih_id = ?',
             [aih.id]
         );
-        
+
         const movimentacoes = await all(
             'SELECT * FROM movimentacoes WHERE aih_id = ? ORDER BY data_movimentacao DESC',
             [aih.id]
         );
-        
+
         const glosas = await all(
             'SELECT * FROM glosas WHERE aih_id = ? AND ativa = 1',
             [aih.id]
         );
-        
+
         res.json({
             ...aih,
             atendimentos: atendimentos.map(a => a.numero_atendimento),
@@ -332,7 +332,7 @@ app.get('/api/aih/:numero', verificarToken, async (req, res) => {
 app.post('/api/aih', verificarToken, async (req, res) => {
     try {
         const dadosAIH = { ...req.body };
-        
+
         console.log('📝 Dados recebidos no servidor:', { 
             numero_aih: dadosAIH.numero_aih, 
             valor_inicial: dadosAIH.valor_inicial, 
@@ -341,19 +341,19 @@ app.post('/api/aih', verificarToken, async (req, res) => {
             tipo_atendimentos: typeof dadosAIH.atendimentos,
             eh_array: Array.isArray(dadosAIH.atendimentos)
         });
-        
+
         // Validações rigorosas usando função específica
         const validationErrors = validateAIH(dadosAIH);
         if (validationErrors.length > 0) {
             console.log('❌ Erros de validação:', validationErrors);
             return res.status(400).json({ error: validationErrors.join(', ') });
         }
-        
+
         const { numero_aih, valor_inicial, competencia, atendimentos } = dadosAIH;
-        
+
         // Processar atendimentos - aceitar array, string ou objeto
         let atendimentosProcessados = [];
-        
+
         if (typeof atendimentos === 'string') {
             atendimentosProcessados = atendimentos.split(/[,\n\r]/)
                 .map(a => a.trim())
@@ -367,25 +367,25 @@ app.post('/api/aih', verificarToken, async (req, res) => {
                 .map(a => String(a).trim())
                 .filter(a => a && a.length > 0 && a.length <= 50);
         }
-        
+
         console.log('🔄 Atendimentos processados:', atendimentosProcessados);
-        
+
         if (atendimentosProcessados.length === 0) {
             console.log('❌ Nenhum atendimento válido encontrado');
             return res.status(400).json({ error: 'Pelo menos um número de atendimento válido deve ser informado' });
         }
-        
+
         if (atendimentosProcessados.length > 100) {
             return res.status(400).json({ error: 'Muitos atendimentos informados (máximo 100)' });
         }
-        
+
         // Verificar se já existe (com cache para performance)
         const existe = await get('SELECT id FROM aihs WHERE numero_aih = ?', [numero_aih], true);
         if (existe) {
             console.log('❌ AIH já existe');
             return res.status(400).json({ error: 'AIH já cadastrada' });
         }
-        
+
         // Usar transação para garantir consistência
         const operations = [
             {
@@ -394,36 +394,36 @@ app.post('/api/aih', verificarToken, async (req, res) => {
                 params: [numero_aih, parseFloat(valor_inicial), parseFloat(valor_inicial), competencia, req.usuario.id]
             }
         ];
-        
+
         const results = await runTransaction(operations);
         const aihId = results[0].id;
-        
+
         // Inserir atendimentos em lote (mais eficiente)
         const atendimentosOperations = atendimentosProcessados.map(atend => ({
             sql: 'INSERT INTO atendimentos (aih_id, numero_atendimento) VALUES (?, ?)',
             params: [aihId, atend.trim()]
         }));
-        
+
         if (atendimentosOperations.length > 0) {
             await runTransaction(atendimentosOperations);
         }
-        
+
         // Primeira movimentação (entrada SUS) - OBRIGATÓRIA
         await run(
             `INSERT INTO movimentacoes (aih_id, tipo, usuario_id, valor_conta, competencia, status_aih, observacoes, data_movimentacao) 
              VALUES (?, 'entrada_sus', ?, ?, ?, 3, ?, CURRENT_TIMESTAMP)`,
             [aihId, req.usuario.id, parseFloat(valor_inicial), competencia, 'Entrada inicial da AIH na Auditoria SUS']
         );
-        
+
         // Log de auditoria
         await logAcao(req.usuario.id, `Cadastrou AIH ${numero_aih}`);
-        
+
         // Limpar cache relacionado
         clearCache('aihs');
         clearCache('dashboard');
-        
+
         console.log(`✅ AIH ${numero_aih} cadastrada com sucesso - ID: ${aihId} - Atendimentos: ${atendimentosProcessados.length}`);
-        
+
         res.json({ 
             success: true, 
             id: aihId, 
@@ -432,7 +432,7 @@ app.post('/api/aih', verificarToken, async (req, res) => {
             valor_inicial: parseFloat(valor_inicial),
             competencia 
         });
-        
+
     } catch (err) {
         console.error('❌ Erro ao cadastrar AIH:', err);
         res.status(500).json({ error: 'Erro interno do servidor ao cadastrar AIH' });
@@ -443,15 +443,15 @@ app.post('/api/aih', verificarToken, async (req, res) => {
 app.get('/api/aih/:id/proxima-movimentacao', verificarToken, async (req, res) => {
     try {
         const aihId = req.params.id;
-        
+
         // Buscar última movimentação
         const ultimaMovimentacao = await get(
             'SELECT tipo FROM movimentacoes WHERE aih_id = ? ORDER BY data_movimentacao DESC LIMIT 1',
             [aihId]
         );
-        
+
         let proximoTipo, proximaDescricao, explicacao;
-        
+
         if (!ultimaMovimentacao) {
             // Primeira movimentação sempre é entrada SUS
             proximoTipo = 'entrada_sus';
@@ -468,7 +468,7 @@ app.get('/api/aih/:id/proxima-movimentacao', verificarToken, async (req, res) =>
             proximaDescricao = 'Entrada na Auditoria SUS';
             explicacao = 'A última movimentação foi saída para Hospital. A próxima deve ser entrada na Auditoria SUS.';
         }
-        
+
         res.json({
             proximo_tipo: proximoTipo,
             descricao: proximaDescricao,
@@ -488,13 +488,13 @@ app.post('/api/aih/:id/movimentacao', verificarToken, async (req, res) => {
             tipo, status_aih, valor_conta, competencia,
             prof_medicina, prof_enfermagem, prof_fisioterapia, prof_bucomaxilo, observacoes
         } = req.body;
-        
+
         // Validar se o tipo está correto conforme a sequência
         const ultimaMovimentacao = await get(
             'SELECT tipo FROM movimentacoes WHERE aih_id = ? ORDER BY data_movimentacao DESC LIMIT 1',
             [aihId]
         );
-        
+
         let tipoPermitido;
         if (!ultimaMovimentacao) {
             tipoPermitido = 'entrada_sus';
@@ -503,13 +503,13 @@ app.post('/api/aih/:id/movimentacao', verificarToken, async (req, res) => {
         } else {
             tipoPermitido = 'entrada_sus';
         }
-        
+
         if (tipo !== tipoPermitido) {
             return res.status(400).json({ 
                 error: `Tipo de movimentação inválido. Esperado: ${tipoPermitido}, recebido: ${tipo}` 
             });
         }
-        
+
         // Inserir movimentação
         await run(
             `INSERT INTO movimentacoes 
@@ -519,13 +519,13 @@ app.post('/api/aih/:id/movimentacao', verificarToken, async (req, res) => {
             [aihId, tipo, req.usuario.id, valor_conta, competencia,
              prof_medicina, prof_enfermagem, prof_fisioterapia, prof_bucomaxilo, status_aih, observacoes]
         );
-        
+
         // Atualizar AIH
         await run(
             'UPDATE aihs SET status = ?, valor_atual = ? WHERE id = ?',
             [status_aih, valor_conta, aihId]
         );
-        
+
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -605,37 +605,37 @@ app.post('/api/pesquisar', verificarToken, async (req, res) => {
                    LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1 
                    WHERE 1=1`;
         const params = [];
-        
+
         if (filtros.status?.length) {
             sql += ` AND a.status IN (${filtros.status.map(() => '?').join(',')})`;
             params.push(...filtros.status);
         }
-        
+
         if (filtros.competencia) {
             sql += ' AND a.competencia = ?';
             params.push(filtros.competencia);
         }
-        
+
         if (filtros.data_inicio) {
             sql += ' AND a.criado_em >= ?';
             params.push(filtros.data_inicio);
         }
-        
+
         if (filtros.data_fim) {
             sql += ' AND a.criado_em <= ?';
             params.push(filtros.data_fim + ' 23:59:59');
         }
-        
+
         if (filtros.valor_min) {
             sql += ' AND a.valor_atual >= ?';
             params.push(filtros.valor_min);
         }
-        
+
         if (filtros.valor_max) {
             sql += ' AND a.valor_atual <= ?';
             params.push(filtros.valor_max);
         }
-        
+
         if (filtros.numero_aih) {
             sql += ' AND a.numero_aih LIKE ?';
             params.push(`%${filtros.numero_aih}%`);
@@ -648,7 +648,7 @@ app.post('/api/pesquisar', verificarToken, async (req, res) => {
             )`;
             params.push(`%${filtros.numero_atendimento}%`);
         }
-        
+
         if (filtros.profissional) {
             sql += ` AND a.id IN (
                 SELECT DISTINCT aih_id FROM movimentacoes 
@@ -658,9 +658,9 @@ app.post('/api/pesquisar', verificarToken, async (req, res) => {
             const prof = `%${filtros.profissional}%`;
             params.push(prof, prof, prof, prof);
         }
-        
+
         sql += ' GROUP BY a.id ORDER BY a.criado_em DESC';
-        
+
         const resultados = await all(sql, params);
         res.json({ resultados });
     } catch (err) {
@@ -720,7 +720,7 @@ app.get('/api/admin/stats', verificarToken, async (req, res) => {
         if (req.usuario.tipo !== 'admin') {
             return res.status(403).json({ error: 'Acesso negado' });
         }
-        
+
         const stats = await getDbStats();
         res.json({ success: true, stats });
     } catch (err) {
@@ -735,7 +735,7 @@ app.get('/api/admin/security-logs', verificarToken, (req, res) => {
         if (req.usuario.tipo !== 'admin') {
             return res.status(403).json({ error: 'Acesso negado' });
         }
-        
+
         const logs = getSecurityLogs();
         res.json({ success: true, logs });
     } catch (err) {
@@ -749,7 +749,7 @@ app.post('/api/admin/clear-cache', verificarToken, (req, res) => {
         if (req.usuario.tipo !== 'admin') {
             return res.status(403).json({ error: 'Acesso negado' });
         }
-        
+
         const { pattern } = req.body;
         clearCache(pattern);
         res.json({ success: true, message: 'Cache limpo com sucesso' });
@@ -764,7 +764,7 @@ app.post('/api/admin/backup', verificarToken, async (req, res) => {
         if (req.usuario.tipo !== 'admin') {
             return res.status(403).json({ error: 'Acesso negado' });
         }
-        
+
         const backupPath = await createBackup();
         res.json({ success: true, message: 'Backup criado com sucesso', path: backupPath });
     } catch (err) {
@@ -788,7 +788,7 @@ app.get('/api/health', async (req, res) => {
                 connections: stats?.pool_connections || 0
             }
         };
-        
+
         res.json(health);
     } catch (err) {
         res.status(500).json({ 
@@ -816,7 +816,7 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
             LEFT JOIN atendimentos at ON a.id = at.aih_id
             GROUP BY a.id
         `);
-        
+
         if (req.params.formato === 'json') {
             res.json(aihs);
         } else if (req.params.formato === 'csv') {
@@ -826,7 +826,7 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
                     `${a.numero_aih},${a.valor_inicial},${a.valor_atual},${a.status},${a.competencia},${a.total_glosas},"${a.atendimentos || ''}",${a.criado_em}`
                 )
             ].join('\n');
-            
+
             res.setHeader('Content-Type', 'text/csv');
             res.setHeader('Content-Disposition', 'attachment; filename=export-aih.csv');
             res.send(csv);
@@ -842,12 +842,12 @@ app.get('/api/export/:formato', verificarToken, async (req, res) => {
                 'Atendimentos': a.atendimentos || '',
                 'Criado em': new Date(a.criado_em).toLocaleDateString('pt-BR')
             })));
-            
+
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, 'AIHs');
-            
+
             const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
-            
+
             res.setHeader('Content-Type', 'application/vnd.ms-excel');
             res.setHeader('Content-Disposition', 'attachment; filename=export-aih.xls');
             res.send(buffer);
@@ -874,11 +874,11 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
         const tipo = req.params.tipo;
         const { data_inicio, data_fim, competencia } = req.body;
         let resultado = {};
-        
+
         // Construir filtros de período
         let filtroWhere = '';
         let params = [];
-        
+
         if (competencia) {
             filtroWhere = ' AND competencia = ?';
             params.push(competencia);
@@ -892,7 +892,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
             filtroWhere = ' AND DATE(criado_em) <= ?';
             params.push(data_fim);
         }
-        
+
         switch(tipo) {
             case 'tipos-glosa-periodo':
                 resultado = await all(`
@@ -906,7 +906,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY total_ocorrencias DESC
                 `, params);
                 break;
-                
+
             case 'aihs-profissional-periodo':
                 // AIHs auditadas por profissional no período
                 let sqlAihs = `
@@ -932,7 +932,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                        OR m.prof_fisioterapia IS NOT NULL 
                        OR m.prof_bucomaxilo IS NOT NULL)
                 `;
-                
+
                 if (competencia) {
                     sqlAihs += ' AND m.competencia = ?';
                 } else if (data_inicio && data_fim) {
@@ -942,13 +942,13 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 } else if (data_fim) {
                     sqlAihs += ' AND DATE(m.data_movimentacao) <= ?';
                 }
-                
+
                 sqlAihs += ` GROUP BY profissional, especialidade
                             ORDER BY total_aihs_auditadas DESC`;
-                
+
                 resultado = await all(sqlAihs, params);
                 break;
-                
+
             case 'glosas-profissional-periodo':
                 // Glosas por profissional no período
                 resultado = await all(`
@@ -964,7 +964,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY total_glosas DESC
                 `, params);
                 break;
-                
+
             case 'valores-glosas-periodo':
                 // Análise financeira das glosas no período
                 const valoresGlosas = await get(`
@@ -980,7 +980,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     WHERE EXISTS (SELECT 1 FROM glosas g WHERE g.aih_id = a.id AND g.ativa = 1)
                     ${filtroWhere}
                 `, params);
-                
+
                 const totalAihs = await get(`
                     SELECT COUNT(*) as total,
                            SUM(valor_inicial) as valor_inicial_periodo,
@@ -988,7 +988,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     FROM aihs a
                     WHERE 1=1 ${filtroWhere}
                 `, params);
-                
+
                 resultado = {
                     ...valoresGlosas,
                     total_aihs_periodo: totalAihs.total,
@@ -998,7 +998,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         ((valoresGlosas.aihs_com_glosas / totalAihs.total) * 100).toFixed(2) : 0
                 };
                 break;
-                
+
             case 'estatisticas-periodo':
                 // Estatísticas gerais do período
                 const stats = await get(`
@@ -1015,7 +1015,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     FROM aihs a
                     WHERE 1=1 ${filtroWhere}
                 `, params);
-                
+
                 const totalGlosasPeriodo = await get(`
                     SELECT COUNT(*) as total_glosas,
                            COUNT(DISTINCT aih_id) as aihs_com_glosas
@@ -1023,7 +1023,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     JOIN aihs a ON g.aih_id = a.id
                     WHERE g.ativa = 1 ${filtroWhere}
                 `, params);
-                
+
                 const movimentacoesPeriodo = await get(`
                     SELECT 
                         COUNT(*) as total_movimentacoes,
@@ -1033,7 +1033,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     JOIN aihs a ON m.aih_id = a.id
                     WHERE 1=1 ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
                 `, params);
-                
+
                 resultado = {
                     ...stats,
                     ...totalGlosasPeriodo,
@@ -1043,7 +1043,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         ((totalGlosasPeriodo.aihs_com_glosas / stats.total_aihs) * 100).toFixed(2) : 0
                 };
                 break;
-                
+
             // Manter relatórios existentes para compatibilidade
             case 'acessos':
                 resultado = await all(`
@@ -1056,7 +1056,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY total_acessos DESC
                 `);
                 break;
-                
+
             case 'glosas-profissional':
                 resultado = await all(`
                     SELECT profissional, COUNT(*) as total_glosas,
@@ -1067,7 +1067,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY total_glosas DESC
                 `);
                 break;
-                
+
             case 'aihs-profissional':
                 resultado = await all(`
                     SELECT 
@@ -1083,7 +1083,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY total_aihs DESC
                 `);
                 break;
-                
+
             case 'aprovacoes':
                 resultado = await all(`
                     SELECT 
@@ -1095,7 +1095,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     FROM aihs
                 `);
                 break;
-                
+
             case 'tipos-glosa':
                 resultado = await all(`
                     SELECT tipo, COUNT(*) as total, SUM(quantidade) as quantidade_total
@@ -1105,7 +1105,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY total DESC
                 `);
                 break;
-                
+
             case 'fluxo-movimentacoes':
                 // Análise de fluxo de movimentações por período
                 const fluxoEntradas = await get(`
@@ -1114,14 +1114,14 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     JOIN aihs a ON m.aih_id = a.id
                     WHERE m.tipo = 'entrada_sus' ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
                 `, params);
-                
+
                 const fluxoSaidas = await get(`
                     SELECT COUNT(DISTINCT m.aih_id) as total_saidas
                     FROM movimentacoes m
                     JOIN aihs a ON m.aih_id = a.id
                     WHERE m.tipo = 'saida_hospital' ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
                 `, params);
-                
+
                 const fluxoPorMes = await all(`
                     SELECT 
                         strftime('%Y-%m', m.data_movimentacao) as mes,
@@ -1133,7 +1133,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     GROUP BY mes
                     ORDER BY mes DESC
                 `, params);
-                
+
                 resultado = {
                     total_entradas_sus: fluxoEntradas.total_entradas || 0,
                     total_saidas_hospital: fluxoSaidas.total_saidas || 0,
@@ -1141,7 +1141,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     fluxo_mensal: fluxoPorMes
                 };
                 break;
-                
+
             case 'produtividade-auditores':
                 // Análise detalhada de produtividade dos auditores
                 resultado = await all(`
@@ -1172,7 +1172,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY aihs_auditadas DESC
                 `, params);
                 break;
-                
+
             case 'analise-valores-glosas':
                 // Análise financeira detalhada das glosas
                 const valoresGlosas = await get(`
@@ -1190,7 +1190,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     WHERE EXISTS (SELECT 1 FROM glosas gg WHERE gg.aih_id = a.id AND gg.ativa = 1)
                     ${filtroWhere}
                 `, params);
-                
+
                 const glosasFrequentes = await all(`
                     SELECT 
                         g.tipo,
@@ -1203,13 +1203,13 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     GROUP BY g.tipo
                     ORDER BY impacto_financeiro DESC
                 `, params);
-                
+
                 resultado = {
                     resumo_financeiro: valoresGlosas,
                     glosas_por_impacto: glosasFrequentes
                 };
                 break;
-                
+
             case 'performance-competencias':
                 // Performance comparativa entre competências
                 resultado = await all(`
@@ -1230,7 +1230,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY a.competencia DESC
                 `, params);
                 break;
-                
+
             case 'ranking-glosas-frequentes':
                 // Ranking das glosas mais frequentes e impactantes
                 resultado = await all(`
@@ -1250,7 +1250,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY frequencia DESC, impacto_financeiro_total DESC
                 `, params);
                 break;
-                
+
             case 'analise-temporal-cadastros':
                 // Análise temporal de cadastros e finalizações
                 resultado = await all(`
@@ -1266,7 +1266,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY data_cadastro DESC
                 `, params);
                 break;
-                
+
             case 'comparativo-auditorias':
                 // Comparativo entre auditoria SUS e Hospital
                 const movimentacoesPorTipo = await all(`
@@ -1285,10 +1285,10 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     WHERE 1=1 ${filtroWhere.replace('competencia', 'm.competencia').replace('criado_em', 'm.data_movimentacao')}
                     GROUP BY m.tipo
                 `, params);
-                
+
                 resultado = movimentacoesPorTipo;
                 break;
-                
+
             case 'detalhamento-status':
                 // Detalhamento completo por status das AIHs
                 resultado = await all(`
@@ -1316,7 +1316,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY a.status
                 `, params);
                 break;
-                
+
             case 'analise-financeira':
                 // Análise financeira completa
                 const analiseFinanceira = await get(`
@@ -1335,7 +1335,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     FROM aihs a
                     WHERE 1=1 ${filtroWhere}
                 `, params);
-                
+
                 const faixasValor = await all(`
                     SELECT 
                         CASE 
@@ -1353,13 +1353,13 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     GROUP BY faixa_valor
                     ORDER BY MIN(a.valor_inicial)
                 `, params);
-                
+
                 resultado = {
                     resumo_geral: analiseFinanceira,
                     distribuicao_por_faixa: faixasValor
                 };
                 break;
-                
+
             case 'eficiencia-processamento':
                 // Análise de eficiência de processamento
                 resultado = await all(`
@@ -1378,7 +1378,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY a.competencia DESC
                 `, params);
                 break;
-                
+
             case 'cruzamento-profissional-glosas':
                 // Cruzamento entre profissionais e tipos de glosa
                 resultado = await all(`
@@ -1395,7 +1395,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY g.profissional, ocorrencias DESC
                 `, params);
                 break;
-                
+
             case 'distribuicao-valores':
                 // Distribuição detalhada de valores
                 resultado = await all(`
@@ -1422,13 +1422,13 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY MIN(a.valor_inicial)
                 `, params);
                 break;
-                
+
             case 'analise-preditiva':
                 const mediaTempo = await get(`
                     SELECT AVG(JULIANDAY(CURRENT_TIMESTAMP) - JULIANDAY(criado_em)) as media_dias
                     FROM aihs WHERE status IN (1, 4)
                 `);
-                
+
                 const tendenciaGlosas = await all(`
                     SELECT strftime('%Y-%m', criado_em) as mes, COUNT(*) as total
                     FROM glosas
@@ -1437,13 +1437,13 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                     ORDER BY mes DESC
                     LIMIT 6
                 `);
-                
+
                 const valorMedioGlosa = await get(`
                     SELECT AVG(a.valor_inicial - a.valor_atual) as valor_medio
                     FROM aihs a
                     WHERE EXISTS (SELECT 1 FROM glosas g WHERE g.aih_id = a.id AND g.ativa = 1)
                 `);
-                
+
                 resultado = {
                     tempo_medio_processamento: Math.round(mediaTempo.media_dias || 0),
                     tendencia_glosas: tendenciaGlosas,
@@ -1452,7 +1452,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                 };
                 break;
         }
-        
+
         res.json({ tipo, resultado, filtros: { data_inicio, data_fim, competencia } });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1464,13 +1464,13 @@ app.get('/api/aih/:id/movimentacoes/export/:formato', verificarToken, async (req
     try {
         const aihId = req.params.id;
         const formato = req.params.formato;
-        
+
         // Buscar dados da AIH
         const aih = await get('SELECT numero_aih FROM aihs WHERE id = ?', [aihId]);
         if (!aih) {
             return res.status(404).json({ error: 'AIH não encontrada' });
         }
-        
+
         // Buscar movimentações com detalhes
         const movimentacoes = await all(`
             SELECT 
@@ -1481,9 +1481,9 @@ app.get('/api/aih/:id/movimentacoes/export/:formato', verificarToken, async (req
             WHERE m.aih_id = ?
             ORDER BY m.data_movimentacao DESC
         `, [aihId]);
-        
+
         const nomeArquivo = `historico-movimentacoes-AIH-${aih.numero_aih}-${new Date().toISOString().split('T')[0]}`;
-        
+
         if (formato === 'csv') {
             const csv = [
                 'Data,Tipo,Status,Valor,Competencia,Prof_Medicina,Prof_Enfermagem,Prof_Fisioterapia,Prof_Bucomaxilo,Usuario,Observacoes',
@@ -1491,11 +1491,11 @@ app.get('/api/aih/:id/movimentacoes/export/:formato', verificarToken, async (req
                     `"${new Date(m.data_movimentacao).toLocaleString('pt-BR')}","${m.tipo === 'entrada_sus' ? 'Entrada SUS' : 'Saída Hospital'}","${getStatusExcel(m.status_aih)}","${m.valor_conta || 0}","${m.competencia || ''}","${m.prof_medicina || ''}","${m.prof_enfermagem || ''}","${m.prof_fisioterapia || ''}","${m.prof_bucomaxilo || ''}","${m.usuario_nome || ''}","${(m.observacoes || '').replace(/"/g, '""')}"`
                 )
             ].join('\n');
-            
+
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');
             res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.csv`);
             res.send('\ufeff' + csv); // BOM para UTF-8
-            
+
         } else if (formato === 'xlsx') {
             const dadosFormatados = movimentacoes.map(m => ({
                 'Data': new Date(m.data_movimentacao).toLocaleString('pt-BR'),
@@ -1510,20 +1510,20 @@ app.get('/api/aih/:id/movimentacoes/export/:formato', verificarToken, async (req
                 'Usuário Responsável': m.usuario_nome || '',
                 'Observações': m.observacoes || ''
             }));
-            
+
             const worksheet = XLSX.utils.json_to_sheet(dadosFormatados);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, `Histórico AIH ${aih.numero_aih}`);
-            
+
             const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
-            
+
             res.setHeader('Content-Type', 'application/vnd.ms-excel');
             res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
             res.send(buffer);
         } else {
             res.status(400).json({ error: 'Formato não suportado' });
         }
-        
+
     } catch (err) {
         console.error('Erro ao exportar histórico:', err);
         res.status(500).json({ error: err.message });
@@ -1537,11 +1537,11 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
         const { data_inicio, data_fim, competencia } = req.body;
         let dados = [];
         let nomeArquivo = `relatorio-${tipo}-${new Date().toISOString().split('T')[0]}`;
-        
+
         // Construir filtros de período
         let filtroWhere = '';
         let params = [];
-        
+
         if (competencia) {
             filtroWhere = ' AND competencia = ?';
             params.push(competencia);
@@ -1559,7 +1559,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
             params.push(data_fim);
             nomeArquivo += `-ate-${data_fim}`;
         }
-        
+
         switch(tipo) {
             case 'tipos-glosa-periodo':
                 dados = await all(`
@@ -1575,7 +1575,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(*) DESC
                 `, params);
                 break;
-                
+
             case 'aihs-profissional-periodo':
                 let sqlAihs = `
                     SELECT 
@@ -1600,7 +1600,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                        OR m.prof_fisioterapia IS NOT NULL 
                        OR m.prof_bucomaxilo IS NOT NULL)
                 `;
-                
+
                 if (competencia) {
                     sqlAihs += ' AND m.competencia = ?';
                 } else if (data_inicio && data_fim) {
@@ -1610,13 +1610,13 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 } else if (data_fim) {
                     sqlAihs += ' AND DATE(m.data_movimentacao) <= ?';
                 }
-                
+
                 sqlAihs += ` GROUP BY Profissional, Especialidade
                             ORDER BY COUNT(DISTINCT m.aih_id) DESC`;
-                
+
                 dados = await all(sqlAihs, params);
                 break;
-                
+
             case 'glosas-profissional-periodo':
                 dados = await all(`
                     SELECT 
@@ -1632,7 +1632,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(*) DESC
                 `, params);
                 break;
-                
+
             case 'valores-glosas-periodo':
                 const valoresGlosas = await get(`
                     SELECT 
@@ -1647,7 +1647,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     WHERE EXISTS (SELECT 1 FROM glosas g WHERE g.aih_id = a.id AND g.ativa = 1)
                     ${filtroWhere}
                 `, params);
-                
+
                 dados = [{
                     'AIHs com Glosas': valoresGlosas.aihs_com_glosas || 0,
                     'Valor Inicial Total': `R$ ${(valoresGlosas.valor_inicial_total || 0).toFixed(2)}`,
@@ -1658,7 +1658,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     'Maior Glosa': `R$ ${(valoresGlosas.maior_glosa || 0).toFixed(2)}`
                 }];
                 break;
-                
+
             case 'estatisticas-periodo':
                 const stats = await get(`
                     SELECT 
@@ -1674,7 +1674,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     FROM aihs a
                     WHERE 1=1 ${filtroWhere}
                 `, params);
-                
+
                 const totalGlosasPeriodo = await get(`
                     SELECT COUNT(*) as total_glosas,
                            COUNT(DISTINCT aih_id) as aihs_com_glosas
@@ -1682,7 +1682,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     JOIN aihs a ON g.aih_id = a.id
                     WHERE g.ativa = 1 ${filtroWhere}
                 `, params);
-                
+
                 dados = [{
                     'Total AIHs': stats.total_aihs || 0,
                     'Aprovação Direta': stats.aprovacao_direta || 0,
@@ -1698,7 +1698,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     'Diferença Total': `R$ ${((stats.valor_total_inicial || 0) - (stats.valor_total_atual || 0)).toFixed(2)}`
                 }];
                 break;
-                
+
             // Relatórios originais (sem filtros)
             case 'acessos':
                 dados = await all(`
@@ -1711,7 +1711,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(l.id) DESC
                 `);
                 break;
-                
+
             case 'glosas-profissional':
                 dados = await all(`
                     SELECT profissional as Profissional, 
@@ -1723,7 +1723,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(*) DESC
                 `);
                 break;
-                
+
             case 'aihs-profissional':
                 dados = await all(`
                     SELECT 
@@ -1739,7 +1739,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(DISTINCT aih_id) DESC
                 `);
                 break;
-                
+
             case 'aprovacoes':
                 const aprovacoes = await get(`
                     SELECT 
@@ -1757,7 +1757,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     { Tipo: 'Finalizada Pós-Discussão', Quantidade: aprovacoes.finalizada_pos_discussao, Percentual: ((aprovacoes.finalizada_pos_discussao/aprovacoes.total)*100).toFixed(1) + '%' }
                 ];
                 break;
-                
+
             case 'tipos-glosa':
                 dados = await all(`
                     SELECT tipo as 'Tipo de Glosa', 
@@ -1770,22 +1770,22 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 `);
                 break;
         }
-        
+
         if (dados.length === 0) {
             return res.status(404).json({ error: 'Nenhum dado encontrado para o período selecionado' });
         }
-        
+
         // Criar Excel real (XLS compatível)
         const worksheet = XLSX.utils.json_to_sheet(dados);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, tipo.charAt(0).toUpperCase() + tipo.slice(1));
-        
+
         const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
-        
+
         res.setHeader('Content-Type', 'application/vnd.ms-excel');
         res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
         res.send(buffer);
-        
+
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1797,7 +1797,7 @@ app.get('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
         const tipo = req.params.tipo;
         let dados = [];
         let nomeArquivo = `relatorio-${tipo}-${new Date().toISOString().split('T')[0]}`;
-        
+
         switch(tipo) {
             case 'acessos':
                 dados = await all(`
@@ -1810,7 +1810,7 @@ app.get('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(l.id) DESC
                 `);
                 break;
-                
+
             case 'glosas-profissional':
                 dados = await all(`
                     SELECT profissional as Profissional, 
@@ -1822,7 +1822,7 @@ app.get('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(*) DESC
                 `);
                 break;
-                
+
             case 'aihs-profissional':
                 dados = await all(`
                     SELECT 
@@ -1838,7 +1838,7 @@ app.get('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     ORDER BY COUNT(DISTINCT aih_id) DESC
                 `);
                 break;
-                
+
             case 'aprovacoes':
                 const aprovacoes = await get(`
                     SELECT 
@@ -1856,7 +1856,7 @@ app.get('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     { Tipo: 'Finalizada Pós-Discussão', Quantidade: aprovacoes.finalizada_pos_discussao, Percentual: ((aprovacoes.finalizada_pos_discussao/aprovacoes.total)*100).toFixed(1) + '%' }
                 ];
                 break;
-                
+
             case 'tipos-glosa':
                 dados = await all(`
                     SELECT tipo as 'Tipo de Glosa', 
@@ -1869,22 +1869,22 @@ app.get('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                 `);
                 break;
         }
-        
+
         if (dados.length === 0) {
             return res.status(404).json({ error: 'Nenhum dado encontrado' });
         }
-        
+
         // Criar Excel real (XLS compatível)
         const worksheet = XLSX.utils.json_to_sheet(dados);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, tipo.charAt(0).toUpperCase() + tipo.slice(1));
-        
+
         const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
-        
+
         res.setHeader('Content-Type', 'application/vnd.ms-excel');
         res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}.xls`);
         res.send(buffer);
-        
+
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
