@@ -617,10 +617,10 @@ const carregarDadosMovimentacao = async () => {
         if (state.aihAtual && state.aihAtual.id) {
             try {
                 const ultimaMovimentacao = await api(`/aih/${state.aihAtual.id}/ultima-movimentacao`);
-                
+
                 if (ultimaMovimentacao && ultimaMovimentacao.movimentacao) {
                     const mov = ultimaMovimentacao.movimentacao;
-                    
+
                     // Pré-selecionar profissionais baseado na última movimentação
                     if (mov.prof_medicina) {
                         const selectMedicina = document.getElementById('movProfMedicina');
@@ -628,28 +628,28 @@ const carregarDadosMovimentacao = async () => {
                             selectMedicina.value = mov.prof_medicina;
                         }
                     }
-                    
+
                     if (mov.prof_enfermagem) {
                         const selectEnfermagem = document.getElementById('movProfEnfermagem');
                         if (selectEnfermagem) {
                             selectEnfermagem.value = mov.prof_enfermagem;
                         }
                     }
-                    
+
                     if (mov.prof_fisioterapia) {
                         const selectFisioterapia = document.getElementById('movProfFisioterapia');
                         if (selectFisioterapia) {
                             selectFisioterapia.value = mov.prof_fisioterapia;
                         }
                     }
-                    
+
                     if (mov.prof_bucomaxilo) {
                         const selectBucomaxilo = document.getElementById('movProfBucomaxilo');
                         if (selectBucomaxilo) {
                             selectBucomaxilo.value = mov.prof_bucomaxilo;
                         }
                     }
-                    
+
                     console.log('Profissionais pré-selecionados da última movimentação:', {
                         medicina: mov.prof_medicina,
                         enfermagem: mov.prof_enfermagem,
@@ -672,7 +672,7 @@ const carregarDadosMovimentacao = async () => {
                 if (glosas.glosas.length > 0) {
                     // Ordenar glosas por data de criação (mais recente primeira)
                     const glosasOrdenadas = glosas.glosas.sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
-                    
+
                     // Cabeçalho das colunas + conteúdo das glosas
                     listaGlosas.innerHTML = `
                         <div style="padding: 0.75rem 0; border-bottom: 2px solid #d1d5db; display: grid; grid-template-columns: 80px 100px 120px 1fr 40px; gap: 1rem; align-items: center; background: #f9fafb; margin: -1rem -1rem 1rem -1rem; padding-left: 1rem; padding-right: 1rem;">
@@ -799,7 +799,7 @@ const mostrarInfoAIH = (aih) => {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                 <p><strong>Status:</strong> <span class="status-badge status-${aih.status}">${getStatusDescricao(aih.status)}</span></p>
                 <p><strong>Competência:</strong> ${aih.competencia}</p>
-                <p><strong>Valor Inicial:</strong> R$ ${aih.valor_inicial.toFixed(2)}</p>
+                <p><strong>Valor Inicial:</strong> R$ ${aih.valor_inicial.toFixed(2)}</p><previous_generation>
                 <p><strong>Valor Atual:</strong> R$ ${aih.valor_atual.toFixed(2)}</p>
                 <p><strong>Diferença:</strong> <span style="color: ${diferencaValor > 0 ? '#ef4444' : '#10b981'}">
                     R$ ${Math.abs(diferencaValor).toFixed(2)} (${percentualDiferenca}%)
@@ -2181,6 +2181,14 @@ window.excluirTipoGlosa = async (id) => {
 };
 
 // Event listeners para movimentação
+
+// Adicionando a função gerenciarGlosasMovimentacao
+window.gerenciarGlosasMovimentacao = () => {
+    state.telaAnterior = 'telaMovimentacao';
+    mostrarTela('telaPendencias');
+    carregarGlosas();
+};
+
 document.getElementById('btnCancelarMovimentacao')?.addEventListener('click', () => {
     voltarTelaAnterior();
 });
@@ -2314,3 +2322,5 @@ window.removerGlosa = async (id) => {
 document.getElementById('btnSalvarGlosas')?.addEventListener('click', () => {
     voltarTelaAnterior();
 });
+</script>
+Corrected the errors with the cancel and back buttons and the Gerenciar Glosas button in the new movement screen.
