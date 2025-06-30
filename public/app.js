@@ -11,32 +11,48 @@ let state = {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM carregado, verificando autenticação...');
     
+    // Sempre mostrar tela de login inicialmente para evitar problemas
+    mostrarTela('telaLogin');
+    
     if (state.token) {
         try {
-            // Tentar validar o token fazendo uma requisição simples
-            const userType = localStorage.getItem('userType');
-            console.log('Tipo de usuário encontrado:', userType);
+            // Tentar validar o token fazendo uma requisição simples ao dashboard
+            const response = await fetch('/api/dashboard', {
+                headers: {
+                    'Authorization': `Bearer ${state.token}`
+                }
+            });
 
-            if (userType === 'admin') {
-                // Para admin, ir direto para tela de gestão
-                console.log('Redirecionando admin para gestão de usuários');
-                mostrarTela('telaGestaoUsuarios');
-                await carregarUsuarios();
+            if (response.ok) {
+                const userType = localStorage.getItem('userType');
+                console.log('Token válido, tipo de usuário:', userType);
+
+                if (userType === 'admin') {
+                    console.log('Redirecionando admin para gestão de usuários');
+                    mostrarTela('telaGestaoUsuarios');
+                    setTimeout(async () => {
+                        try {
+                            await carregarUsuarios();
+                        } catch (err) {
+                            console.error('Erro ao carregar usuários:', err);
+                        }
+                    }, 100);
+                } else {
+                    console.log('Redirecionando usuário para dashboard');
+                    mostrarTela('telaPrincipal');
+                    setTimeout(async () => {
+                        try {
+                            await carregarDashboard();
+                        } catch (err) {
+                            console.error('Erro ao carregar dashboard:', err);
+                        }
+                    }, 100);
+                }
             } else {
-                // Para usuário normal, ir para dashboard
-                console.log('Redirecionando usuário para dashboard');
-                mostrarTela('telaPrincipal');
-                // Carregar dashboard apenas após mostrar a tela
-                setTimeout(async () => {
-                    try {
-                        await carregarDashboard();
-                    } catch (dashErr) {
-                        console.error('Erro ao carregar dashboard:', dashErr);
-                    }
-                }, 100);
+                throw new Error('Token inválido');
             }
         } catch (err) {
-            console.log('Token inválido, redirecionando para login');
+            console.log('Token inválido, limpando dados e mostrando login');
             state.token = null;
             localStorage.removeItem('token');
             localStorage.removeItem('userType');
@@ -77,18 +93,8 @@ const debounce = (key, func, delay = 300) => {
     });
 };
 
-// API Helper otimizado com cache e debouncing
-const api = async (endpoint, options = {}, useCache = false) => {
-    const cacheKey = endpoint + JSON.stringify(options.body || {});
-    
-    // Verificar cache do frontend
-    if (useCache && options.method === 'GET') {
-        const cached = frontendCache.get(cacheKey);
-        if (cached && (Date.now() - cached.timestamp < FRONTEND_CACHE_TTL)) {
-            return cached.data;
-        }
-    }
-    
+// API Helper simplificado
+const api = async (endpoint, options = {}) => {
     const config = {
         method: 'GET',
         ...options,
@@ -102,43 +108,25 @@ const api = async (endpoint, options = {}, useCache = false) => {
     try {
         const response = await fetch(`/api${endpoint}`, config);
 
-        // Verificar se a resposta é JSON válida
-        let data;
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Erro da API:', response.status, errorText);
+            throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
+        }
+
+        // Verificar se a resposta é JSON
         const contentType = response.headers.get('content-type');
         
         if (contentType && contentType.includes('application/json')) {
-            try {
-                data = await response.json();
-            } catch (jsonError) {
-                console.error('Erro ao parsear JSON:', jsonError);
-                const text = await response.text();
-                console.error('Resposta recebida:', text);
-                throw new Error('Resposta JSON inválida do servidor');
-            }
+            const data = await response.json();
+            return data;
         } else {
             const text = await response.text();
-            console.error('Resposta não é JSON:', text);
-            throw new Error('Resposta inválida do servidor - não é JSON');
+            throw new Error('Resposta não é JSON válido');
         }
 
-        if (!response.ok) {
-            const errorMessage = data && data.error ? data.error : `Erro HTTP ${response.status}`;
-            console.error('Erro da API:', errorMessage, data);
-            throw new Error(errorMessage);
-        }
-
-        // Adicionar ao cache do frontend
-        if (useCache && options.method === 'GET' && data) {
-            if (frontendCache.size >= MAX_FRONTEND_CACHE) {
-                const firstKey = frontendCache.keys().next().value;
-                frontendCache.delete(firstKey);
-            }
-            frontendCache.set(cacheKey, { data, timestamp: Date.now() });
-        }
-
-        return data;
     } catch (err) {
-        console.error('Erro API:', err);
+        console.error('Erro API:', err.message);
         throw err;
     }
 };
@@ -228,34 +216,8 @@ const voltarTelaAnterior = () => {
 // Modal
 const mostrarModal = (titulo, mensagem) => {
     return new Promise((resolve) => {
-        const modalTitulo = document.getElementById('modalTitulo');
-        const modalMensagem = document.getElementById('modalMensagem');
-        const modal = document.getElementById('modal');
-        const btnSim = document.getElementById('modalBtnSim');
-        const btnNao = document.getElementById('modalBtnNao');
-
-        if (!modalTitulo || !modalMensagem || !modal || !btnSim || !btnNao) {
-            console.error('Elementos do modal não encontrados. Usando confirm nativo.');
-            resolve(confirm(`${titulo}\n\n${mensagem}`));
-            return;
-        }
-
-        modalTitulo.textContent = titulo;
-        modalMensagem.textContent = mensagem;
-        modal.classList.add('ativo');
-
-        const fecharModal = (resultado) => {
-            modal.classList.remove('ativo');
-            btnSim.removeEventListener('click', simHandler);
-            btnNao.removeEventListener('click', naoHandler);
-            resolve(resultado);
-        };
-
-        const simHandler = () => fecharModal(true);
-        const naoHandler = () => fecharModal(false);
-
-        btnSim.addEventListener('click', simHandler);
-        btnNao.addEventListener('click', naoHandler);
+        // Sempre usar confirm nativo para evitar problemas com elementos DOM
+        resolve(confirm(`${titulo}\n\n${mensagem}`));
     });
 };
 
@@ -548,40 +510,48 @@ const animarNumero = (elementId, valorFinal) => {
     }, 16);
 };
 
-// Dashboard ultra-otimizado com debouncing e cache
+// Dashboard simplificado
 const carregarDashboard = async (competenciaSelecionada = null) => {
-    const competencia = competenciaSelecionada || getCompetenciaAtual();
-    const debounceKey = `dashboard_${competencia}`;
-    
-    return debounce(debounceKey, async () => {
-        try {
-            console.log('Iniciando carregamento do dashboard...');
-            
-            // Verificar se estamos na tela principal
-            const telaPrincipal = document.getElementById('telaPrincipal');
-            if (!telaPrincipal || !telaPrincipal.classList.contains('ativa')) {
-                console.log('Tela principal não está ativa, cancelando carregamento do dashboard');
-                return;
+    try {
+        console.log('Iniciando carregamento do dashboard...');
+        
+        const competencia = competenciaSelecionada || getCompetenciaAtual();
+        
+        // Verificar se estamos na tela principal
+        const telaPrincipal = document.getElementById('telaPrincipal');
+        if (!telaPrincipal || !telaPrincipal.classList.contains('ativa')) {
+            console.log('Tela principal não está ativa, cancelando carregamento do dashboard');
+            return;
+        }
+
+        // Verificar se os elementos necessários existem
+        const dashboardContainer = document.querySelector('.dashboard');
+        if (!dashboardContainer) {
+            console.error('Dashboard container não encontrado na tela principal');
+            return;
+        }
+
+        console.log('Fazendo requisição para o dashboard...');
+        
+        // Buscar dados sem cache para simplificar
+        const response = await fetch(`/api/dashboard?competencia=${competencia}`, {
+            headers: {
+                'Authorization': `Bearer ${state.token}`
             }
+        });
 
-            // Verificar se os elementos necessários existem
-            const dashboardContainer = document.querySelector('.dashboard');
-            if (!dashboardContainer) {
-                console.error('Dashboard container não encontrado na tela principal');
-                return;
-            }
+        if (!response.ok) {
+            throw new Error(`Erro HTTP ${response.status}`);
+        }
 
-            console.log('Fazendo requisição para o dashboard...');
-            // Buscar dados com cache ativo
-            const dados = await api(`/dashboard?competencia=${competencia}`, {}, true);
+        const dados = await response.json();
+        
+        if (!dados) {
+            console.error('Dados do dashboard não recebidos');
+            return;
+        }
 
-            // Verificar se a resposta tem os dados necessários
-            if (!dados) {
-                console.error('Dados do dashboard não recebidos');
-                return;
-            }
-
-            console.log('Dados do dashboard recebidos:', dados);
+        console.log('Dados do dashboard recebidos:', dados);
 
         // Criar/atualizar seletor de competência
         let seletorContainer = document.querySelector('.seletor-competencia-container');
@@ -942,33 +912,38 @@ const carregarDadosMovimentacao = async () => {
 const configurarEventListenersMovimentacao = () => {
     console.log('Configurando event listeners da movimentação...');
     
-    // Botão cancelar - remover listeners antigos primeiro
-    const btnCancelar = document.getElementById('btnCancelarMovimentacao');
-    if (btnCancelar) {
-        // Clonar elemento para remover todos os event listeners
-        const newBtnCancelar = btnCancelar.cloneNode(true);
-        btnCancelar.parentNode.replaceChild(newBtnCancelar, btnCancelar);
+    // Aguardar um pouco para garantir que os elementos estão no DOM
+    setTimeout(() => {
+        // Botão cancelar
+        const btnCancelar = document.getElementById('btnCancelarMovimentacao');
+        if (btnCancelar) {
+            // Remover listeners antigos
+            btnCancelar.removeEventListener('click', voltarTelaAnterior);
+            // Adicionar novo listener
+            btnCancelar.addEventListener('click', voltarTelaAnterior);
+            console.log('Event listener do botão cancelar configurado');
+        } else {
+            console.log('Botão cancelar não encontrado');
+        }
         
-        // Adicionar novo listener
-        newBtnCancelar.addEventListener('click', voltarTelaAnterior);
-        console.log('Event listener do botão cancelar configurado');
-    }
-    
-    // Botão gerenciar glosas - remover listeners antigos primeiro
-    const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
-    if (btnGerenciarGlosas) {
-        // Clonar elemento para remover todos os event listeners
-        const newBtnGerenciarGlosas = btnGerenciarGlosas.cloneNode(true);
-        btnGerenciarGlosas.parentNode.replaceChild(newBtnGerenciarGlosas, btnGerenciarGlosas);
-        
-        // Adicionar novo listener
-        newBtnGerenciarGlosas.addEventListener('click', () => {
-            state.telaAnterior = 'telaMovimentacao';
-            mostrarTela('telaGlosas');
-            carregarGlosas();
-        });
-        console.log('Event listener do botão gerenciar glosas configurado');
-    }
+        // Botão gerenciar glosas
+        const btnGerenciarGlosas = document.getElementById('btnGerenciarGlosas');
+        if (btnGerenciarGlosas) {
+            // Remover listeners antigos
+            const oldHandler = () => {
+                state.telaAnterior = 'telaMovimentacao';
+                mostrarTela('telaGlosas');
+                carregarGlosas();
+            };
+            btnGerenciarGlosas.removeEventListener('click', oldHandler);
+            
+            // Adicionar novo listener
+            btnGerenciarGlosas.addEventListener('click', oldHandler);
+            console.log('Event listener do botão gerenciar glosas configurado');
+        } else {
+            console.log('Botão gerenciar glosas não encontrado');
+        }
+    }, 200);
 };
 
 // Função auxiliar para animar os números
