@@ -1415,8 +1415,20 @@ window.buscarPorAtendimento = async () => {
     }
 };
 
-// Função para exibir resultados da pesquisa
-const exibirResultadosPesquisa = (resultados) => {
+// Sistema de paginação e ordenação para resultados
+let sistemaResultados = {
+    dados: [],
+    dadosOrdenados: [],
+    paginaAtual: 1,
+    itensPorPagina: 10,
+    colunaOrdenacao: null,
+    direcaoOrdenacao: 'asc', // 'asc' ou 'desc'
+    titulo: 'Resultados da Pesquisa',
+    descricao: ''
+};
+
+// Função para exibir resultados da pesquisa com paginação e ordenação
+const exibirResultadosPesquisa = (resultados, titulo = 'Resultados da Pesquisa', descricao = '') => {
     const container = document.getElementById('resultadosPesquisa');
 
     if (!container) {
@@ -1434,40 +1446,105 @@ const exibirResultadosPesquisa = (resultados) => {
         return;
     }
 
-    // Armazenar resultados globalmente para exportação
+    // Armazenar resultados globalmente para exportação e controle
     window.ultimosResultadosPesquisa = resultados;
+    sistemaResultados.dados = resultados;
+    sistemaResultados.dadosOrdenados = [...resultados];
+    sistemaResultados.titulo = titulo;
+    sistemaResultados.descricao = descricao;
+    sistemaResultados.paginaAtual = 1;
+
+    renderizarTabela();
+};
+
+// Função para renderizar a tabela com paginação
+const renderizarTabela = () => {
+    const container = document.getElementById('resultadosPesquisa');
+    const totalItens = sistemaResultados.dadosOrdenados.length;
+    const totalPaginas = Math.ceil(totalItens / sistemaResultados.itensPorPagina);
+    const inicio = (sistemaResultados.paginaAtual - 1) * sistemaResultados.itensPorPagina;
+    const fim = inicio + sistemaResultados.itensPorPagina;
+    const itensPagina = sistemaResultados.dadosOrdenados.slice(inicio, fim);
 
     container.innerHTML = `
         <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 1.5rem; margin-top: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                <h3 style="color: #0369a1; margin: 0;">📊 Resultados da Pesquisa (${resultados.length})</h3>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <!-- Cabeçalho com título e controles -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h3 style="color: #0369a1; margin: 0 0 0.5rem 0;">${sistemaResultados.titulo}</h3>
+                    ${sistemaResultados.descricao ? `<p style="color: #0369a1; margin: 0; font-size: 0.9rem; font-style: italic;">${sistemaResultados.descricao}</p>` : ''}
+                    <p style="color: #0284c7; margin: 0.5rem 0 0 0; font-weight: 600;">
+                        Total: ${totalItens} AIH${totalItens !== 1 ? 's' : ''} | 
+                        Página ${sistemaResultados.paginaAtual} de ${totalPaginas} | 
+                        Exibindo ${itensPagina.length} itens
+                    </p>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-start;">
+                    <button onclick="voltarTelaPrincipal()" style="padding: 0.5rem 1rem; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">
+                        ← Dashboard
+                    </button>
                     <button onclick="exportarResultadosPesquisa('csv')" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                        📄 Exportar CSV
+                        📄 CSV
                     </button>
                     <button onclick="exportarResultadosPesquisa('excel')" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                        📊 Exportar Excel
+                        📊 Excel
                     </button>
                     <button onclick="limparResultados()" class="btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                        🗑️ Limpar Resultados
+                        🗑️ Limpar
                     </button>
                 </div>
             </div>
+
+            <!-- Controles de paginação superiores -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <label style="font-weight: 500; color: #374151;">Itens por página:</label>
+                    <select onchange="alterarItensPorPagina(this.value)" style="padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; background: white;">
+                        <option value="5" ${sistemaResultados.itensPorPagina === 5 ? 'selected' : ''}>5</option>
+                        <option value="10" ${sistemaResultados.itensPorPagina === 10 ? 'selected' : ''}>10</option>
+                        <option value="25" ${sistemaResultados.itensPorPagina === 25 ? 'selected' : ''}>25</option>
+                        <option value="50" ${sistemaResultados.itensPorPagina === 50 ? 'selected' : ''}>50</option>
+                        <option value="100" ${sistemaResultados.itensPorPagina === 100 ? 'selected' : ''}>100</option>
+                        <option value="${totalItens}">Todos (${totalItens})</option>
+                    </select>
+                </div>
+                
+                ${gerarControlesPaginacao()}
+            </div>
+
+            <!-- Tabela de resultados -->
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                     <thead>
                         <tr style="background: #f1f5f9;">
-                            <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">AIH</th>
-                            <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Status</th>
-                            <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Competência</th>
-                            <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Valor Inicial</th>
-                            <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Valor Atual</th>
-                            <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Glosas</th>
-                            <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Ações</th>
+                            <th onclick="ordenarPorColuna('numero_aih')" style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0; cursor: pointer; user-select: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#e2e8f0'" onmouseout="this.style.backgroundColor='#f1f5f9'">
+                                AIH ${getIndicadorOrdenacao('numero_aih')}
+                            </th>
+                            <th onclick="ordenarPorColuna('status')" style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0; cursor: pointer; user-select: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#e2e8f0'" onmouseout="this.style.backgroundColor='#f1f5f9'">
+                                Status ${getIndicadorOrdenacao('status')}
+                            </th>
+                            <th onclick="ordenarPorColuna('competencia')" style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0; cursor: pointer; user-select: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#e2e8f0'" onmouseout="this.style.backgroundColor='#f1f5f9'">
+                                Competência ${getIndicadorOrdenacao('competencia')}
+                            </th>
+                            <th onclick="ordenarPorColuna('valor_inicial')" style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0; cursor: pointer; user-select: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#e2e8f0'" onmouseout="this.style.backgroundColor='#f1f5f9'">
+                                Valor Inicial ${getIndicadorOrdenacao('valor_inicial')}
+                            </th>
+                            <th onclick="ordenarPorColuna('valor_atual')" style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0; cursor: pointer; user-select: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#e2e8f0'" onmouseout="this.style.backgroundColor='#f1f5f9'">
+                                Valor Atual ${getIndicadorOrdenacao('valor_atual')}
+                            </th>
+                            <th onclick="ordenarPorColuna('total_glosas')" style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0; cursor: pointer; user-select: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#e2e8f0'" onmouseout="this.style.backgroundColor='#f1f5f9'">
+                                Glosas ${getIndicadorOrdenacao('total_glosas')}
+                            </th>
+                            <th onclick="ordenarPorColuna('criado_em')" style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0; cursor: pointer; user-select: none; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#e2e8f0'" onmouseout="this.style.backgroundColor='#f1f5f9'">
+                                Data ${getIndicadorOrdenacao('criado_em')}
+                            </th>
+                            <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">
+                                Ações
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${resultados.map((aih, index) => `
+                        ${itensPagina.map((aih, index) => `
                             <tr style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='white'">
                                 <td style="padding: 1rem; font-weight: 500; color: #1e293b;">${aih.numero_aih || 'N/A'}</td>
                                 <td style="padding: 1rem;"><span class="status-badge status-${aih.status}">${getStatusDescricao(aih.status)}</span></td>
@@ -1479,6 +1556,7 @@ const exibirResultadosPesquisa = (resultados) => {
                                         ${aih.total_glosas || 0}
                                     </span>
                                 </td>
+                                <td style="padding: 1rem; color: #64748b; font-size: 0.875rem;">${new Date(aih.criado_em).toLocaleDateString('pt-BR')}</td>
                                 <td style="padding: 1rem;">
                                     <button onclick="visualizarAIH('${aih.numero_aih}')" 
                                             style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
@@ -1492,8 +1570,168 @@ const exibirResultadosPesquisa = (resultados) => {
                     </tbody>
                 </table>
             </div>
+
+            <!-- Controles de paginação inferiores -->
+            ${totalPaginas > 1 ? `
+                <div style="display: flex; justify-content: center; margin-top: 1rem;">
+                    ${gerarControlesPaginacao()}
+                </div>
+            ` : ''}
+
+            <!-- Informações adicionais -->
+            <div style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 6px; font-size: 0.875rem; color: #64748b;">
+                💡 <strong>Dicas:</strong> Clique nos cabeçalhos das colunas para ordenar • Use os controles de paginação para navegar • Ajuste quantos itens ver por página
+            </div>
         </div>
     `;
+};
+
+// Função para gerar controles de paginação
+const gerarControlesPaginacao = () => {
+    const totalItens = sistemaResultados.dadosOrdenados.length;
+    const totalPaginas = Math.ceil(totalItens / sistemaResultados.itensPorPagina);
+    
+    if (totalPaginas <= 1) return '';
+
+    let controles = `
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <button onclick="irParaPagina(1)" ${sistemaResultados.paginaAtual === 1 ? 'disabled' : ''} 
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; background: ${sistemaResultados.paginaAtual === 1 ? '#f9fafb' : 'white'}; color: ${sistemaResultados.paginaAtual === 1 ? '#9ca3af' : '#374151'}; border-radius: 4px; cursor: ${sistemaResultados.paginaAtual === 1 ? 'not-allowed' : 'pointer'};">
+                ⏮️ Primeira
+            </button>
+            
+            <button onclick="irParaPagina(${sistemaResultados.paginaAtual - 1})" ${sistemaResultados.paginaAtual === 1 ? 'disabled' : ''} 
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; background: ${sistemaResultados.paginaAtual === 1 ? '#f9fafb' : 'white'}; color: ${sistemaResultados.paginaAtual === 1 ? '#9ca3af' : '#374151'}; border-radius: 4px; cursor: ${sistemaResultados.paginaAtual === 1 ? 'not-allowed' : 'pointer'};">
+                ⏪ Anterior
+            </button>
+    `;
+
+    // Páginas numeradas (mostrar no máximo 7 páginas)
+    let inicioRange = Math.max(1, sistemaResultados.paginaAtual - 3);
+    let fimRange = Math.min(totalPaginas, sistemaResultados.paginaAtual + 3);
+
+    if (fimRange - inicioRange < 6) {
+        if (inicioRange === 1) {
+            fimRange = Math.min(totalPaginas, inicioRange + 6);
+        } else {
+            inicioRange = Math.max(1, fimRange - 6);
+        }
+    }
+
+    for (let i = inicioRange; i <= fimRange; i++) {
+        controles += `
+            <button onclick="irParaPagina(${i})" 
+                    style="padding: 0.5rem 0.75rem; border: 1px solid ${i === sistemaResultados.paginaAtual ? '#3b82f6' : '#d1d5db'}; 
+                           background: ${i === sistemaResultados.paginaAtual ? '#3b82f6' : 'white'}; 
+                           color: ${i === sistemaResultados.paginaAtual ? 'white' : '#374151'}; 
+                           border-radius: 4px; cursor: pointer; font-weight: ${i === sistemaResultados.paginaAtual ? '600' : '400'};">
+                ${i}
+            </button>
+        `;
+    }
+
+    controles += `
+            <button onclick="irParaPagina(${sistemaResultados.paginaAtual + 1})" ${sistemaResultados.paginaAtual === totalPaginas ? 'disabled' : ''} 
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; background: ${sistemaResultados.paginaAtual === totalPaginas ? '#f9fafb' : 'white'}; color: ${sistemaResultados.paginaAtual === totalPaginas ? '#9ca3af' : '#374151'}; border-radius: 4px; cursor: ${sistemaResultados.paginaAtual === totalPaginas ? 'not-allowed' : 'pointer'};">
+                Próxima ⏩
+            </button>
+            
+            <button onclick="irParaPagina(${totalPaginas})" ${sistemaResultados.paginaAtual === totalPaginas ? 'disabled' : ''} 
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; background: ${sistemaResultados.paginaAtual === totalPaginas ? '#f9fafb' : 'white'}; color: ${sistemaResultados.paginaAtual === totalPaginas ? '#9ca3af' : '#374151'}; border-radius: 4px; cursor: ${sistemaResultados.paginaAtual === totalPaginas ? 'not-allowed' : 'pointer'};">
+                Última ⏭️
+            </button>
+        </div>
+    `;
+
+    return controles;
+};
+
+// Função para obter indicador de ordenação
+const getIndicadorOrdenacao = (coluna) => {
+    if (sistemaResultados.colunaOrdenacao !== coluna) {
+        return '↕️';
+    }
+    return sistemaResultados.direcaoOrdenacao === 'asc' ? '🔼' : '🔽';
+};
+
+// Funções de controle
+window.alterarItensPorPagina = (novoValor) => {
+    sistemaResultados.itensPorPagina = parseInt(novoValor);
+    sistemaResultados.paginaAtual = 1;
+    renderizarTabela();
+};
+
+window.irParaPagina = (pagina) => {
+    const totalPaginas = Math.ceil(sistemaResultados.dadosOrdenados.length / sistemaResultados.itensPorPagina);
+    if (pagina >= 1 && pagina <= totalPaginas) {
+        sistemaResultados.paginaAtual = pagina;
+        renderizarTabela();
+    }
+};
+
+window.ordenarPorColuna = (coluna) => {
+    // Se clicou na mesma coluna, inverte a direção
+    if (sistemaResultados.colunaOrdenacao === coluna) {
+        sistemaResultados.direcaoOrdenacao = sistemaResultados.direcaoOrdenacao === 'asc' ? 'desc' : 'asc';
+    } else {
+        sistemaResultados.colunaOrdenacao = coluna;
+        sistemaResultados.direcaoOrdenacao = 'asc';
+    }
+
+    // Ordenar os dados
+    sistemaResultados.dadosOrdenados.sort((a, b) => {
+        let valorA = a[coluna];
+        let valorB = b[coluna];
+
+        // Tratamento especial para diferentes tipos de dados
+        switch (coluna) {
+            case 'valor_inicial':
+            case 'valor_atual':
+            case 'total_glosas':
+                valorA = parseFloat(valorA) || 0;
+                valorB = parseFloat(valorB) || 0;
+                break;
+            
+            case 'criado_em':
+                valorA = new Date(valorA).getTime();
+                valorB = new Date(valorB).getTime();
+                break;
+            
+            case 'numero_aih':
+                // Ordenar como string mas considerando números
+                valorA = valorA ? valorA.toString() : '';
+                valorB = valorB ? valorB.toString() : '';
+                break;
+            
+            case 'competencia':
+                // Ordenar competência por data (MM/AAAA)
+                if (valorA && valorB) {
+                    const [mesA, anoA] = valorA.split('/');
+                    const [mesB, anoB] = valorB.split('/');
+                    valorA = parseInt(anoA) * 100 + parseInt(mesA);
+                    valorB = parseInt(anoB) * 100 + parseInt(mesB);
+                } else {
+                    valorA = valorA || '';
+                    valorB = valorB || '';
+                }
+                break;
+            
+            default:
+                valorA = valorA ? valorA.toString().toLowerCase() : '';
+                valorB = valorB ? valorB.toString().toLowerCase() : '';
+        }
+
+        let resultado;
+        if (valorA < valorB) resultado = -1;
+        else if (valorA > valorB) resultado = 1;
+        else resultado = 0;
+
+        return sistemaResultados.direcaoOrdenacao === 'desc' ? -resultado : resultado;
+    });
+
+    // Voltar para primeira página após ordenar
+    sistemaResultados.paginaAtual = 1;
+    renderizarTabela();
 };
 
 // Função para visualizar AIH dos resultados
@@ -1604,94 +1842,25 @@ window.visualizarAIHsPorCategoria = async (categoria, periodo) => {
         
         // Aguardar um pouco para garantir que a tela foi carregada
         setTimeout(() => {
-            // Armazenar resultados globalmente
-            window.ultimosResultadosPesquisa = response.resultados;
-            
-            // Customizar o container de resultados com título específico
-            const container = document.getElementById('resultadosPesquisa');
-            if (!container) {
-                console.error('Container de resultados não encontrado');
-                return;
-            }
-
             if (!response.resultados || response.resultados.length === 0) {
-                container.innerHTML = `
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 2rem; text-align: center; margin-top: 2rem;">
-                        <h3 style="color: #64748b; margin-bottom: 1rem;">${titulo}</h3>
-                        <p style="color: #64748b; margin-bottom: 1rem;">${descricao}</p>
-                        <p style="color: #64748b;">📭 Nenhuma AIH encontrada nesta categoria.</p>
-                        <button onclick="voltarTelaPrincipal()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                            ← Voltar ao Dashboard
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = `
-                <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 1.5rem; margin-top: 2rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                        <div>
-                            <h3 style="color: #0369a1; margin: 0 0 0.5rem 0;">${titulo}</h3>
-                            <p style="color: #0369a1; margin: 0; font-size: 0.9rem; font-style: italic;">${descricao}</p>
-                            <p style="color: #0284c7; margin: 0.5rem 0 0 0; font-weight: 600;">Total encontrado: ${response.resultados.length} AIH${response.resultados.length !== 1 ? 's' : ''}</p>
-                        </div>
-                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <button onclick="voltarTelaPrincipal()" style="padding: 0.5rem 1rem; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">
+                const container = document.getElementById('resultadosPesquisa');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 2rem; text-align: center; margin-top: 2rem;">
+                            <h3 style="color: #64748b; margin-bottom: 1rem;">${titulo}</h3>
+                            <p style="color: #64748b; margin-bottom: 1rem;">${descricao}</p>
+                            <p style="color: #64748b;">📭 Nenhuma AIH encontrada nesta categoria.</p>
+                            <button onclick="voltarTelaPrincipal()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer;">
                                 ← Voltar ao Dashboard
                             </button>
-                            <button onclick="exportarResultadosPesquisa('csv')" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                                📄 Exportar CSV
-                            </button>
-                            <button onclick="exportarResultadosPesquisa('excel')" class="btn-success" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                                📊 Exportar Excel
-                            </button>
-                            <button onclick="limparResultados()" class="btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.875rem;">
-                                🗑️ Limpar Resultados
-                            </button>
                         </div>
-                    </div>
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                            <thead>
-                                <tr style="background: #f1f5f9;">
-                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">AIH</th>
-                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Status</th>
-                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Competência</th>
-                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Valor Inicial</th>
-                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Valor Atual</th>
-                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Glosas</th>
-                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0;">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${response.resultados.map((aih, index) => `
-                                    <tr style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='white'">
-                                        <td style="padding: 1rem; font-weight: 500; color: #1e293b;">${aih.numero_aih || 'N/A'}</td>
-                                        <td style="padding: 1rem;"><span class="status-badge status-${aih.status}">${getStatusDescricao(aih.status)}</span></td>
-                                        <td style="padding: 1rem; color: #64748b;">${aih.competencia || 'N/A'}</td>
-                                        <td style="padding: 1rem; color: #059669; font-weight: 500;">R$ ${(aih.valor_inicial || 0).toFixed(2)}</td>
-                                        <td style="padding: 1rem; color: ${(aih.valor_atual < aih.valor_inicial) ? '#dc2626' : '#059669'}; font-weight: 500;">R$ ${(aih.valor_atual || 0).toFixed(2)}</td>
-                                        <td style="padding: 1rem; text-align: center;">
-                                            <span style="background: ${(aih.total_glosas > 0) ? '#fef3c7' : '#f0fdf4'}; color: ${(aih.total_glosas > 0) ? '#92400e' : '#166534'}; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 500;">
-                                                ${aih.total_glosas || 0}
-                                            </span>
-                                        </td>
-                                        <td style="padding: 1rem;">
-                                            <button onclick="visualizarAIH('${aih.numero_aih}')" 
-                                                    style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
-                                                           color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                                           cursor: pointer; font-weight: 500; transition: all 0.2s;">
-                                                👁️ Ver Detalhes
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
+                    `;
+                }
+                return;
+            }
+
+            // Usar o novo sistema de paginação e ordenação
+            exibirResultadosPesquisa(response.resultados, titulo, descricao);
         }, 200);
 
     } catch (err) {
