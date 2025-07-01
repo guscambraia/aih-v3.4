@@ -630,236 +630,34 @@
         <!-- Modal de Confirmação de Exclusão -->
         <div id="modalConfirmacaoExclusao" class="modal">
             <div class="modal-content" style="max-width: 500px;">
-                <h3 style="color: #dc2626; margin-bottom: 1rem;">⚠️ CONFIRMAÇÃO DE EXCLUSÃO</h3>
-                <div id="detalhesExclusao" style="background: #fef2f2; border: 1px solid #dc2626; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem;">
+                <h3 style="color: #dc2626; margin: 0 0 1rem 0;">⚠️ Confirmar Exclusão</h3>
+
+                <div id="detalhesExclusao" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
                     <!-- Detalhes serão preenchidos dinamicamente -->
                 </div>
 
-                <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem;">
-                    <p style="color: #92400e; font-weight: 600; margin: 0;">
-                        ⚠️ Esta ação é IRREVERSÍVEL. Digite sua senha para confirmar:
-                    </p>
-                </div>
-
                 <div style="margin-bottom: 1.5rem;">
-                    <label style="font-weight: 600; color: #374151;">Sua senha:</label>
-                    <input type="password" idsenhaConfirmacao" placeholder="Digite sua senha" required style="width: 100%; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 6px; margin-top: 0.5rem;">
+                    <label style="font-weight: 600; color: #374151; display: block; margin-bottom: 0.5rem;">
+                        Digite sua senha para confirmar:
+                    </label>
+                    <input type="password" id="senhaConfirmacao" placeholder="Sua senha" 
+                           style="width: 100%; padding: 0.75rem; border: 2px solid #d1d5db; border-radius: 6px; font-size: 1rem;">
                 </div>
 
-                <div class="modal-buttons">
-                    <button onclick="cancelarExclusao()" style="background: #64748b; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;">
-                        Cancelar
-                    </button>
-                    <button onclick="confirmarExclusao()" style="background: #dc2626; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                        Confirmar Exclusão
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tela Relatórios -->
-        <div id="telaRelatorios" class="tela">
-            <header>
-                <button class="btn-voltar" onclick="mostrarTela('telaPrincipal')">← Voltar</button>
-                <h2>Relatórios e Análises</h2>
-            </header>
-            <div class="container">
-                <!-- Filtros Globais de Período -->
-                <div style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
-                    <h3 style="margin-top: 0;">🔍 Filtros de Período</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                        <div>
-                            <label>Data Início:</label>
-                            <input type="date" id="relatorioDataInicio">
-                        </div>
-                        <div>
-                            <label>Data Fim:</label>
-                            <input type="date" id="relatorioDataFim">
-                        </div>
-                        <div>
-                            <label>Competência (MM/AAAA):</label>
-                            <input type="text" id="relatorioCompetencia" placeholder="Ex: 06/2025" pattern="\d{2}/\d{4}">
-                        </div>
-                        <div style="display: flex; align-items: end;">
-                            <button onclick="limparFiltrosRelatorio()" class="btn-secondary" style="width: 100%;">
-                                🗑️ Limpar Filtros
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Relatórios por Categoria -->
-                <div style="margin-bottom: 2rem;">
-                    <h3>📊 Análises de Fluxo e Movimentação</h3>
-                    <div class="relatorios-grid">
-                        <div onclick="gerarRelatorio('fluxo-movimentacoes')" class="card-relatorio">
-                            <h4>🔄 Fluxo de Movimentações</h4>
-                            <p>Entradas SUS vs Saídas Hospital por período</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('analise-temporal-cadastros')" class="card-relatorio">
-                            <h4>📈 Análise Temporal</h4>
-                            <p>Cadastros e finalizações por período</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('eficiencia-processamento')" class="card-relatorio">
-                            <h4>⚡ Eficiência de Processamento</h4>
-                            <p>Tempo médio de processamento das AIHs</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('comparativo-auditorias')" class="card-relatorio">
-                            <h4>⚖️ Comparativo entre Auditorias</h4>
-                            <p>Análise entre auditoria SUS e Hospital</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 2rem;">
-                    <h3>👥 Análises de Profissionais</h3>
-                    <div class="relatorios-grid">
-                        <div onclick="gerarRelatorio('produtividade-auditores')" class="card-relatorio">
-                            <h4>📊 Produtividade dos Auditores</h4>
-                            <p>Análise detalhada por profissional e especialidade</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('aihs-profissional-periodo')" class="card-relatorio">
-                            <h4>👨‍⚕️ AIHs por Profissional</h4>
-                            <p>Auditoria realizada por período</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('glosas-profissional-periodo')" class="card-relatorio">
-                            <h4>⚠️ Glosas por Profissional</h4>
-                            <p>Análise de glosas por auditor</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('cruzamento-profissional-glosas')" class="card-relatorio">
-                            <h4>🔄 Cruzamento Profissional x Glosas</h4>
-                            <p>Relação entre auditores e tipos de glosa</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 2rem;">
-                    <h3>💰 Análises Financeiras</h3>
-                    <div class="relatorios-grid">
-                        <div onclick="gerarRelatorio('analise-valores-glosas')" class="card-relatorio">
-                            <h4>💸 Análise de Valores e Glosas</h4>
-                            <p>Impacto financeiro das glosas</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('valores-glosas-periodo')" class="card-relatorio">
-                            <h4>📅 Valores por Período</h4>
-                            <p>Análise financeira detalhada</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('analise-financeira')" class="card-relatorio">
-                            <h4>💰 Análise Financeira Completa</h4>
-                            <p>Valores iniciais vs finais, perdas e ganhos</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 2rem;">
-                    <h3>⚠️ Análises de Glosas e Pendências</h3>
-                    <div class="relatorios-grid">
-                        <div onclick="gerarRelatorio('ranking-glosas-frequentes')" class="card-relatorio">
-                            <h4>🏆 Ranking de Glosas</h4>
-                            <p>Glosas mais frequentes e impactantes</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('tipos-glosa-periodo')" class="card-relatorio">
-                            <h4>📋 Tipos de Glosa por Período</h4>
-                            <p>Evolução dos tipos de glosa</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('detalhamento-status')" class="card-relatorio">
-                            <h4>📈 Detalhamento por Status</h4>
-                            <p>Análise completa dos status das AIHs</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('performance-competencias')" class="card-relatorio">
-                            <h4>📊 Performance por Competências</h4>
-                            <p>Comparativo entre competências</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 2rem;">
-                    <h3>📈 Relatórios Clássicos</h3>
-                    <div class="relatorios-grid">
-                        <div onclick="gerarRelatorio('estatisticas-periodo')" class="card-relatorio">
-                            <h4>📈 Estatísticas Gerais</h4>
-                            <p>Resumo executivo por período</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('acessos')" class="card-relatorio">
-                            <h4>👤 Acessos por Usuário</h4>
-                            <p>Relatório de acessos e atividades</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('aprovacoes')" class="card-relatorio">
-                            <h4>✅ Status de Aprovações</h4>
-                            <p>Distribuição por status das AIHs</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('analise-preditiva')" class="card-relatorio">
-                            <h4>🔮 Análise Preditiva</h4>
-                            <p>Tendências e previsões</p>
-                        </div>
-
-                        <div onclick="gerarRelatorio('logs-exclusao')" class="card-relatorio" style="border: 2px solid #dc2626;">
-                            <h4 style="color: #dc2626;">🔒 Logs de Exclusão</h4>
-                            <p style="color: #dc2626;">Auditoria de alterações na BD</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="resultadoRelatorio" class="resultado-relatorio"></div>
-            </div>
-        </div>
-
-        <!-- Modal -->
-        <div id="modal" class="modal">
-            <div class="modal-content">
-                <h3 id="modalTitulo"></h3>
-                <p id="modalMensagem"></p>
-                <div class="modal-buttons">
-                    <button id="modalBtnSim">Sim</button>
-                    <button id="modalBtnNao">Não</button>
-                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button onclick="cancelarExclusao()" 
+                            style="background: #6b7280; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Cancelar
+                </button>
+                <button onclick="confirmarExclusao()" 
+                        style="background: #dc2626; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Confirmar Exclusão
+                </button>
             </div>
         </div>
     </div>
-<div id="telaRelatoriosPeriodo" class="tela" style="display: none;">
-                <div class="header-section">
-                    <h2>📊 Relatórios por Período</h2>
-                    <div class="acoes">
-                        <button onclick="voltarTela()" class="btn-secondary">🔙 Voltar</button>
-                    </div>
-                </div>
 
-                <div class="filtros-periodo">
-                    <div class="alert alert-info" style="margin-bottom: 1rem;">
-                        <strong>⚠️ ATENÇÃO:</strong> É <strong>OBRIGATÓRIO</strong> informar:
-                        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-                            <li><strong>UMA COMPETÊNCIA</strong> (MM/AAAA) - exemplo: 07/2025</li>
-                            <li style="text-align: center; margin: 0.25rem 0;"><strong>OU</strong></li>
-                            <li><strong>UM PERÍODO COMPLETO</strong> com data de início E data de fim</li>
-                        </ul>
-                        <small>Sem essas informações não é possível gerar nenhum relatório!</small>
-                    </div>
-
-                    <div class="filtro-linha">
-                        <label>📅 Data Início:</label>
-                        <input type="date" id="dataInicioPeriodo" title="Obrigatório se não informar competência">
-
-                        <label>📅 Data Fim:</label>
-                        <input type="date" id="dataFimPeriodo" title="Obrigatório se não informar competência">
-
-                        <label>📆 Competência: <span style="color: red;">*</span></label>
-                        <input type="text" id="competenciaPeriodo" pattern="\d{2}/\d{4}" placeholder="MM/AAAA" title="Formato: MM/AAAA (exemplo: 07/2025)">
-                    </div>
-                </div>
+    <!-- Scripts -->
     <script src="app.js"></script>
 </body>
 </html>
