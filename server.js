@@ -1498,7 +1498,8 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
         console.log(`Gerando relatório tipo: ${tipo} - página: 1`);
 
         // VALIDAÇÃO OBRIGATÓRIA: deve ter competência OU período de datas
-        if (!competencia && (!data_inicio || !data_fim)) {
+        // EXCEÇÃO: logs-exclusao não precisa de filtros obrigatórios
+        if (tipo !== 'logs-exclusao' && !competencia && (!data_inicio || !data_fim)) {
             return res.status(400).json({ 
                 error: 'É obrigatório informar uma COMPETÊNCIA (MM/AAAA) OU um PERÍODO com data de início E data de fim para gerar o relatório.',
                 exemplo_competencia: '07/2025',
@@ -1545,6 +1546,11 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
             filtroWhere = ' AND DATE(criado_em) BETWEEN ? AND ?';
             params.push(data_inicio, data_fim);
             console.log(`📅 Relatório ${tipo} - Filtro por período: ${data_inicio} até ${data_fim}`);
+        } else if (tipo === 'logs-exclusao') {
+            // Para logs de exclusão sem filtros, mostrar todos os registros
+            filtroWhere = '';
+            params = [];
+            console.log(`📅 Relatório ${tipo} - Sem filtros (todos os registros)`);
         }
 
         switch(tipo) {
@@ -2272,7 +2278,8 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
         console.log(`📊 Exportando relatório: ${tipo}`);
 
         // VALIDAÇÃO OBRIGATÓRIA: deve ter competência OU período de datas
-        if (!competencia && (!data_inicio || !data_fim)) {
+        // EXCEÇÃO: logs-exclusao não precisa de filtros obrigatórios
+        if (tipo !== 'logs-exclusao' && !competencia && (!data_inicio || !data_fim)) {
             return res.status(400).json({ 
                 error: 'É obrigatório informar uma COMPETÊNCIA (MM/AAAA) OU um PERÍODO com data de início E data de fim para exportar o relatório.',
                 exemplo_competencia: '07/2025',
