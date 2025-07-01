@@ -997,6 +997,139 @@ button:hover {
 
 .alert-danger {
     background-color: #ffebee;
+
+/* Estilos para tela de relatórios */
+.relatorios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.relatorio-card {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 2px solid #7dd3fc;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.relatorio-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(14, 165, 233, 0.2);
+    border-color: #0ea5e9;
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+}
+
+.relatorio-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 2px 4px rgba(14, 165, 233, 0.3));
+}
+
+.relatorio-card h4 {
+    color: #0c4a6e;
+    margin-bottom: 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.relatorio-card p {
+    color: #0369a1;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* Container de relatório */
+.relatorio-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-top: 2rem;
+    overflow: hidden;
+}
+
+.relatorio-header {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+    padding: 2rem;
+}
+
+.relatorio-content {
+    padding: 2rem;
+}
+
+/* Filtros de período */
+.filtros-periodo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.filtro-item label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.filtro-item input,
+.filtro-item select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+
+/* Botões de relatório por período */
+.relatorios-periodo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.relatorio-periodo-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    padding: 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.relatorio-periodo-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Responsividade para relatórios */
+@media (max-width: 768px) {
+    .relatorios-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .relatorios-periodo-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .filtros-periodo {
+        grid-template-columns: 1fr;
+    }
+}
+
     border-left-color: #f44336;
     color: #d32f2f;
 }
