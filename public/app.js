@@ -2118,6 +2118,12 @@ const carregarRelatorios = () => {
         console.error('❌ Container opcoesRelatorios não encontrado!');
         return;
     }
+    
+    // Obter competência atual para preenchimento padrão
+    const hoje = new Date();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+    const competenciaAtual = `${mes}/${ano}`;
 
     container.innerHTML = `
         <!-- Todos os relatórios agora requerem período -->
@@ -2136,7 +2142,7 @@ const carregarRelatorios = () => {
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                     <div>
                         <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">📅 Competência (MM/AAAA):</label>
-                        <input type="text" id="relatorioCompetencia" placeholder="07/2025" 
+                        <input type="text" id="relatorioCompetencia" placeholder="07/2025" value="${competenciaAtual}"
                                style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
                         <small style="color: #6b7280;">Exemplo: 07/2025</small>
                     </div>
@@ -2273,6 +2279,17 @@ const carregarRelatorios = () => {
 window.gerarRelatorioPeriodo = async (tipo) => {
     try {
         console.log(`🔄 Gerando relatório por período: ${tipo}`);
+        
+        // Verificar se os elementos de filtro existem na tela
+        const campoCompetencia = document.getElementById('relatorioCompetencia');
+        const campoDataInicio = document.getElementById('relatorioDataInicio');
+        const campoDataFim = document.getElementById('relatorioDataFim');
+        
+        if (!campoCompetencia || !campoDataInicio || !campoDataFim) {
+            console.error('Elementos de filtro não encontrados na tela');
+            alert('❌ Erro: Elementos de filtro não encontrados. Tente recarregar a tela de relatórios.');
+            return;
+        }
         
         // Coletar filtros obrigatórios
         const filtros = coletarFiltrosRelatorio();
@@ -2722,15 +2739,22 @@ const getTituloRelatorio = (tipo) => {
 const coletarFiltrosRelatorio = () => {
     const filtros = {};
     
-    const dataInicio = document.getElementById('relatorioDataInicio')?.value;
-    if (dataInicio) filtros.data_inicio = dataInicio;
+    const campoDataInicio = document.getElementById('relatorioDataInicio');
+    if (campoDataInicio && campoDataInicio.value) {
+        filtros.data_inicio = campoDataInicio.value;
+    }
     
-    const dataFim = document.getElementById('relatorioDataFim')?.value;
-    if (dataFim) filtros.data_fim = dataFim;
+    const campoDataFim = document.getElementById('relatorioDataFim');
+    if (campoDataFim && campoDataFim.value) {
+        filtros.data_fim = campoDataFim.value;
+    }
     
-    const competencia = document.getElementById('relatorioCompetencia')?.value;
-    if (competencia) filtros.competencia = competencia;
+    const campoCompetencia = document.getElementById('relatorioCompetencia');
+    if (campoCompetencia && campoCompetencia.value) {
+        filtros.competencia = campoCompetencia.value.trim();
+    }
     
+    console.log('Filtros coletados:', filtros);
     return filtros;
 };
 
