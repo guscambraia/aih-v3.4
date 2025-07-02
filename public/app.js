@@ -899,7 +899,16 @@ const mostrarInfoAIH = (aih) => {
                     <h4 style="color: #92400e; margin: 0;">
                         ⚠️ Glosas Ativas (${aih.glosas.length})
                     </h4>
-                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        <button onclick="gerenciarGlosasFromInfo()" 
+                                style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
+                                       color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; 
+                                       cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem;
+                                       transition: all 0.2s ease; font-weight: 600; margin-right: 0.5rem;"
+                                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                            📋 Gerenciar Glosas
+                        </button>
                         <button onclick="exportarGlosasAIH('csv')" 
                                 style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
                                        color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
@@ -3263,6 +3272,21 @@ window.exportarResultadosPesquisa = async (formato) => {
         console.error('Erro na exportação:', err);
         alert('Erro ao exportar resultados: ' + err.message);
     }
+};
+
+// Função para ir para gerenciar glosas a partir da tela de informações
+window.gerenciarGlosasFromInfo = () => {
+    if (!state.aihAtual) {
+        alert('Nenhuma AIH selecionada');
+        return;
+    }
+    
+    // Definir tela anterior como a tela de informações da AIH
+    state.telaAnterior = 'telaInfoAIH';
+    
+    // Ir para tela de pendências
+    mostrarTela('telaPendencias');
+    carregarGlosas();
 };
 
 // Função para exportar glosas da AIH atual
