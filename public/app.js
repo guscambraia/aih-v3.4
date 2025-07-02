@@ -1092,6 +1092,22 @@ document.getElementById('btnBuscarAIH').addEventListener('click', () => {
 document.getElementById('btnBackup').addEventListener('click', async () => {
     const modal = document.getElementById('modal');
     
+    if (!modal) {
+        console.error('Modal não encontrado');
+        // Se não existir modal, chamar backup diretamente
+        await fazerBackup();
+        return;
+    }
+
+    const modalContent = modal.querySelector('.modal-content');
+    
+    if (!modalContent) {
+        console.error('Modal content não encontrado');
+        // Se não existir modal content, chamar backup diretamente
+        await fazerBackup();
+        return;
+    }
+    
     modalContent.innerHTML = `
         <h3>💾 Backup da Base de Dados</h3>
         <p style="margin-bottom: 2rem; color: #64748b;">Faça o backup completo do banco de dados do sistema:</p>
