@@ -603,8 +603,8 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
                     <span class="resumo-valor">R$ ${dados.valores_competencia.atual.toFixed(2)}</span>
                 </div>
                 <div class="resumo-card">
-                    <span class="resumo-label">Média de Glosas</span>
-                    <span class="resumo-valor" style="color: var(--danger)">R$ ${dados.valores_competencia.media_glosa.toFixed(2)}</span>
+                    <span class="resumo-label">Diferença Total (Glosas)</span>
+                    <span class="resumo-valor" style="color: var(--danger)">R$ ${(dados.valores_competencia.inicial - dados.valores_competencia.atual).toFixed(2)}</span>
                 </div>
                 <div class="resumo-card">
                     <span class="resumo-label">Total de AIHs</span>
