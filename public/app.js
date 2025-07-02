@@ -1313,9 +1313,28 @@ document.addEventListener('DOMContentLoaded', () => {
 // Funções de backup e exportação melhoradas
 window.fazerBackup = async () => {
     try {
+        console.log('🔄 Iniciando backup do banco de dados...');
+        
+        // Verificar se há token válido
+        if (!state.token) {
+            alert('❌ Erro: Usuário não autenticado. Faça login novamente.');
+            return;
+        }
+
         // Mostrar indicador de carregamento
         const modal = document.getElementById('modal');
+        if (!modal) {
+            console.error('❌ Modal não encontrado');
+            alert('❌ Erro: Interface de modal não encontrada');
+            return;
+        }
+
         const modalContent = modal.querySelector('.modal-content');
+        if (!modalContent) {
+            console.error('❌ Conteúdo do modal não encontrado');
+            alert('❌ Erro: Conteúdo do modal não encontrado');
+            return;
+        }
 
         modalContent.innerHTML = `
             <h3>💾 Fazendo Backup...</h3>
@@ -1323,39 +1342,79 @@ window.fazerBackup = async () => {
             <div style="text-align: center; margin: 2rem 0;">
                 <div style="border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
             </div>
+            <p style="font-size: 0.875rem; color: #64748b; text-align: center;">Isso pode levar alguns segundos...</p>
         `;
 
         // Fazer requisição para backup
+        console.log('📡 Fazendo requisição para /api/backup...');
         const response = await fetch('/api/backup', {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${state.token}`
+                'Authorization': `Bearer ${state.token}`,
+                'Content-Type': 'application/json'
             }
         });
 
+        console.log(`📡 Resposta recebida: Status ${response.status}`);
+
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Erro na resposta:', errorText);
             throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
         }
 
+        // Verificar se a resposta é um blob (arquivo)
+        const contentType = response.headers.get('content-type');
+        console.log('📄 Content-Type da resposta:', contentType);
+
+        if (!contentType || !contentType.includes('application/octet-stream')) {
+            const errorText = await response.text();
+            console.error('❌ Resposta não é um arquivo:', errorText);
+            throw new Error('Resposta inválida do servidor - não é um arquivo de backup');
+        }
+
         // Criar blob e fazer download
+        console.log('💾 Criando blob para download...');
         const blob = await response.blob();
+        
+        if (blob.size === 0) {
+            throw new Error('Arquivo de backup está vazio');
+        }
+        
+        console.log(`💾 Blob criado com tamanho: ${blob.size} bytes`);
+
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = `backup-aih-${new Date().toISOString().split('T')[0]}.db`;
+        link.style.display = 'none';
 
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
 
+        console.log('✅ Download do backup iniciado');
+
+        // Fechar modal
         modal.classList.remove('ativo');
+        
         alert('✅ Backup do banco de dados realizado com sucesso!\n\nO arquivo SQLite foi baixado e contém todos os dados do sistema.');
 
     } catch (err) {
-        console.error('Erro ao fazer backup:', err);
-        modal.classList.remove('ativo');
-        alert('❌ Erro ao fazer backup: ' + err.message);
+        console.error('❌ Erro ao fazer backup:', {
+            message: err.message,
+            stack: err.stack,
+            token: state.token ? 'Presente' : 'Ausente'
+        });
+        
+        // Fechar modal se estiver aberto
+        const modal = document.getElementById('modal');
+        if (modal) {
+            modal.classList.remove('ativo');
+        }
+        
+        alert('❌ Erro ao fazer backup: ' + err.message + '\n\nVerifique o console para mais detalhes.');
     }
 };
 
