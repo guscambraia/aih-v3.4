@@ -3419,11 +3419,15 @@ window.exportarHistoricoMovimentacoes = async (formato) => {
     }
 
     try {
+        console.log(`Iniciando exportação do histórico da AIH ${state.aihAtual.numero_aih} em formato ${formato}`);
+
         // Mostrar indicador de carregamento
         const botoes = document.querySelectorAll('button[onclick*="exportarHistoricoMovimentacoes"]');
         botoes.forEach(btn => {
             btn.disabled = true;
-            btn.textContent = btn.textContent.replace('📄', '⏳').replace('📊', '⏳');
+            const textoOriginal = btn.textContent;
+            btn.setAttribute('data-texto-original', textoOriginal);
+            btn.textContent = '⏳ Exportando...';
         });
 
         const response = await fetch(`/api/aih/${state.aihAtual.id}/movimentacoes/export/${formato}`, {
@@ -3433,30 +3437,35 @@ window.exportarHistoricoMovimentacoes = async (formato) => {
             }
         });
 
+        console.log(`Resposta da API: Status ${response.status}`);
+
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Erro na resposta:', errorText);
             throw new Error(`Erro HTTP ${response.status}: ${response.statusText}`);
         }
 
         // Criar blob com o conteúdo da resposta
         const blob = await response.blob();
+        console.log(`Blob criado com tamanho: ${blob.size} bytes`);
 
-        // Determinar o nome do arquivo e tipo MIME
-        let fileName, mimeType;
+        // Determinar o nome do arquivo
+        const dataAtual = new Date().toISOString().split('T')[0];
+        let fileName;
         if (formato === 'csv') {
-            fileName = `historico-movimentacoes-AIH-${state.aihAtual.numero_aih}-${new Date().toISOString().split('T')[0]}.csv`;
-            mimeType = 'text/csv;charset=utf-8';
+            fileName = `historico-movimentacoes-AIH-${state.aihAtual.numero_aih}-${dataAtual}.csv`;
         } else if (formato === 'xlsx') {
-            fileName = `historico-movimentacoes-AIH-${state.aihAtual.numero_aih}-${new Date().toISOString().split('T')[0]}.xls`;
-            mimeType = 'application/vnd.ms-excel';
+            fileName = `historico-movimentacoes-AIH-${state.aihAtual.numero_aih}-${dataAtual}.xls`;
         } else {
             throw new Error('Formato não suportado');
         }
 
         // Criar link de download
-        const url = window.URL.createObjectURL(new Blob([blob], { type: mimeType }));
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = fileName;
+        link.style.display = 'none';
 
         // Adicionar ao DOM temporariamente e clicar
         document.body.appendChild(link);
@@ -3466,24 +3475,32 @@ window.exportarHistoricoMovimentacoes = async (formato) => {
         // Limpar URL do blob
         window.URL.revokeObjectURL(url);
 
-        alert(`Histórico exportado com sucesso em formato ${formato.toUpperCase()}!`);
+        console.log(`Exportação concluída: ${fileName}`);
+        alert(`Histórico exportado com sucesso em formato ${formato.toUpperCase()}!\nArquivo: ${fileName}`);
 
     } catch (err) {
         console.error('Erro ao exportar histórico:', err);
-        alert(`Erro ao exportar histórico: ${err.message}`);
+        alert(`Erro ao exportar histórico: ${err.message || 'Erro desconhecido'}`);
     } finally {
         // Restaurar botões
         setTimeout(() => {
             const botoes = document.querySelectorAll('button[onclick*="exportarHistoricoMovimentacoes"]');
             botoes.forEach(btn => {
                 btn.disabled = false;
-                if (btn.textContent.includes('CSV')) {
-                    btn.textContent = '📄 CSV';
-                } else if (btn.textContent.includes('Excel')) {
-                    btn.textContent = '📊 Excel (XLS)';
+                const textoOriginal = btn.getAttribute('data-texto-original');
+                if (textoOriginal) {
+                    btn.textContent = textoOriginal;
+                    btn.removeAttribute('data-texto-original');
+                } else {
+                    // Fallback caso não tenha o atributo
+                    if (btn.textContent.includes('CSV') || btn.textContent.includes('Exportando')) {
+                        btn.textContent = '📄 CSV';
+                    } else {
+                        btn.textContent = '📊 Excel (XLS)';
+                    }
                 }
             });
-        }, 1000);
+        }, 500);
     }
 };
 
