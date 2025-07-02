@@ -1324,15 +1324,31 @@ window.fazerBackup = async () => {
 
         console.log('✅ Token encontrado, continuando com backup...');
 
-        // Mostrar indicador de carregamento
-        const modal = document.getElementById('modal');
+        // Criar modal temporário para loading se não existir
+        let modalTemporario = false;
+        let modal = document.getElementById('modal');
+        
         if (!modal) {
-            console.error('❌ Modal não encontrado no DOM');
-            // Tentar fazer backup direto sem modal
-            console.log('⚠️ Tentando fazer backup sem modal...');
+            console.log('📦 Modal não encontrado, criando modal temporário...');
+            modal = document.createElement('div');
+            modal.id = 'modal-backup-temp';
+            modal.className = 'modal ativo';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                background: rgba(0,0,0,0.7); display: flex; align-items: center; 
+                justify-content: center; z-index: 9999;
+            `;
+            modal.innerHTML = `
+                <div style="background: white; padding: 2rem; border-radius: 12px; text-align: center; min-width: 300px;">
+                    <h3 style="color: #0369a1; margin-bottom: 1rem;">💾 Fazendo Backup...</h3>
+                    <p style="color: #64748b; margin-bottom: 1.5rem;">Aguarde enquanto o backup é criado...</p>
+                    <div style="border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modalTemporario = true;
         } else {
             console.log('✅ Modal encontrado, exibindo loading...');
-            
             const modalContent = modal.querySelector('.modal-content');
             if (modalContent) {
                 modalContent.innerHTML = `
@@ -1343,8 +1359,8 @@ window.fazerBackup = async () => {
                     </div>
                     <p style="font-size: 0.875rem; color: #64748b; text-align: center;">Isso pode levar alguns segundos...</p>
                 `;
-                modal.classList.add('ativo');
             }
+            modal.classList.add('ativo');
         }
 
         // Fazer requisição para backup
@@ -1430,8 +1446,10 @@ window.fazerBackup = async () => {
 
         console.log('✅ Download do backup iniciado com sucesso');
 
-        // Fechar modal se existir
-        if (modal) {
+        // Fechar modal
+        if (modalTemporario) {
+            document.body.removeChild(modal);
+        } else if (modal) {
             modal.classList.remove('ativo');
         }
         
@@ -1447,10 +1465,14 @@ window.fazerBackup = async () => {
             userAgent: navigator.userAgent
         });
         
-        // Fechar modal se estiver aberto
-        const modal = document.getElementById('modal');
-        if (modal) {
-            modal.classList.remove('ativo');
+        // Fechar modal adequadamente
+        if (modalTemporario && modal && modal.parentNode) {
+            document.body.removeChild(modal);
+        } else {
+            const modalExistente = document.getElementById('modal');
+            if (modalExistente) {
+                modalExistente.classList.remove('ativo');
+            }
         }
         
         // Mostrar erro detalhado
