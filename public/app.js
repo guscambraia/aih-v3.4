@@ -885,72 +885,6 @@ const mostrarInfoAIH = (aih) => {
             </div>
         </div>
 
-        <div style="margin-top: 2rem;">
-            <h4 style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
-                <span style="display: flex; align-items: center; gap: 0.5rem;">
-                    📊 Histórico de Movimentações
-                    <span style="background: #6366f1; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem;">
-                        ${aih.movimentacoes.length}
-                    </span>
-                </span>
-                <div style="display: flex; gap: 0.5rem; margin-left: auto; flex-wrap: wrap;">
-                    <button onclick="exportarHistoricoMovimentacoes('csv')" 
-                            style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
-                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
-                                   transition: all 0.2s ease; min-width: 80px; justify-content: center;"
-                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
-                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                        📄 CSV
-                    </button>
-                    <button onclick="exportarHistoricoMovimentacoes('xlsx')" 
-                            style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); 
-                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
-                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
-                                   transition: all 0.2s ease; min-width: 100px; justify-content: center;"
-                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
-                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
-                        📊 Excel (XLS)
-                    </button>
-                </div>
-            </h4>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Tipo</th>
-                        <th>Status</th>
-                        <th>Valor</th>
-                        <th>Profissionais</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${aih.movimentacoes.map(mov => {
-                        const profissionais = [];
-                        if (mov.prof_medicina) profissionais.push(`Med: ${mov.prof_medicina}`);
-                        if (mov.prof_enfermagem) profissionais.push(`Enf: ${mov.prof_enfermagem}`);
-                        if (mov.prof_fisioterapia) profissionais.push(`Fis: ${mov.prof_fisioterapia}`);
-                        if (mov.prof_bucomaxilo) profissionais.push(`Buco: ${mov.prof_bucomaxilo}`);
-
-                        return `
-                            <tr>
-                                <td>${new Date(mov.data_movimentacao).toLocaleDateString('pt-BR')}</td>
-                                <td>
-                                    <span style="display: flex; align-items: center; gap: 0.5rem;">
-                                        ${mov.tipo === 'entrada_sus' ? '📥' : '📤'}
-                                        ${mov.tipo === 'entrada_sus' ? 'Entrada SUS' : 'Saída Hospital'}
-                                    </span>
-                                </td>
-                                <td><span class="status-badge status-${mov.status_aih}">${getStatusDescricao(mov.status_aih)}</span></td>
-                                <td>R$ ${(mov.valor_conta || 0).toFixed(2)}</td>
-                                <td style="font-size: 0.875rem;">${profissionais.join(' | ') || '-'}</td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        </div>
-
         ${aih.glosas.length > 0 ? `
             <div style="margin-top: 2rem; background: #fef3c7; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #f59e0b;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
@@ -1022,6 +956,72 @@ const mostrarInfoAIH = (aih) => {
                 </div>
             </div>
         ` : ''}
+
+        <div style="margin-top: 2rem;">
+            <h4 style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    📊 Histórico de Movimentações
+                    <span style="background: #6366f1; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem;">
+                        ${aih.movimentacoes.length}
+                    </span>
+                </span>
+                <div style="display: flex; gap: 0.5rem; margin-left: auto; flex-wrap: wrap;">
+                    <button onclick="exportarHistoricoMovimentacoes('csv')" 
+                            style="background: linear-gradient(135deg, #059669 0%, #047857 100%); 
+                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
+                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
+                                   transition: all 0.2s ease; min-width: 80px; justify-content: center;"
+                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                        📄 CSV
+                    </button>
+                    <button onclick="exportarHistoricoMovimentacoes('xlsx')" 
+                            style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); 
+                                   color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; 
+                                   cursor: pointer; font-size: 0.875rem; display: flex; align-items: center; gap: 0.25rem;
+                                   transition: all 0.2s ease; min-width: 100px; justify-content: center;"
+                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                        📊 Excel (XLS)
+                    </button>
+                </div>
+            </h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Valor</th>
+                        <th>Profissionais</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${aih.movimentacoes.map(mov => {
+                        const profissionais = [];
+                        if (mov.prof_medicina) profissionais.push(`Med: ${mov.prof_medicina}`);
+                        if (mov.prof_enfermagem) profissionais.push(`Enf: ${mov.prof_enfermagem}`);
+                        if (mov.prof_fisioterapia) profissionais.push(`Fis: ${mov.prof_fisioterapia}`);
+                        if (mov.prof_bucomaxilo) profissionais.push(`Buco: ${mov.prof_bucomaxilo}`);
+
+                        return `
+                            <tr>
+                                <td>${new Date(mov.data_movimentacao).toLocaleDateString('pt-BR')}</td>
+                                <td>
+                                    <span style="display: flex; align-items: center; gap: 0.5rem;">
+                                        ${mov.tipo === 'entrada_sus' ? '📥' : '📤'}
+                                        ${mov.tipo === 'entrada_sus' ? 'Entrada SUS' : 'Saída Hospital'}
+                                    </span>
+                                </td>
+                                <td><span class="status-badge status-${mov.status_aih}">${getStatusDescricao(mov.status_aih)}</span></td>
+                                <td>R$ ${(mov.valor_conta || 0).toFixed(2)}</td>
+                                <td style="font-size: 0.875rem;">${profissionais.join(' | ') || '-'}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
     `;
 
     mostrarTela('telaInfoAIH');
