@@ -3318,6 +3318,147 @@ window.confirmarExclusao = async () => {
     }
 };
 
+// Funções de backup e exportação melhoradas
+window.fazerBackup = async () => {
+    try {
+        console.log('🔄 Iniciando backup do banco de dados...');
+        
+        // Verificar se há token válido
+        if (!state.token) {
+            console.error('❌ Token não encontrado no state:', state);
+            alert('❌ Erro: Usuário não autenticado. Faça login novamente.');
+            return;
+        }
+
+        console.log('✅ Token encontrado, continuando com backup...');
+
+        // Criar modal de loading customizado
+        const loadingModal = document.createElement('div');
+        loadingModal.id = 'backup-loading-modal';
+        loadingModal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+            background: rgba(0,0,0,0.7); display: flex; align-items: center; 
+            justify-content: center; z-index: 9999;
+        `;
+        loadingModal.innerHTML = `
+            <div style="background: white; padding: 2rem; border-radius: 12px; text-align: center; min-width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                <h3 style="color: #0369a1; margin-bottom: 1rem; font-size: 1.25rem;">💾 Fazendo Backup...</h3>
+                <p style="color: #64748b; margin-bottom: 1.5rem;">Aguarde enquanto o backup é criado...</p>
+                <div style="border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 1rem;">Isso pode levar alguns segundos...</p>
+            </div>
+        `;
+        
+        // Adicionar ao DOM
+        document.body.appendChild(loadingModal);
+
+        // Fazer requisição para backup
+        console.log('📡 Fazendo requisição para /api/backup...');
+        
+        const response = await fetch('/api/backup', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${state.token}`
+            }
+        });
+
+        console.log(`📡 Resposta recebida: Status ${response.status}`);
+
+        if (!response.ok) {
+            let errorText;
+            try {
+                errorText = await response.text();
+            } catch (e) {
+                errorText = `Erro ao ler resposta: ${e.message}`;
+            }
+            console.error('❌ Erro na resposta do servidor:', {
+                status: response.status,
+                statusText: response.statusText,
+                errorText: errorText
+            });
+            throw new Error(`Erro HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+        }
+
+        // Verificar content-type da resposta
+        const contentType = response.headers.get('content-type');
+        console.log('📄 Content-Type da resposta:', contentType);
+
+        // Aceitar tanto application/octet-stream quanto outros tipos de arquivo
+        if (contentType && contentType.includes('application/json')) {
+            const errorData = await response.json();
+            console.error('❌ Servidor retornou JSON ao invés de arquivo:', errorData);
+            throw new Error(errorData.error || 'Servidor retornou erro ao invés de arquivo de backup');
+        }
+
+        // Criar blob e fazer download
+        console.log('💾 Criando blob para download...');
+        const blob = await response.blob();
+        
+        if (blob.size === 0) {
+            throw new Error('Arquivo de backup está vazio');
+        }
+        
+        console.log(`💾 Blob criado com tamanho: ${blob.size} bytes`);
+
+        // Criar link de download
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Definir nome do arquivo
+        const dataAtual = new Date().toISOString().split('T')[0];
+        link.download = `backup-aih-${dataAtual}.db`;
+        
+        // Configurar link invisível
+        link.style.display = 'none';
+        link.style.visibility = 'hidden';
+
+        // Adicionar ao DOM temporariamente
+        document.body.appendChild(link);
+        
+        // Forçar clique
+        console.log('🖱️ Iniciando download...');
+        link.click();
+        
+        // Limpar recursos
+        setTimeout(() => {
+            if (document.body.contains(link)) {
+                document.body.removeChild(link);
+            }
+            window.URL.revokeObjectURL(url);
+            console.log('🧹 Recursos de download limpos');
+        }, 100);
+
+        console.log('✅ Download do backup iniciado com sucesso');
+
+        // Fechar modal de loading
+        if (document.body.contains(loadingModal)) {
+            document.body.removeChild(loadingModal);
+        }
+        
+        // Mostrar mensagem de sucesso
+        alert('✅ Backup do banco de dados realizado com sucesso!\n\nO arquivo SQLite foi baixado e contém todos os dados do sistema.');
+
+    } catch (err) {
+        console.error('❌ Erro completo ao fazer backup:', {
+            message: err.message,
+            stack: err.stack,
+            token: state.token ? `Presente (${state.token.length} chars)` : 'Ausente',
+            url: window.location.href,
+            userAgent: navigator.userAgent
+        });
+        
+        // Remover modal de loading se existir
+        const loadingModal = document.getElementById('backup-loading-modal');
+        if (loadingModal && document.body.contains(loadingModal)) {
+            document.body.removeChild(loadingModal);
+        }
+        
+        // Mostrar erro detalhado
+        alert(`❌ Erro ao fazer backup: ${err.message}\n\nDetalhes técnicos foram registrados no console.`);
+    }
+};
+
 // Função para exportar resultados da pesquisa
 window.exportarResultadosPesquisa = async (formato) => {
     if (!window.ultimosResultadosPesquisa || window.ultimosResultadosPesquisa.length === 0) {
