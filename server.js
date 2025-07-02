@@ -399,8 +399,11 @@ app.delete('/api/admin/deletar-aih', verificarToken, async (req, res) => {
 // Dashboard aprimorado com filtro por competência
 app.get('/api/dashboard', verificarToken, async (req, res) => {
     try {
+        console.log('📊 Carregando dashboard para usuário:', req.usuario?.nome);
+        
         // Pegar competência da query ou usar atual
         const competencia = req.query.competencia || getCompetenciaAtual();
+        console.log('📅 Competência selecionada:', competencia);
 
         // 1. AIH em processamento na competência - consulta otimizada
         const processamentoCompetencia = await get(`
@@ -508,8 +511,16 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('Erro no dashboard:', err);
-        res.status(500).json({ error: err.message });
+        console.error('❌ Erro no dashboard:', {
+            message: err.message,
+            stack: err.stack,
+            usuario: req.usuario?.nome,
+            competencia: req.query.competencia
+        });
+        res.status(500).json({ 
+            error: err.message,
+            details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
     }
 });
 

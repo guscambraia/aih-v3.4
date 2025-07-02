@@ -67,7 +67,12 @@ const api = async (endpoint, options = {}) => {
 
         return data;
     } catch (err) {
-        console.error('Erro API:', err);
+        console.error('Erro API:', {
+            endpoint: endpoint,
+            method: config.method,
+            error: err.message,
+            stack: err.stack
+        });
         throw err;
     }
 };
@@ -612,14 +617,23 @@ const carregarDashboard = async (competenciaSelecionada = null) => {
         animarNumeros();
 
     } catch (err) {
-        console.error('Erro ao carregar dashboard:', err);
+        console.error('Erro ao carregar dashboard:', {
+            competencia: competenciaSelecionada,
+            error: err.message,
+            stack: err.stack
+        });
+        
         // Mostrar mensagem de erro no dashboard
-        document.querySelector('.dashboard').innerHTML = `
-            <div class="erro-dashboard">
-                <p>⚠️ Erro ao carregar dados do dashboard</p>
-                <button onclick="carregarDashboard()">Tentar novamente</button>
-            </div>
-        `;
+        const dashboardElement = document.querySelector('.dashboard');
+        if (dashboardElement) {
+            dashboardElement.innerHTML = `
+                <div class="erro-dashboard">
+                    <p>⚠️ Erro ao carregar dados do dashboard</p>
+                    <p style="font-size: 0.875rem; color: #64748b;">Erro: ${err.message}</p>
+                    <button onclick="carregarDashboard()">Tentar novamente</button>
+                </div>
+            `;
+        }
     }
 };
 
@@ -1918,23 +1932,39 @@ window.visualizarAIHsPorCategoria = async (categoria, periodo) => {
 
 // Navegação para relatórios
 document.getElementById('btnRelatorios').addEventListener('click', () => {
+    console.log('Navegando para tela de relatórios...');
     mostrarTela('telaRelatorios');
-    carregarRelatorios();
+    
+    // Aguardar um pouco para garantir que a tela foi carregada
+    setTimeout(() => {
+        carregarRelatorios();
+    }, 100);
 });
 
 // Navegação para alterar BD
 document.getElementById('btnAlterarBD').addEventListener('click', () => {
+    console.log('Navegando para tela de alteração da BD...');
     mostrarTela('telaAlterarBD');
-    configurarAlteracaoBD();
-    // Carregar logs automaticamente após um pequeno delay
+    
+    // Aguardar um pouco para garantir que a tela foi carregada
     setTimeout(() => {
-        carregarLogsExclusao();
-    }, 500);
+        configurarAlteracaoBD();
+        // Carregar logs automaticamente após um pequeno delay
+        setTimeout(() => {
+            carregarLogsExclusao();
+        }, 500);
+    }, 100);
 });
 
 // Carregar opções de relatórios
 const carregarRelatorios = () => {
+    console.log('🔄 Carregando opções de relatórios...');
     const container = document.getElementById('opcoesRelatorios');
+    
+    if (!container) {
+        console.error('❌ Container opcoesRelatorios não encontrado!');
+        return;
+    }
 
     container.innerHTML = `
         <div class="relatorios-grid">
