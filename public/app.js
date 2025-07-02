@@ -2120,72 +2120,266 @@ const carregarRelatorios = () => {
     }
 
     container.innerHTML = `
-        <div class="relatorios-grid">
-            <div class="relatorio-card" onclick="gerarRelatorio('acessos')">
-                <div class="relatorio-icon">👥</div>
-                <h4>Relatório de Acessos</h4>
-                <p>Usuários e frequência de acessos</p>
+        <!-- Seção 1: Relatórios Simples (sem necessidade de filtros) -->
+        <div style="margin-bottom: 3rem;">
+            <h3 style="color: #374151; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb;">
+                📋 Relatórios Simples (Dados Gerais)
+            </h3>
+            <p style="color: #64748b; margin-bottom: 2rem; font-style: italic;">
+                Relatórios que mostram dados gerais do sistema, sem necessidade de filtros de período
+            </p>
+            
+            <div class="relatorios-grid">
+                <div class="relatorio-card" onclick="gerarRelatorioSimples('acessos')">
+                    <div class="relatorio-icon">👥</div>
+                    <h4>Relatório de Acessos</h4>
+                    <p>Usuários e frequência de acessos ao sistema</p>
+                    <small style="color: #059669;">✓ Dados gerais</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioSimples('aprovacoes')">
+                    <div class="relatorio-icon">✅</div>
+                    <h4>Relatório de Aprovações</h4>
+                    <p>Distribuição geral por status de aprovação</p>
+                    <small style="color: #059669;">✓ Dados gerais</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioSimples('glosas-profissional')">
+                    <div class="relatorio-icon">⚠️</div>
+                    <h4>Glosas por Profissional</h4>
+                    <p>Total de glosas por auditor (geral)</p>
+                    <small style="color: #059669;">✓ Dados gerais</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioSimples('aihs-profissional')">
+                    <div class="relatorio-icon">🏥</div>
+                    <h4>AIHs por Profissional</h4>
+                    <p>Produtividade geral por auditor</p>
+                    <small style="color: #059669;">✓ Dados gerais</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioSimples('tipos-glosa')">
+                    <div class="relatorio-icon">📊</div>
+                    <h4>Tipos de Glosa</h4>
+                    <p>Ranking geral dos tipos mais frequentes</p>
+                    <small style="color: #059669;">✓ Dados gerais</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioSimples('fluxo-movimentacoes')">
+                    <div class="relatorio-icon">🔄</div>
+                    <h4>Fluxo de Movimentações</h4>
+                    <p>Entradas SUS vs Saídas Hospital (geral)</p>
+                    <small style="color: #059669;">✓ Dados gerais</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção 2: Relatórios por Período (obrigatório informar período) -->
+        <div>
+            <h3 style="color: #374151; margin-bottom: 1.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb;">
+                📅 Relatórios por Período (Filtros Obrigatórios)
+            </h3>
+            <p style="color: #64748b; margin-bottom: 2rem; font-style: italic;">
+                Relatórios que requerem informar <strong>competência (MM/AAAA)</strong> OU <strong>período (data início e fim)</strong>
+            </p>
+
+            <!-- Formulário de Filtros -->
+            <div style="background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
+                <h4 style="color: #374151; margin: 0 0 1.5rem 0;">🎯 Definir Período para Análise</h4>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">📅 Competência (MM/AAAA):</label>
+                        <input type="text" id="relatorioCompetencia" placeholder="07/2025" 
+                               style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
+                        <small style="color: #6b7280;">Exemplo: 07/2025</small>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">📆 Data Início:</label>
+                        <input type="date" id="relatorioDataInicio" 
+                               style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
+                        <small style="color: #6b7280;">Início do período</small>
+                    </div>
+                    
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">📆 Data Fim:</label>
+                        <input type="date" id="relatorioDataFim" 
+                               style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;">
+                        <small style="color: #6b7280;">Fim do período</small>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button onclick="preencherCompetenciaAtual()" 
+                            style="background: #6366f1; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">
+                        📅 Usar Competência Atual
+                    </button>
+                    <button onclick="preencherMesAnterior()" 
+                            style="background: #8b5cf6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">
+                        📅 Mês Anterior
+                    </button>
+                    <button onclick="limparFiltrosRelatorio()" 
+                            style="background: #64748b; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.875rem;">
+                        🗑️ Limpar Filtros
+                    </button>
+                </div>
+
+                <div style="margin-top: 1rem; padding: 1rem; background: #fef3c7; border-radius: 6px; border-left: 4px solid #f59e0b;">
+                    <strong style="color: #92400e;">💡 Dica:</strong>
+                    <span style="color: #92400e;">Informe COMPETÊNCIA (mais comum) OU período com datas. Não é necessário preencher ambos.</span>
+                </div>
             </div>
 
-            <div class="relatorio-card" onclick="gerarRelatorio('aprovacoes')">
-                <div class="relatorio-icon">✅</div>
-                <h4>Relatório de Aprovações</h4>
-                <p>Distribuição por status de aprovação</p>
-            </div>
+            <!-- Grid de Relatórios por Período -->
+            <div class="relatorios-grid">
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('estatisticas-periodo')">
+                    <div class="relatorio-icon">📊</div>
+                    <h4>Estatísticas Gerais</h4>
+                    <p>Análise completa do período selecionado</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
 
-            <div class="relatorio-card" onclick="gerarRelatorio('glosas-profissional')">
-                <div class="relatorio-icon">⚠️</div>
-                <h4>Glosas por Profissional</h4>
-                <p>Glosas identificadas por auditor</p>
-            </div>
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('valores-glosas-periodo')">
+                    <div class="relatorio-icon">💰</div>
+                    <h4>Análise Financeira</h4>
+                    <p>Valores e perdas por glosas no período</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
 
-            <div class="relatorio-card" onclick="gerarRelatorio('aihs-profissional')">
-                <div class="relatorio-icon">🏥</div>
-                <h4>AIHs por Profissional</h4>
-                <p>Produtividade por auditor</p>
-            </div>
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('tipos-glosa-periodo')">
+                    <div class="relatorio-icon">⚠️</div>
+                    <h4>Tipos de Glosa (Período)</h4>
+                    <p>Ranking de glosas no período específico</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
 
-            <div class="relatorio-card" onclick="gerarRelatorio('tipos-glosa')">
-                <div class="relatorio-icon">📊</div>
-                <h4>Tipos de Glosa</h4>
-                <p>Ranking dos tipos mais frequentes</p>
-            </div>
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('aihs-profissional-periodo')">
+                    <div class="relatorio-icon">👨‍⚕️</div>
+                    <h4>Produtividade (Período)</h4>
+                    <p>Análise de profissionais no período</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
 
-            <div class="relatorio-card" onclick="gerarRelatorio('fluxo-movimentacoes')">
-                <div class="relatorio-icon">🔄</div>
-                <h4>Fluxo de Movimentações</h4>
-                <p>Entradas SUS vs Saídas Hospital</p>
-            </div>
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('glosas-profissional-periodo')">
+                    <div class="relatorio-icon">🔍</div>
+                    <h4>Glosas por Profissional (Período)</h4>
+                    <p>Glosas por auditor no período específico</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
 
-            <div class="relatorio-card" onclick="mostrarRelatoriosPeriodo()">
-                <div class="relatorio-icon">📅</div>
-                <h4>Relatórios por Período</h4>
-                <p>Análises com filtros de data</p>
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('performance-competencias')">
+                    <div class="relatorio-icon">📈</div>
+                    <h4>Performance por Competências</h4>
+                    <p>Comparativo entre competências</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('analise-valores-glosas')">
+                    <div class="relatorio-icon">💸</div>
+                    <h4>Análise de Valores de Glosas</h4>
+                    <p>Impacto financeiro das glosas no período</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('produtividade-auditores')">
+                    <div class="relatorio-icon">⭐</div>
+                    <h4>Produtividade Detalhada</h4>
+                    <p>Análise completa dos auditores</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('ranking-glosas-frequentes')">
+                    <div class="relatorio-icon">🏆</div>
+                    <h4>Ranking de Glosas Frequentes</h4>
+                    <p>Glosas mais comuns e impactantes</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('analise-financeira')">
+                    <div class="relatorio-icon">💹</div>
+                    <h4>Análise Financeira Completa</h4>
+                    <p>Relatório financeiro detalhado</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('eficiencia-processamento')">
+                    <div class="relatorio-icon">⚡</div>
+                    <h4>Eficiência de Processamento</h4>
+                    <p>Tempos e produtividade no período</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
+
+                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('logs-exclusao')">
+                    <div class="relatorio-icon">🗑️</div>
+                    <h4>Logs de Exclusão</h4>
+                    <p>Histórico de exclusões no sistema</p>
+                    <small style="color: #dc2626;">⚠️ Requer período</small>
+                </div>
             </div>
         </div>
     `;
 };
 
-// Gerar relatório
-window.gerarRelatorio = async (tipo) => {
+// Gerar relatório simples (sem filtros obrigatórios)
+window.gerarRelatorioSimples = async (tipo) => {
     try {
+        console.log(`🔄 Gerando relatório simples: ${tipo}`);
+        
         // Mostrar indicador de carregamento
-        const loadingModal = document.createElement('div');
-        loadingModal.style.cssText = `
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-            background: rgba(0,0,0,0.7); display: flex; align-items: center; 
-            justify-content: center; z-index: 9999;
-        `;
-        loadingModal.innerHTML = `
-            <div style="background: white; padding: 2rem; border-radius: 8px; text-align: center;">
-                <div style="border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Gerando relatório...</p>
-            </div>
-        `;
+        const loadingModal = criarModalLoading('Gerando relatório...');
         document.body.appendChild(loadingModal);
 
-        // Coletar filtros se existirem
+        const response = await api(`/relatorios/${tipo}`, {
+            method: 'POST',
+            body: JSON.stringify({}) // Sem filtros para relatórios simples
+        });
+
+        // Remover loading
+        document.body.removeChild(loadingModal);
+
+        // Exibir relatório
+        exibirRelatorioMelhorado(tipo, response.resultado, {}, 'simples');
+        
+    } catch (err) {
+        removerModalLoading();
+        console.error('Erro ao gerar relatório simples:', err);
+        alert('Erro ao gerar relatório: ' + err.message);
+    }
+};
+
+// Gerar relatório por período (com filtros obrigatórios)
+window.gerarRelatorioPeriodo = async (tipo) => {
+    try {
+        console.log(`🔄 Gerando relatório por período: ${tipo}`);
+        
+        // Coletar filtros obrigatórios
         const filtros = coletarFiltrosRelatorio();
+        
+        // Validar se informou pelo menos competência OU período
+        const temCompetencia = filtros.competencia && filtros.competencia.trim();
+        const temPeriodo = filtros.data_inicio && filtros.data_fim;
+        
+        if (!temCompetencia && !temPeriodo) {
+            alert('⚠️ Para relatórios por período é obrigatório informar:\n\n• COMPETÊNCIA (MM/AAAA) - exemplo: 07/2025\nOU\n• PERÍODO com Data Início E Data Fim\n\nPreencha pelo menos uma das opções acima.');
+            return;
+        }
+
+        // Validar formato da competência se informada
+        if (temCompetencia && !/^\d{2}\/\d{4}$/.test(filtros.competencia.trim())) {
+            alert('⚠️ Competência deve estar no formato MM/AAAA\n\nExemplos válidos:\n• 07/2025\n• 12/2024\n• 01/2025');
+            return;
+        }
+
+        // Validar se data início não é maior que data fim
+        if (temPeriodo && filtros.data_inicio > filtros.data_fim) {
+            alert('⚠️ A data de início não pode ser maior que a data de fim.');
+            return;
+        }
+
+        // Mostrar indicador de carregamento
+        const loadingModal = criarModalLoading('Gerando relatório por período...');
+        document.body.appendChild(loadingModal);
 
         const response = await api(`/relatorios/${tipo}`, {
             method: 'POST',
@@ -2195,35 +2389,101 @@ window.gerarRelatorio = async (tipo) => {
         // Remover loading
         document.body.removeChild(loadingModal);
 
-        // Exibir relatório em interface dedicada
-        exibirRelatorioMelhorado(tipo, response.resultado, filtros);
+        // Exibir relatório
+        exibirRelatorioMelhorado(tipo, response.resultado, filtros, 'periodo');
+        
     } catch (err) {
-        // Remover loading se existir
-        const loadingModal = document.querySelector('[style*="position: fixed"]');
-        if (loadingModal) {
-            document.body.removeChild(loadingModal);
-        }
+        removerModalLoading();
+        console.error('Erro ao gerar relatório por período:', err);
         alert('Erro ao gerar relatório: ' + err.message);
     }
 };
 
+// Helper para criar modal de loading
+const criarModalLoading = (mensagem = 'Carregando...') => {
+    const loadingModal = document.createElement('div');
+    loadingModal.className = 'loading-modal';
+    loadingModal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+        background: rgba(0,0,0,0.7); display: flex; align-items: center; 
+        justify-content: center; z-index: 9999;
+    `;
+    loadingModal.innerHTML = `
+        <div style="background: white; padding: 2rem; border-radius: 12px; text-align: center; min-width: 300px;">
+            <div style="border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+            <p style="margin: 0; color: #374151;">${mensagem}</p>
+        </div>
+    `;
+    return loadingModal;
+};
+
+// Helper para remover modal de loading
+const removerModalLoading = () => {
+    const loadingModal = document.querySelector('.loading-modal');
+    if (loadingModal && document.body.contains(loadingModal)) {
+        document.body.removeChild(loadingModal);
+    }
+};
+
+// Funções auxiliares para preenchimento rápido de datas
+window.preencherCompetenciaAtual = () => {
+    const hoje = new Date();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = hoje.getFullYear();
+    const competenciaAtual = `${mes}/${ano}`;
+    
+    document.getElementById('relatorioCompetencia').value = competenciaAtual;
+    
+    // Limpar campos de data quando preencher competência
+    document.getElementById('relatorioDataInicio').value = '';
+    document.getElementById('relatorioDataFim').value = '';
+    
+    console.log('✅ Competência atual preenchida:', competenciaAtual);
+};
+
+window.preencherMesAnterior = () => {
+    const hoje = new Date();
+    const mesAnterior = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    const mes = String(mesAnterior.getMonth() + 1).padStart(2, '0');
+    const ano = mesAnterior.getFullYear();
+    const competenciaMesAnterior = `${mes}/${ano}`;
+    
+    document.getElementById('relatorioCompetencia').value = competenciaMesAnterior;
+    
+    // Limpar campos de data quando preencher competência
+    document.getElementById('relatorioDataInicio').value = '';
+    document.getElementById('relatorioDataFim').value = '';
+    
+    console.log('✅ Competência do mês anterior preenchida:', competenciaMesAnterior);
+};
+
 // Exibir relatório melhorado
-const exibirRelatorioMelhorado = (tipo, dados, filtros = {}) => {
+const exibirRelatorioMelhorado = (tipo, dados, filtros = {}, tipoRelatorio = 'geral') => {
     const container = document.getElementById('resultadoRelatorio');
     const titulo = getTituloRelatorio(tipo);
     
     // Formatar período dos filtros
     let periodoInfo = '';
-    if (filtros.competencia) {
+    let iconePeriodo = '';
+    
+    if (tipoRelatorio === 'simples') {
+        periodoInfo = 'Dados gerais do sistema (sem filtros de período)';
+        iconePeriodo = '📊';
+    } else if (filtros.competencia) {
         periodoInfo = `Competência: ${filtros.competencia}`;
+        iconePeriodo = '📅';
     } else if (filtros.data_inicio && filtros.data_fim) {
         periodoInfo = `Período: ${filtros.data_inicio} até ${filtros.data_fim}`;
+        iconePeriodo = '📆';
     } else if (filtros.data_inicio) {
         periodoInfo = `A partir de: ${filtros.data_inicio}`;
+        iconePeriodo = '📆';
     } else if (filtros.data_fim) {
         periodoInfo = `Até: ${filtros.data_fim}`;
+        iconePeriodo = '📆';
     } else {
         periodoInfo = 'Todos os dados disponíveis';
+        iconePeriodo = '📊';
     }
 
     let html = `
@@ -2232,9 +2492,12 @@ const exibirRelatorioMelhorado = (tipo, dados, filtros = {}) => {
             <div class="relatorio-header" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 2rem; border-radius: 12px 12px 0 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                     <div>
-                        <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">📊 ${titulo}</h2>
+                        <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">${iconePeriodo} ${titulo}</h2>
                         <p style="margin: 0; opacity: 0.9; font-size: 0.9rem;">${periodoInfo}</p>
-                        <p style="margin: 0.5rem 0 0 0; opacity: 0.8; font-size: 0.8rem;">Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+                        <p style="margin: 0.5rem 0 0 0; opacity: 0.8; font-size: 0.8rem;">
+                            Gerado em: ${new Date().toLocaleString('pt-BR')} | 
+                            Tipo: ${tipoRelatorio === 'simples' ? 'Relatório Simples' : 'Relatório por Período'}
+                        </p>
                     </div>
                     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                         <button onclick="exportarRelatorio('${tipo}', ${JSON.stringify(filtros).replace(/"/g, '&quot;')})" 
@@ -2595,45 +2858,7 @@ window.exportarRelatorio = async (tipo, filtros = {}) => {
     }
 };
 
-// Mostrar relatórios com filtro de período
-window.mostrarRelatoriosPeriodo = () => {
-    const container = document.getElementById('resultadoRelatorio');
-
-    container.innerHTML = `
-        <h3>📅 Relatórios por Período</h3>
-        <div class="filtros-periodo">
-            <div class="filtro-item">
-                <label>Data Início:</label>
-                <input type="date" id="dataInicioPeriodo">
-            </div>
-            <div class="filtro-item">
-                <label>Data Fim:</label>
-                <input type="date" id="dataFimPeriodo">
-            </div>
-            <div class="filtro-item">
-                <label>Competência:</label>
-                <input type="text" id="competenciaPeriodo" placeholder="MM/AAAA">
-            </div>
-        </div>
-
-        <div class="relatorios-periodo-grid">
-            <button onclick="gerarRelatorioPeriodo('estatisticas-periodo')" class="relatorio-periodo-btn">
-                📊 Estatísticas Gerais
-            </button>
-            <button onclick="gerarRelatorioPeriodo('valores-glosas-periodo')" class="relatorio-periodo-btn">
-                💰 Análise Financeira
-            </button>
-            <button onclick="gerarRelatorioPeriodo('tipos-glosa-periodo')" class="relatorio-periodo-btn">
-                ⚠️ Tipos de Glosa
-            </button>
-            <button onclick="gerarRelatorioPeriodo('aihs-profissional-periodo')" class="relatorio-periodo-btn">
-                👨‍⚕️ Produtividade Profissionais
-            </button>
-        </div>
-
-        <div id="resultadoRelatorioPeriodo"></div>
-    `;
-};
+// Função removida - não é mais necessária pois os relatórios por período estão integrados na tela principal
 
 // Gerar relatório com período
 window.gerarRelatorioPeriodo = async (tipo) => {
@@ -2870,7 +3095,15 @@ window.limparFiltrosRelatorio = () => {
         const campo = document.getElementById(campoId);
         if (campo) campo.value = '';
     });
-    alert('Filtros de relatórios limpos!');
+    
+    // Limpar também resultados anteriores
+    const container = document.getElementById('resultadoRelatorio');
+    if (container) {
+        container.innerHTML = '';
+    }
+    
+    console.log('✅ Filtros de relatórios limpos');
+    alert('✅ Filtros de relatórios limpos!\n\nAgora você pode definir novos filtros para gerar relatórios por período.');
 };
 
 // Função para limpar campos de busca rápida
