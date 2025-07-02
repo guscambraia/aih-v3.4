@@ -2259,7 +2259,7 @@ app.get('/api/aih/:id/movimentacoes/export/:formato', verificarToken, async (req
                 { wch: 30 }  // Observações
             ];
 
-            const workbook = XLSX.utils.utils.book_new();
+            const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, `Movimentações AIH ${aih.numero_aih}`);
 
             const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xls' });
