@@ -341,6 +341,13 @@ const carregarUsuarios = async () => {
 
 // Excluir usuário
 window.excluirUsuario = async (id, nome) => {
+    // Verificar se é admin
+    const userType = localStorage.getItem('userType');
+    if (userType !== 'admin') {
+        alert('Erro: Apenas administradores podem excluir usuários');
+        return;
+    }
+
     const confirmar = await mostrarModal(
         'Excluir Usuário',
         `Tem certeza que deseja excluir o usuário "${nome}"? Esta ação não pode ser desfeita.`
@@ -353,6 +360,7 @@ window.excluirUsuario = async (id, nome) => {
         alert('Usuário excluído com sucesso!');
         carregarUsuarios();
     } catch (err) {
+        console.error('Erro ao excluir usuário:', err);
         alert('Erro ao excluir usuário: ' + err.message);
     }
 };

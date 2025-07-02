@@ -176,12 +176,15 @@ app.post('/api/admin/usuarios', verificarToken, async (req, res) => {
 // Excluir usuário (apenas admin)
 app.delete('/api/admin/usuarios/:id', verificarToken, async (req, res) => {
     try {
-        if (req.usuario.tipo !== 'admin') {
-            return res.status(403).json({ error: 'Acesso negado' });
+        // Verificar se é admin consultando o banco
+        const admin = await get('SELECT id FROM administradores WHERE id = ?', [req.usuario.id]);
+        if (!admin) {
+            return res.status(403).json({ error: 'Acesso negado - apenas administradores' });
         }
         await excluirUsuario(req.params.id);
         res.json({ success: true });
     } catch (err) {
+        console.error('Erro ao excluir usuário:', err);
         res.status(400).json({ error: err.message });
     }
 });
