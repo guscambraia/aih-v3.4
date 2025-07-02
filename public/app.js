@@ -1091,8 +1091,7 @@ document.getElementById('btnBuscarAIH').addEventListener('click', () => {
 
 document.getElementById('btnBackup').addEventListener('click', async () => {
     const modal = document.getElementById('modal');
-    const modalContent = modal.querySelector('.modal-content');
-
+    
     modalContent.innerHTML = `
         <h3>💾 Backup da Base de Dados</h3>
         <p style="margin-bottom: 2rem; color: #64748b;">Faça o backup completo do banco de dados do sistema:</p>
