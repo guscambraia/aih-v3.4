@@ -4,7 +4,8 @@ const { run, get, all, runTransaction } = require('./database');
 // Arquivar dados com mais de 3 anos
 const archiveOldData = async () => {
     try {
-        console.log('🗂️ Iniciando arquivamento de dados antigos...');
+        // Log apenas quando há dados para processar
+        // console.log('🗂️ Iniciando arquivamento de dados antigos...');
         
         const threeYearsAgo = new Date();
         threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
@@ -21,8 +22,8 @@ const archiveOldData = async () => {
         `, [cutoffDate]);
         
         if (oldAihs.length === 0) {
-            // Log mais discreto quando não há dados para arquivar
-            console.log(`📊 Verificação de arquivamento concluída - 0 AIHs antigas (corte: ${cutoffDate})`);
+            // Apenas log em debug quando não há dados para arquivar
+            // console.log(`📊 Verificação de arquivamento concluída - 0 AIHs antigas (corte: ${cutoffDate})`);
             return { archived: 0, freed_space: 0 };
         }
         
@@ -213,24 +214,29 @@ const scheduleArchiving = () => {
     
     setInterval(async () => {
         try {
-            console.log('🗂️ Iniciando verificação de arquivamento agendado...');
-            await archiveOldData();
+            // Log apenas quando há dados para arquivar
+            const result = await archiveOldData();
+            if (result.archived > 0) {
+                console.log(`🗂️ Arquivamento automático executado: ${result.archived} AIHs arquivadas`);
+            }
         } catch (err) {
             console.error('Erro no arquivamento automático:', err);
         }
     }, SIX_MONTHS);
     
-    // Executar primeira vez após 24 horas (não após 1 hora)
+    // Executar primeira vez após 24 horas (silencioso)
     setTimeout(async () => {
         try {
-            console.log('🗂️ Executando primeira verificação de arquivamento...');
-            await archiveOldData();
+            const result = await archiveOldData();
+            if (result.archived > 0) {
+                console.log(`🗂️ Primeira verificação de arquivamento executada: ${result.archived} AIHs arquivadas`);
+            }
         } catch (err) {
             console.error('Erro no arquivamento inicial:', err);
         }
     }, 24 * 60 * 60 * 1000);
     
-    console.log('📅 Arquivamento automático agendado (primeira execução em 24h, depois a cada 6 meses)');
+    console.log('📅 Sistema de arquivamento inicializado (executará a cada 6 meses)');
 };
 
 module.exports = {
