@@ -57,16 +57,21 @@ set "ATALHO_PATH=%DESKTOP_PATH%\%ATALHO_NOME%.lnk"
 
 echo 🔄 Criando atalho na área de trabalho...
 
-REM Criar o atalho usando PowerShell
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-"$ws = New-Object -ComObject WScript.Shell; " ^
-"$shortcut = $ws.CreateShortcut('%ATALHO_PATH%'); " ^
-"$shortcut.TargetPath = '%EXECUTAR_BAT%'; " ^
-"$shortcut.WorkingDirectory = '%SCRIPT_DIR%'; " ^
-"$shortcut.Description = 'Sistema AIH - Auditoria de AIH'; " ^
-"$shortcut.IconLocation = '%%SystemRoot%%\System32\shell32.dll,21'; " ^
-"$shortcut.WindowStyle = 1; " ^
-"$shortcut.Save()"
+REM Criar arquivo temporário com script PowerShell
+echo $ws = New-Object -ComObject WScript.Shell > "%TEMP%\criar_atalho.ps1"
+echo $shortcut = $ws.CreateShortcut('%ATALHO_PATH%') >> "%TEMP%\criar_atalho.ps1"
+echo $shortcut.TargetPath = '%EXECUTAR_BAT%' >> "%TEMP%\criar_atalho.ps1"
+echo $shortcut.WorkingDirectory = '%SCRIPT_DIR%' >> "%TEMP%\criar_atalho.ps1"
+echo $shortcut.Description = 'Sistema AIH - Auditoria de AIH' >> "%TEMP%\criar_atalho.ps1"
+echo $shortcut.IconLocation = '%SystemRoot%\System32\shell32.dll,21' >> "%TEMP%\criar_atalho.ps1"
+echo $shortcut.WindowStyle = 1 >> "%TEMP%\criar_atalho.ps1"
+echo $shortcut.Save() >> "%TEMP%\criar_atalho.ps1"
+
+REM Executar o script PowerShell
+powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\criar_atalho.ps1"
+
+REM Limpar arquivo temporário
+del "%TEMP%\criar_atalho.ps1" >nul 2>&1
 
 REM Verificar se o atalho foi criado
 if exist "%ATALHO_PATH%" (
