@@ -25,20 +25,36 @@ const getPerformanceStats = async () => {
     }
 };
 
-// Log de performance (executar periodicamente)
+// Log de performance detalhado
 const logPerformance = async () => {
     const stats = await getPerformanceStats();
+    const memUsage = process.memoryUsage();
+    const uptime = process.uptime();
+    
     if (stats) {
-        console.log(`📊 Stats: ${stats.total_aihs} AIHs, ${stats.total_movimentacoes} movimentações, DB: ${stats.db_size_mb}MB`);
+        console.log(`📊 Performance Stats:`);
+        console.log(`   - AIHs: ${stats.total_aihs} | Movimentações: ${stats.total_movimentacoes} | Glosas: ${stats.total_glosas_ativas}`);
+        console.log(`   - DB: ${stats.db_size_mb}MB | RAM: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB | Uptime: ${Math.round(uptime / 3600)}h`);
         
-        // Alertar se banco estiver muito grande (>500MB)
-        if (stats.db_size_mb > 500) {
-            console.warn('⚠️  Banco de dados grande detectado. Considere arquivamento.');
+        // Alertas de performance
+        if (stats.db_size_mb > 1000) {
+            console.warn('⚠️  Banco de dados muito grande (>1GB). Considere manutenção.');
+        }
+        
+        if (memUsage.heapUsed > 512 * 1024 * 1024) { // 512MB
+            console.warn('⚠️  Alto uso de memória RAM detectado.');
+        }
+        
+        if (stats.total_aihs > 50000) {
+            console.log('🚀 Sistema em produção com alto volume detectado.');
         }
     }
 };
 
-// Agendar monitoramento a cada hora
-setInterval(logPerformance, 60 * 60 * 1000);
+// Agendar monitoramento mais frequente para alto volume
+setInterval(logPerformance, 30 * 60 * 1000); // A cada 30 minutos
+
+// Log inicial após 1 minuto
+setTimeout(logPerformance, 60 * 1000);
 
 module.exports = { getPerformanceStats, logPerformance };

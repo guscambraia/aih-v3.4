@@ -15,8 +15,8 @@ app.use(cors({
     credentials: true
 }));
 
-app.use(express.json({ limit: '10mb' })); // Limitar tamanho do payload
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '50mb' })); // Aumentar limite para uploads maiores
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Aplicar rate limiting globalmente
 app.use(rateLimitMiddleware);
@@ -57,43 +57,64 @@ scheduleMaintenance();
 const { logPerformance } = require('./monitor');
 setTimeout(logPerformance, 30000); // Log inicial após 30s
 
-// Backup automático otimizado para menor impacto
+// Backup automático mais frequente com limpeza automática
 const scheduleBackups = () => {
-    const BACKUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 horas
+    const BACKUP_INTERVAL = 8 * 60 * 60 * 1000; // 8 horas (3x por dia)
+    const MAX_BACKUPS = 21; // Manter 21 backups (1 semana com 3 por dia)
 
     const performBackup = async () => {
         try {
-            // Backup em horário de menor movimento (madrugada)
-            const agora = new Date();
-            const hora = agora.getHours();
+            console.log('🔄 Iniciando backup automático...');
+            const backupPath = await createBackup();
             
-            // Só fazer backup entre 2h e 5h da manhã para menor impacto
-            if (hora >= 2 && hora <= 5) {
-                console.log('🔄 Iniciando backup automático...');
-                const backupPath = await createBackup();
-                console.log(`✅ Backup automático concluído: ${backupPath}`);
-            } else {
-                console.log('⏰ Backup agendado para horário de menor movimento');
-                // Reagendar para próximo horário adequado
-                const proximoBackup = new Date();
-                proximoBackup.setHours(3, 0, 0, 0); // 3h da manhã
-                if (proximoBackup <= agora) {
-                    proximoBackup.setDate(proximoBackup.getDate() + 1);
-                }
-                setTimeout(performBackup, proximoBackup.getTime() - agora.getTime());
-            }
+            // Limpeza automática de backups antigos
+            await cleanOldBackups(MAX_BACKUPS);
+            
+            console.log(`✅ Backup automático concluído: ${backupPath}`);
         } catch (err) {
             console.error('❌ Erro no backup automático:', err);
         }
     };
 
-    // Primeiro backup após 1 hora
-    setTimeout(performBackup, 60 * 60 * 1000);
+    // Primeiro backup após 30 minutos
+    setTimeout(performBackup, 30 * 60 * 1000);
 
-    // Backups subsequentes a cada 24 horas
+    // Backups subsequentes a cada 8 horas
     setInterval(performBackup, BACKUP_INTERVAL);
 
-    console.log('📅 Backup automático agendado (horário otimizado)');
+    console.log('📅 Backup automático agendado (a cada 8 horas)');
+};
+
+// Função para limpar backups antigos automaticamente
+const cleanOldBackups = async (maxBackups) => {
+    try {
+        const fs = require('fs');
+        const backupDir = path.join(__dirname, 'backups');
+        
+        if (!fs.existsSync(backupDir)) {
+            return;
+        }
+        
+        const backups = fs.readdirSync(backupDir)
+            .filter(f => f.startsWith('aih-backup-') && f.endsWith('.db'))
+            .map(f => ({
+                name: f,
+                path: path.join(backupDir, f),
+                stats: fs.statSync(path.join(backupDir, f))
+            }))
+            .sort((a, b) => b.stats.mtime - a.stats.mtime); // Mais recentes primeiro
+            
+        if (backups.length > maxBackups) {
+            const toDelete = backups.slice(maxBackups);
+            for (const backup of toDelete) {
+                fs.unlinkSync(backup.path);
+                console.log(`🗑️ Backup antigo removido: ${backup.name}`);
+            }
+            console.log(`🧹 Limpeza concluída: ${toDelete.length} backups removidos, ${maxBackups} mantidos`);
+        }
+    } catch (err) {
+        console.error('❌ Erro na limpeza de backups:', err);
+    }
 };
 
 scheduleBackups();

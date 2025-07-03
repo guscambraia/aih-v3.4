@@ -12,7 +12,7 @@ const dbPath = path.join(__dirname, 'db', 'aih.db');
 
 // Pool de conexões para alta concorrência
 class DatabasePool {
-    constructor(size = 10) {
+    constructor(size = 50) { // Aumentado para 50 conexões
         this.size = size;
         this.connections = [];
         this.available = [];
@@ -37,14 +37,16 @@ class DatabasePool {
             conn.serialize(() => {
                 conn.run("PRAGMA journal_mode = WAL");
                 conn.run("PRAGMA synchronous = NORMAL");
-                conn.run("PRAGMA cache_size = 50000"); // Cache maior
+                conn.run("PRAGMA cache_size = 100000"); // Cache ainda maior - 100MB
                 conn.run("PRAGMA temp_store = MEMORY");
-                conn.run("PRAGMA mmap_size = 1073741824"); // 1GB memory-mapped
+                conn.run("PRAGMA mmap_size = 2147483648"); // 2GB memory-mapped
                 conn.run("PRAGMA foreign_keys = ON");
-                conn.run("PRAGMA busy_timeout = 60000"); // Timeout maior
-                conn.run("PRAGMA wal_autocheckpoint = 2000"); // Checkpoint menos frequente
-                conn.run("PRAGMA page_size = 32768"); // Páginas maiores
-                conn.run("PRAGMA threads = 4"); // Múltiplas threads
+                conn.run("PRAGMA busy_timeout = 120000"); // Timeout maior - 2 minutos
+                conn.run("PRAGMA wal_autocheckpoint = 5000"); // Checkpoint menos frequente
+                conn.run("PRAGMA page_size = 65536"); // Páginas maiores - 64KB
+                conn.run("PRAGMA threads = 8"); // Mais threads
+                conn.run("PRAGMA locking_mode = NORMAL"); // Melhor concorrência
+                conn.run("PRAGMA wal_checkpoint(TRUNCATE)"); // Limpar WAL
                 conn.run("PRAGMA optimize");
             });
         });
@@ -94,16 +96,18 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 // Configurações de performance do SQLite para conexão principal
 db.serialize(() => {
-    // Configurações de performance e segurança
+    // Configurações de performance e segurança otimizadas
     db.run("PRAGMA journal_mode = WAL");           
     db.run("PRAGMA synchronous = NORMAL");        
-    db.run("PRAGMA cache_size = 20000");          // Cache maior para conexão principal
+    db.run("PRAGMA cache_size = 200000");         // Cache muito maior - 200MB
     db.run("PRAGMA temp_store = MEMORY");         
-    db.run("PRAGMA mmap_size = 536870912");       // 512MB de memory-mapped I/O
+    db.run("PRAGMA mmap_size = 4294967296");      // 4GB de memory-mapped I/O
     db.run("PRAGMA foreign_keys = ON");           // Integridade referencial
-    db.run("PRAGMA busy_timeout = 30000");        // 30 segundos timeout
-    db.run("PRAGMA wal_autocheckpoint = 1000");   // Checkpoint automático
-    db.run("PRAGMA secure_delete = ON");          // Deletar dados de forma segura
+    db.run("PRAGMA busy_timeout = 180000");       // 3 minutos timeout
+    db.run("PRAGMA wal_autocheckpoint = 10000");  // Checkpoint menos frequente
+    db.run("PRAGMA secure_delete = OFF");         // Melhor performance
+    db.run("PRAGMA locking_mode = NORMAL");       // Melhor concorrência
+    db.run("PRAGMA read_uncommitted = true");     // Leituras mais rápidas
     db.run("PRAGMA optimize");                    
 });
 
@@ -291,14 +295,32 @@ const initDB = () => {
         db.run(`CREATE INDEX IF NOT EXISTS idx_mov_prof_fisio ON movimentacoes(prof_fisioterapia) WHERE prof_fisioterapia IS NOT NULL`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_mov_prof_buco ON movimentacoes(prof_bucomaxilo) WHERE prof_bucomaxilo IS NOT NULL`);
         
+        // Novos índices para otimização de consultas pesadas
+        db.run(`CREATE INDEX IF NOT EXISTS idx_aih_numero_status ON aihs(numero_aih, status, competencia)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_aih_valor_competencia ON aihs(valor_inicial, valor_atual, competencia)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_mov_aih_usuario_data ON movimentacoes(aih_id, usuario_id, data_movimentacao DESC)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_glosas_criado_ativa ON glosas(criado_em DESC, ativa, profissional)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_atend_aih_numero ON atendimentos(aih_id, numero_atendimento)`);
+        
+        // Índices para pesquisas por período
+        db.run(`CREATE INDEX IF NOT EXISTS idx_aih_criado_competencia_valor ON aihs(criado_em, competencia, valor_inicial DESC)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_mov_data_tipo_valor ON movimentacoes(data_movimentacao DESC, tipo, valor_conta)`);
+        
+        // Índices para consultas de relatórios complexos
+        db.run(`CREATE INDEX IF NOT EXISTS idx_aih_status_criado_valor ON aihs(status, criado_em DESC, valor_inicial, valor_atual)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_glosas_tipo_linha_ativa ON glosas(tipo, linha, ativa, criado_em DESC)`);
+        
+        // Índice para otimizar JOINs frequentes
+        db.run(`CREATE INDEX IF NOT EXISTS idx_mov_aih_tipo_status ON movimentacoes(aih_id, tipo, status_aih, data_movimentacao DESC)`);
+        
         console.log('Banco de dados inicializado');
     });
 };
 
-// Cache para consultas frequentes - otimizado
+// Cache para consultas frequentes - otimizado para alto volume
 const queryCache = new Map();
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
-const MAX_CACHE_SIZE = 5000; // Cache maior para mais consultas
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutos
+const MAX_CACHE_SIZE = 20000; // Cache muito maior para mais consultas
 
 const clearExpiredCache = () => {
     const now = Date.now();
@@ -309,8 +331,8 @@ const clearExpiredCache = () => {
     }
 };
 
-// Limpar cache expirado a cada minuto
-setInterval(clearExpiredCache, 60000);
+// Limpar cache expirado a cada 2 minutos (menos overhead)
+setInterval(clearExpiredCache, 120000);
 
 // Funções auxiliares com pool de conexões
 const run = async (sql, params = []) => {
