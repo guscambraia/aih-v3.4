@@ -65,7 +65,7 @@ echo [INICIO] Iniciando servidor...
 echo ===============================================================
 echo.
 
-:: Mostrar informações do Node.js
+:: Mostrar informacoes do Node.js
 echo [DEBUG] Versao do Node.js:
 node --version
 echo [DEBUG] Versao do NPM:
@@ -81,7 +81,7 @@ if not exist "server.js" (
     exit /b 1
 )
 
-:: Mostrar conteúdo da pasta atual para debug
+:: Mostrar conteudo da pasta atual para debug
 echo [DEBUG] Arquivos na pasta atual:
 dir /b *.js
 echo.
@@ -92,7 +92,7 @@ echo [DEBUG] Pasta atual: %CD%
 echo.
 node server.js
 
-:: Capturar o código de saída
+:: Capturar o codigo de saida
 set EXIT_CODE=%errorlevel%
 
 :: Se chegou aqui, o servidor foi encerrado
