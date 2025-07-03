@@ -614,55 +614,8 @@ const getCompetenciaAtual = () => {
     return `${mes}/${ano}`;
 };
 
-// Buscar AIH por ID (incluindo dados arquivados)
-app.get('/api/aih/:id', verificarToken, async (req, res) => {
-    try {
-        let aih = await get(
-            'SELECT * FROM aihs WHERE id = ?',
-            [req.params.id]
-        );
-
-        // Se não encontrar nas tabelas ativas, buscar no arquivo
-        if (!aih) {
-            const { searchArchivedData } = require('./archiving');
-            aih = await searchArchivedData(req.params.id);
-            
-            if (!aih) {
-                return res.status(404).json({ error: 'AIH não encontrada nem no arquivo' });
-            }
-            
-            // Retornar dados arquivados
-            return res.json(aih);
-        }
-
-        const atendimentos = await all(
-            'SELECT numero_atendimento FROM atendimentos WHERE aih_id = ?',
-            [aih.id]
-        );
-
-        const movimentacoes = await all(
-            'SELECT * FROM movimentacoes WHERE aih_id = ? ORDER BY data_movimentacao DESC',
-            [aih.id]
-        );
-
-        const glosas = await all(
-            'SELECT * FROM glosas WHERE aih_id = ? AND ativa = 1',
-            [aih.id]
-        );
-
-        res.json({
-            ...aih,
-            atendimentos: atendimentos.map(a => a.numero_atendimento),
-            movimentacoes,
-            glosas
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Buscar AIH por número (incluindo dados arquivados)
-app.get('/api/aih/numero/:numero', verificarToken, async (req, res) => {
+// Buscar AIH (incluindo dados arquivados)
+app.get('/api/aih/:numero', verificarToken, async (req, res) => {
     try {
         let aih = await get(
             'SELECT * FROM aihs WHERE numero_aih = ?',
