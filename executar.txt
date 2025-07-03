@@ -1,5 +1,0 @@
-nmp install
-
-node database.js
-
-nmp start
