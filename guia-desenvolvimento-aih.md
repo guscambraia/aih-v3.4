@@ -18,63 +18,102 @@
 ## 🎯 Visão Geral do Sistema {#visão-geral}
 
 ### Propósito
-Sistema web para controle e auditoria de AIH (Autorização de Internação Hospitalar), gerenciando o fluxo entre auditoria hospitalar e auditoria do SUS, com foco em performance, escalabilidade e gestão de grandes volumes de dados.
+Sistema web completo para controle e auditoria de AIH (Autorização de Internação Hospitalar), gerenciando o fluxo entre auditoria hospitalar e auditoria do SUS, com foco em performance, escalabilidade, segurança e gestão de grandes volumes de dados.
 
 ### Tecnologias Utilizadas
-- **Backend**: Node.js + Express.js
-- **Banco de Dados**: SQLite com otimizações avançadas
-- **Frontend**: HTML5 + CSS3 + JavaScript puro (SPA)
-- **Autenticação**: JWT (JSON Web Tokens)
-- **Hash de Senha**: bcryptjs
-- **Cache**: Sistema de cache em memória multicamadas
-- **Compressão**: gzip para respostas HTTP
-- **Monitoramento**: Sistema interno de logs e métricas
+- **Backend**: Node.js + Express.js com middlewares avançados
+- **Banco de Dados**: SQLite com otimizações avançadas e pool de conexões
+- **Frontend**: HTML5 + CSS3 + JavaScript puro (SPA responsiva)
+- **Autenticação**: JWT (JSON Web Tokens) com renovação automática
+- **Hash de Senha**: bcryptjs com salt rounds configuráveis
+- **Cache**: Sistema de cache em memória multicamadas com TTL inteligente
+- **Compressão**: gzip/deflate para respostas HTTP otimizadas
+- **Monitoramento**: Sistema interno completo de logs, métricas e health checks
+- **Segurança**: Rate limiting, headers de segurança, validações rigorosas
+- **Backup**: Sistema automático e manual com rotação
+- **Logs**: Sistema de logging estruturado com rotação automática
+- **Testes**: Suite completa de testes (unitários, integração, performance, carga, estresse)
+- **Configuração**: Sistema centralizado de configurações por ambiente
 
-### Funcionalidades Principais
-- Sistema de login multiusuário com gestão de usuários
-- Cadastro e gestão de AIHs com validações robustas
-- Controle de movimentações (entrada/saída) com histórico completo
-- Gestão de glosas e pendências com tipos configuráveis
-- Sistema avançado de relatórios e análises
-- Exportação de dados (CSV, Excel, JSON) com filtros
-- Backup automático e manual do sistema
-- Arquivamento automático de dados antigos
-- Sistema de exclusão com justificativas e auditoria
-- Monitoramento de performance em tempo real
-- Cache inteligente para otimização de consultas
+### Funcionalidades Principais ⭐ ATUALIZADAS
+- **Sistema de login multiusuário** com gestão avançada de usuários
+- **Cadastro e gestão de AIHs** com validações robustas e cache inteligente
+- **Controle de movimentações** (entrada/saída) com histórico completo e validações
+- **Gestão de glosas e pendências** com tipos configuráveis e análises
+- **Sistema avançado de relatórios** (20+ tipos) com filtros por período/competência
+- **Exportação de dados** (CSV, Excel, JSON) com filtros personalizados
+- **Backup automático e manual** com rotação e verificação de integridade
+- **Arquivamento automático** de dados antigos com compressão
+- **Sistema de exclusão** com justificativas obrigatórias e auditoria completa
+- **Monitoramento de performance** em tempo real com alertas
+- **Cache inteligente multicamadas** para otimização de consultas
+- **⭐ Sistema de configuração centralizado** por ambiente
+- **⭐ Logging estruturado** com rotação automática
+- **⭐ Health monitoring** com métricas e alertas
+- **⭐ Suite completa de testes** automatizados
+- **⭐ Sistema de segurança avançado** com rate limiting
+- **⭐ Scripts para Windows** (.bat) para execução e testes
+- **⭐ Validações frontend/backend** robustas
+- **⭐ Interface responsiva** otimizada para mobile
+- **⭐ Sistema de limpeza de base** para ambiente de produção
 
 ## 📁 Estrutura de Arquivos {#estrutura-de-arquivos}
 
 ```
 projeto-aih/
 │
-├── 📄 server.js              # Servidor principal e rotas da API
-├── 📄 database.js            # Configuração e funções do banco de dados com cache
-├── 📄 auth.js               # Sistema de autenticação JWT
-├── 📄 middleware.js         # Middlewares de segurança e performance
+├── 📄 server.js              # Servidor principal Express com todas as rotas da API
+├── 📄 database.js            # Gerenciamento avançado do banco com cache e pool
+├── 📄 auth.js               # Sistema completo de autenticação JWT
+├── 📄 middleware.js         # Middlewares de segurança, rate limiting e validação
 ├── 📄 monitor.js            # Sistema de monitoramento e métricas
-├── 📄 archiving.js          # Sistema de arquivamento automático
+├── 📄 archiving.js          # Sistema de arquivamento automático de dados antigos
 ├── 📄 cleanup.js            # Limpeza e manutenção automatizada
-├── 📄 package.json          # Dependências do projeto
+├── 📄 config.js             # ⭐ Configurações centralizadas por ambiente
+├── 📄 logger.js             # ⭐ Sistema de logging estruturado com rotação
+├── 📄 health-monitor.js     # ⭐ Monitoramento avançado de saúde do sistema
+├── 📄 package.json          # Dependências e scripts do projeto
 ├── 📄 package-lock.json     # Lock das dependências
 │
 ├── 📁 db/                   # Pasta do banco de dados
-│   ├── 📄 aih.db           # Arquivo do banco SQLite
-│   ├── 📄 aih.db-shm       # Shared memory do SQLite
+│   ├── 📄 aih.db           # Arquivo principal do banco SQLite
+│   ├── 📄 aih.db-shm       # Shared memory do SQLite (WAL mode)
 │   └── 📄 aih.db-wal       # Write-Ahead Log do SQLite
 │
-├── 📁 public/               # Arquivos estáticos (frontend)
-│   ├── 📄 index.html       # Página HTML única (SPA) com todas as telas
-│   ├── 📄 style.css        # Estilos CSS otimizados
-│   └── 📄 app.js          # Lógica JavaScript do frontend (SPA)
+├── 📁 public/               # Frontend SPA responsivo
+│   ├── 📄 index.html       # Interface completa com todas as telas
+│   ├── 📄 style.css        # Estilos CSS modernos e responsivos
+│   └── 📄 app.js          # ⭐ Lógica JavaScript otimizada (cache, validações)
 │
-├── 📁 docs/                 # Documentação
-│   ├── 📄 estrutura-db.md  # Estrutura das tabelas e relacionamentos
-│   ├── 📄 api-endpoints.md # Documentação completa da API
-│   ├── 📄 fluxo-telas.md   # Fluxo de navegação e UX
-│   └── 📄 guia-desenvolvimento-aih.md # Este guia
+├── 📁 tests/                # ⭐ Suite completa de testes automatizados
+│   ├── 📄 test-runner.js   # Executor principal de testes
+│   ├── 📄 unit-tests.js    # Testes unitários de funções
+│   ├── 📄 integration-tests.js # Testes de integração de APIs
+│   ├── 📄 performance-tests.js # Testes de performance e benchmarks
+│   ├── 📄 load-tests.js    # Testes de carga com múltiplos usuários
+│   ├── 📄 stress-tests.js  # Testes de estresse e limites
+│   └── 📄 debug-helper.js  # Utilitários para debugging
 │
-└── 📁 attached_assets/      # Assets anexados (logs, capturas)
+├── 📁 logs/                 # ⭐ Logs estruturados do sistema (auto-criado)
+│   ├── 📄 error-YYYY-MM-DD.log    # Logs de erro por data
+│   ├── 📄 warn-YYYY-MM-DD.log     # Logs de warning por data
+│   ├── 📄 info-YYYY-MM-DD.log     # Logs informativos por data
+│   └── 📄 debug-YYYY-MM-DD.log    # Logs de debug por data
+│
+├── 📁 attached_assets/      # Assets anexados e capturas
+│
+├── 📄 .replit               # Configuração do ambiente Replit
+├── 📄 api-endpoints.md      # Documentação completa da API
+├── 📄 estrutura-db.md       # Estrutura das tabelas e relacionamentos
+├── 📄 fluxo-telas.md        # Fluxo de navegação e UX
+├── 📄 guia-desenvolvimento-aih.md # Este guia completo
+├── 📄 executar-sistema-windows.md # ⭐ Guia para execução no Windows
+├── 📄 zerar-base-dados.js   # ⭐ Script para zerar base de dados
+├── 📄 zerar-base.bat        # ⭐ Script Windows para zerar base
+├── 📄 debug-start.bat       # ⭐ Script Windows para debug
+└── 📄 executar-testes.bat   # ⭐ Script Windows para executar testes
+
+⭐ = Implementações recentes (últimas atualizações)
 ```
 
 ## 🏗️ Arquitetura do Sistema {#arquitetura}
@@ -146,6 +185,36 @@ projeto-aih/
   - Limpeza de arquivos temporários
   - Otimização do banco de dados
   - Manutenção preventiva
+
+#### config.js ⭐ NOVO
+- **Função**: Configurações centralizadas do sistema
+- **Exports**:
+  - Configurações de banco de dados por ambiente
+  - Configurações de cache com TTL
+  - Configurações de segurança e rate limiting
+  - Configurações de backup automático
+  - Configurações de validação
+  - Configurações de performance
+
+#### logger.js ⭐ NOVO
+- **Função**: Sistema de logging estruturado e avançado
+- **Features**:
+  - Logs estruturados em JSON
+  - Rotação automática por data
+  - Níveis de log configuráveis (error, warn, info, debug)
+  - Logs específicos para ações do sistema AIH
+  - Limpeza automática de logs antigos
+  - Output colorizado no console
+
+#### health-monitor.js ⭐ NOVO
+- **Função**: Monitoramento avançado de saúde do sistema
+- **Features**:
+  - Métricas em tempo real (CPU, memória, requests)
+  - Sistema de alertas automatizado
+  - Monitoramento de performance de banco
+  - Cache hit rate tracking
+  - Relatórios periódicos de saúde
+  - Detecção de anomalias
 
 ### Frontend (SPA - Single Page Application)
 
@@ -400,17 +469,82 @@ state = {
 - Alterações em configurações
 - Erros e exceções
 
+## 🧪 Sistema de Testes Automatizados {#sistema-testes}
+
+### Estrutura de Testes ⭐ NOVO
+O sistema inclui uma suite completa de testes automatizados:
+
+#### test-runner.js
+- **Executor principal** que roda todos os tipos de teste
+- Relatórios coloridos e detalhados
+- Medição de tempo de execução
+- Detecção automática de falhas
+
+#### Tipos de Teste Implementados:
+
+**1. Testes Unitários (unit-tests.js)**
+- Validação de funções individuais
+- Testes de funções de validação de AIH
+- Testes de formatação e parsing
+- Cobertura de edge cases
+
+**2. Testes de Integração (integration-tests.js)**
+- Testes completos de APIs
+- Fluxos de autenticação
+- Operações CRUD completas
+- Validação de responses
+
+**3. Testes de Performance (performance-tests.js)**
+- Benchmarks de operações críticas
+- Medição de tempos de resposta
+- Validação de limites de performance
+- Monitoramento de uso de recursos
+
+**4. Testes de Carga (load-tests.js)**
+- Simulação de múltiplos usuários simultâneos
+- Teste de capacidade do sistema
+- Validação de estabilidade sob carga
+- Medição de throughput
+
+**5. Testes de Estresse (stress-tests.js)**
+- Testes nos limites do sistema
+- Simulação de picos de demanda
+- Teste de recuperação após falhas
+- Validação de robustez
+
+### Execução de Testes
+```bash
+# Windows
+executar-testes.bat
+
+# Linux/Mac  
+node tests/test-runner.js
+
+# Testes específicos
+node tests/unit-tests.js
+node tests/performance-tests.js
+```
+
 ## 💾 Backup e Arquivamento {#backup-arquivamento}
 
-### Backup Automático
-- Backup diário automático
-- Rotação de backups (manter últimos 30 dias)
+### Backup Automático ⭐ MELHORADO
+- Backup a cada 8 horas (3x por dia)
+- Rotação automática (manter últimos 21 backups = 1 semana)
 - Backup incremental para economizar espaço
+- Limpeza automática de backups antigos
+- Verificação de integridade
 
 ### Arquivamento
 - Arquivamento automático de dados > 10 anos
 - Compressão de dados históricos
 - Limpeza automática de logs antigos
+- Sistema de busca em dados arquivados
+
+### Sistema de Logs ⭐ NOVO
+- Logs estruturados em JSON por nível
+- Rotação diária automática
+- Limpeza de logs > 30 dias
+- Logs específicos para ações de auditoria
 
 ## 🚀 Como Adicionar Novas Funcionalidades {#novas-funcionalidades}
 

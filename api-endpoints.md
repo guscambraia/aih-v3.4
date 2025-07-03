@@ -1,5 +1,12 @@
-
 # 📚 API Endpoints - Sistema AIH
+
+**Última atualização**: Implementações mais recentes incluem:
+- ⭐ Sistema de health check avançado
+- ⭐ Endpoints de logs de exclusão  
+- ⭐ Validação de senhas para exclusões
+- ⭐ Novos relatórios com filtros por competência/período
+- ⭐ Exportação de histórico de movimentações
+- ⭐ Sistema de limpeza e reset de base
 
 ## 🔐 Autenticação
 
@@ -40,6 +47,63 @@ Response: {
     "usuarios": [
         {
             "id": 1,
+
+
+### POST /api/validar-senha ⭐ NOVO
+Valida senha do usuário logado (para operações sensíveis).
+```json
+Request: { 
+    "senha": "senha_atual_usuario" 
+}
+Response: { 
+    "success": true 
+}
+Headers: Authorization: Bearer <token>
+Errors: 401 - Senha incorreta, 404 - Usuário não encontrado
+```
+
+### DELETE /api/admin/deletar-movimentacao ⭐ NOVO
+Deleta movimentação específica com justificativa obrigatória.
+```json
+Request: { 
+    "movimentacao_id": 123,
+    "justificativa": "Motivo detalhado da exclusão (min 10 chars)" 
+}
+Response: { 
+    "success": true,
+    "message": "Movimentação deletada com sucesso",
+    "movimentacao_deletada": {
+        "id": 123,
+        "aih": "12345",
+        "tipo": "entrada_sus"
+    }
+}
+Headers: Authorization: Bearer <token>
+Errors: 400 - Justificativa obrigatória, 403 - Sem permissão, 404 - Não encontrada
+```
+
+### DELETE /api/admin/deletar-aih ⭐ NOVO
+Deleta AIH completa com todos os dados relacionados.
+```json
+Request: { 
+    "numero_aih": "12345",
+    "justificativa": "Motivo detalhado da exclusão (min 10 chars)" 
+}
+Response: { 
+    "success": true,
+    "message": "AIH deletada completamente com sucesso",
+    "aih_deletada": {
+        "numero_aih": "12345",
+        "movimentacoes_removidas": 5,
+        "glosas_removidas": 3,
+        "atendimentos_removidos": 2
+    }
+}
+Headers: Authorization: Bearer <token>
+Errors: 400 - Justificativa obrigatória, 404 - AIH não encontrada
+```
+
+
             "nome": "admin",
             "criado_em": "2024-01-01T10:00:00Z"
         }
@@ -563,3 +627,47 @@ Todas as operações sensíveis são registradas:
 - Relatórios: ~80%
 
 Esta documentação é atualizada automaticamente e reflete o estado atual da API.
+
+
+## 🏥 Health Check Avançado ⭐ NOVO
+
+### GET /api/health
+Endpoint avançado de verificação de saúde do sistema.
+```json
+Response: {
+    "status": "healthy|warning|critical",
+    "timestamp": "2024-12-15T10:30:00Z",
+    "uptime": 86400,
+    "memory": {
+        "rss": 45678912,
+        "heapTotal": 25165824,
+        "heapUsed": 15728640,
+        "external": 1024000
+    },
+    "database": {
+        "total_aihs": 2500,
+        "db_size_mb": 12.5,
+        "connections": 23,
+        "available_connections": 27
+    },
+    "performance": {
+        "errorRate": 0.02,
+        "avgResponseTime": 150.5,
+        "cacheHitRate": 0.85
+    },
+    "issues": [
+        "Nenhum problema detectado"
+    ],
+    "alerts": [
+        {
+            "type": "info",
+            "message": "Sistema operando normalmente",
+            "timestamp": "2024-12-15T10:30:00Z"
+        }
+    ]
+}
+Status Codes:
+- 200: Sistema saudável ou com warnings
+- 503: Sistema em estado crítico
+```
+
