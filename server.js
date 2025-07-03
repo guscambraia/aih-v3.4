@@ -2467,7 +2467,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                         SUM(valor_inicial) as valor_total_inicial,
                         SUM(valor_atual) as valor_total_atual
                     FROM aihs a
-                    WHERE 1=1 ${filtroWhere}
+                    WHERE 1=1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                 `, params);
 
                 const totalGlosasPeriodo = await get(`
@@ -2475,7 +2475,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                            COUNT(DISTINCT aih_id) as aihs_com_glosas
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere}
+                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                 `, params);
 
                 dados = [{
@@ -2490,7 +2490,8 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                     'Valor Médio Atual': `R$ ${(stats.valor_medio_atual || 0).toFixed(2)}`,
                     'Valor Total Inicial': `R$ ${(stats.valor_total_inicial || 0).toFixed(2)}`,
                     'Valor Total Atual': `R$ ${(stats.valor_total_atual || 0).toFixed(2)}`,
-                    'Diferença Total': `R$ ${((stats.valor_total_inicial || 0) - (stats.valor_total_atual || 0)).toFixed(2)}`
+                    'Diferença Total': `R$ ${((stats.valor_total_inicial || 0) - (stats.valor_total_atual || 0)).toFixed(2)}`,
+                    'Percentual com Glosas': stats.total_aihs > 0 ? `${((totalGlosasPeriodo.aihs_com_glosas / stats.total_aihs) * 100).toFixed(2)}%` : '0%'
                 }];
                 break;
 
