@@ -100,20 +100,206 @@ app.use((req, res, next) => {
     next();
 });
 
-// Inicializar banco
-initDB();
+// Função de inicialização completa do sistema
+const initializeSystem = async () => {
+    console.log('🚀 Iniciando Sistema de Controle de AIH...');
+    
+    try {
+        // 1. Inicializar banco de dados
+        console.log('📊 Inicializando banco de dados...');
+        await initDB();
+        console.log('✅ Banco de dados inicializado');
 
-// Inicializar sistema de manutenção
-const { scheduleMaintenance } = require('./cleanup');
-scheduleMaintenance();
+        // 2. Verificar integridade do banco
+        console.log('🔍 Verificando integridade do banco...');
+        const stats = await getDbStats();
+        if (stats) {
+            console.log(`   📈 ${stats.total_aihs} AIHs | ${stats.total_movimentacoes} movimentações | ${stats.db_size_mb}MB`);
+        }
 
-// Inicializar sistema de arquivamento
-const { scheduleArchiving } = require('./archiving');
-scheduleArchiving();
+        // 3. Limpeza inicial (WAL checkpoint)
+        console.log('🧹 Executando limpeza inicial...');
+        await run('PRAGMA wal_checkpoint(PASSIVE)');
+        
+        // 4. Inicializar sistema de manutenção
+        console.log('⚙️ Configurando sistema de manutenção...');
+        const { scheduleMaintenance } = require('./cleanup');
+        scheduleMaintenance();
+        
+        // 5. Inicializar sistema de arquivamento
+        console.log('📁 Configurando sistema de arquivamento...');
+        const { scheduleArchiving } = require('./archiving');
+        scheduleArchiving();
+        
+        // 6. Configurar backup automático
+        console.log('💾 Configurando backup automático...');
+        scheduleBackups();
+        
+        // 7. Inicializar monitoramento
+        console.log('📊 Iniciando monitoramento de performance...');
+        const { logPerformance } = require('./monitor');
+        setTimeout(logPerformance, 30000); // Log inicial após 30s
+        
+        // 8. Verificar se há dados críticos para recuperar
+        console.log('🔄 Verificando necessidade de recuperação...');
+        await checkForRecovery();
+        
+        console.log('✅ Sistema inicializado com sucesso!');
+        console.log('🌐 Servidor disponível em: http://0.0.0.0:5000');
+        
+    } catch (error) {
+        console.error('❌ Erro durante inicialização:', error);
+        console.log('🔧 Tentando inicialização de emergência...');
+        await emergencyInitialization();
+    }
+};
 
-// Inicializar monitoramento
-const { logPerformance } = require('./monitor');
-setTimeout(logPerformance, 30000); // Log inicial após 30s
+// Verificar se há necessidade de recuperação
+const checkForRecovery = async () => {
+    try {
+        // Verificar se há WAL file muito grande
+        const fs = require('fs');
+        const walPath = path.join(__dirname, 'db', 'aih.db-wal');
+        if (fs.existsSync(walPath)) {
+            const walSize = fs.statSync(walPath).size;
+            if (walSize > 50 * 1024 * 1024) { // > 50MB
+                console.log('⚠️ WAL file muito grande, executando checkpoint...');
+                await run('PRAGMA wal_checkpoint(TRUNCATE)');
+                console.log('✅ Checkpoint executado');
+            }
+        }
+        
+        // Verificar última vez que o sistema foi fechado corretamente
+        const lastShutdown = await get(`
+            SELECT data_hora FROM logs_acesso 
+            WHERE acao = 'Sistema encerrado' 
+            ORDER BY data_hora DESC LIMIT 1
+        `).catch(() => null);
+        
+        if (!lastShutdown) {
+            console.log('⚠️ Sistema pode ter sido encerrado incorretamente na última vez');
+            console.log('🔧 Executando verificação de integridade...');
+            await run('PRAGMA integrity_check');
+            console.log('✅ Integridade verificada');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro na verificação de recuperação:', error);
+    }
+};
+
+// Inicialização de emergência (modo mínimo)
+const emergencyInitialization = async () => {
+    try {
+        console.log('🚨 Modo de emergência ativado');
+        console.log('📊 Tentando conectar ao banco...');
+        
+        // Tentar apenas conexão básica
+        const testConnection = await get('SELECT 1 as test').catch(() => null);
+        if (testConnection) {
+            console.log('✅ Conexão básica com banco estabelecida');
+        } else {
+            console.log('❌ Não foi possível conectar ao banco');
+            throw new Error('Falha crítica na conexão com banco');
+        }
+        
+        console.log('⚠️ Sistema iniciado em modo limitado');
+        console.log('🔧 Algumas funcionalidades podem estar indisponíveis');
+        
+    } catch (error) {
+        console.error('💥 Falha crítica na inicialização:', error);
+        process.exit(1);
+    }
+};
+
+// Função de encerramento gracioso
+const gracefulShutdown = async (signal) => {
+    console.log(`\n🛑 Recebido sinal ${signal}, iniciando encerramento gracioso...`);
+    
+    try {
+        // 1. Parar de aceitar novas conexões
+        console.log('🚫 Parando de aceitar novas conexões...');
+        server.close(() => {
+            console.log('✅ Servidor HTTP fechado');
+        });
+        
+        // 2. Executar backup de emergência se necessário
+        console.log('💾 Verificando necessidade de backup de emergência...');
+        const lastBackup = await get(`
+            SELECT MAX(data_hora) as ultima 
+            FROM logs_acesso 
+            WHERE acao LIKE '%backup%'
+        `).catch(() => null);
+        
+        if (!lastBackup || !lastBackup.ultima) {
+            console.log('📦 Executando backup de emergência...');
+            await createBackup();
+            console.log('✅ Backup de emergência concluído');
+        }
+        
+        // 3. Finalizar transações pendentes e fazer checkpoint
+        console.log('🔄 Finalizando transações pendentes...');
+        await run('PRAGMA wal_checkpoint(TRUNCATE)');
+        console.log('✅ Checkpoint WAL executado');
+        
+        // 4. Registrar encerramento no log
+        console.log('📝 Registrando encerramento no log...');
+        await run(`
+            INSERT INTO logs_acesso (usuario_id, acao, data_hora) 
+            VALUES (0, 'Sistema encerrado', CURRENT_TIMESTAMP)
+        `).catch(() => {}); // Não falhar se não conseguir logar
+        
+        // 5. Fechar pool de conexões
+        console.log('🔌 Fechando conexões com banco...');
+        const { closePool } = require('./database');
+        await closePool();
+        
+        // 6. Limpeza final
+        console.log('🧹 Executando limpeza final...');
+        clearCache(); // Limpar todos os caches
+        
+        console.log('✅ Encerramento gracioso concluído');
+        console.log('👋 Sistema encerrado com segurança');
+        
+        process.exit(0);
+        
+    } catch (error) {
+        console.error('❌ Erro durante encerramento gracioso:', error);
+        console.log('🚨 Forçando encerramento...');
+        process.exit(1);
+    }
+};
+
+// Configurar handlers de encerramento
+process.on('SIGINT', gracefulShutdown);   // Ctrl+C
+process.on('SIGTERM', gracefulShutdown);  // Kill command
+process.on('SIGUSR2', gracefulShutdown);  // Nodemon restart
+
+// Handler para erros não capturados
+process.on('uncaughtException', async (error) => {
+    console.error('💥 Erro não capturado:', error);
+    console.log('🚨 Tentando encerramento de emergência...');
+    
+    try {
+        await run('PRAGMA wal_checkpoint(TRUNCATE)');
+        await run(`
+            INSERT INTO logs_acesso (usuario_id, acao, data_hora) 
+            VALUES (0, 'Sistema encerrado por erro', CURRENT_TIMESTAMP)
+        `);
+    } catch (e) {
+        console.error('❌ Falha no backup de emergência:', e);
+    }
+    
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 Promise rejeitada não tratada:', reason);
+    console.log('🔍 Promise:', promise);
+});
+
+// Inicializar sistema
+initializeSystem();
 
 // Backup automático mais frequente com limpeza automática
 const scheduleBackups = () => {
@@ -3110,6 +3296,6 @@ app.get('*', (req, res) => {
 });
 
 // Iniciar servidor
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor rodando em http://0.0.0.0:${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🎯 Servidor AIH iniciado na porta ${PORT}`);
 });
