@@ -1575,7 +1575,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                            GROUP_CONCAT(DISTINCT g.profissional) as profissionais
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere}
+                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                     GROUP BY g.tipo
                     ORDER BY total_ocorrencias DESC
                 `, params);
@@ -1691,7 +1691,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         SUM(valor_inicial) as valor_total_inicial,
                         SUM(valor_atual) as valor_total_atual
                     FROM aihs a
-                    WHERE 1=1 ${filtroWhere}
+                    WHERE 1=1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                 `, params);
 
                 const totalGlosasPeriodo = await get(`
@@ -1699,7 +1699,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                            COUNT(DISTINCT aih_id) as aihs_com_glosas
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere}
+                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                 `, params);
 
                 const movimentacoesPeriodo = await get(`
@@ -1940,7 +1940,7 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         AVG(a.valor_inicial - a.valor_atual) as impacto_financeiro_medio
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere}
+                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                     GROUP BY g.tipo, g.linha
                     ORDER BY frequencia DESC, impacto_financeiro_total DESC
                 `, params);
@@ -1999,13 +1999,13 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         AVG(a.valor_inicial) as valor_inicial_medio,
                         AVG(a.valor_atual) as valor_atual_medio,
                         COUNT(DISTINCT g.id) as total_glosas,
-                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs WHERE 1=1 ${filtroWhere})), 2) as percentual
+                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs a2 WHERE 1=1 ${filtroWhere.replace('criado_em', 'a2.criado_em')})), 2) as percentual
                     FROM aihs a
                     LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
-                    WHERE 1=1 ${filtroWhere}
+                    WHERE 1=1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                     GROUP BY a.status
                     ORDER BY a.status
-                `, params);
+                `, [...params, ...params]);
                 break;
 
             case 'analise-financeira':
