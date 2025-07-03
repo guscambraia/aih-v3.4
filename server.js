@@ -53,6 +53,10 @@ initDB();
 const { scheduleMaintenance } = require('./cleanup');
 scheduleMaintenance();
 
+// Inicializar sistema de arquivamento
+const { scheduleArchiving } = require('./archiving');
+scheduleArchiving();
+
 // Inicializar monitoramento
 const { logPerformance } = require('./monitor');
 setTimeout(logPerformance, 30000); // Log inicial após 30s
@@ -436,7 +440,7 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
                 COUNT(DISTINCT CASE WHEN m.tipo = 'saida_hospital' THEN m.aih_id END) as saidas
             FROM movimentacoes m
             WHERE m.competencia = ?
-        `, [competencia], true); // Usar cache
+        `, [competencia], 'dashboard'); // Cache específico dashboard
 
         const emProcessamentoCompetencia = (processamentoCompetencia.entradas || 0) - (processamentoCompetencia.saidas || 0);
 
@@ -446,7 +450,7 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
             FROM aihs 
             WHERE status IN (1, 4) 
             AND competencia = ?
-        `, [competencia]);
+        `, [competencia], 'dashboard');
 
         // 3. AIH com pendências/glosas na competência (status 2 e 3)
         const comPendenciasCompetencia = await get(`
@@ -454,20 +458,20 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
             FROM aihs 
             WHERE status IN (2, 3) 
             AND competencia = ?
-        `, [competencia]);
+        `, [competencia], 'dashboard');
 
         // 4. Total geral de entradas SUS vs saídas Hospital (desde o início)
         const totalEntradasSUS = await get(`
             SELECT COUNT(DISTINCT aih_id) as count 
             FROM movimentacoes 
             WHERE tipo = 'entrada_sus'
-        `);
+        `, [], 'dashboard');
 
         const totalSaidasHospital = await get(`
             SELECT COUNT(DISTINCT aih_id) as count 
             FROM movimentacoes 
             WHERE tipo = 'saida_hospital'
-        `);
+        `, [], 'dashboard');
 
         const totalEmProcessamento = (totalEntradasSUS.count || 0) - (totalSaidasHospital.count || 0);
 
@@ -476,20 +480,20 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
             SELECT COUNT(*) as count 
             FROM aihs 
             WHERE status IN (1, 4)
-        `);
+        `, [], 'dashboard');
 
         // 6. Total de AIHs cadastradas desde o início
         const totalAIHsGeral = await get(`
             SELECT COUNT(*) as count 
             FROM aihs
-        `);
+        `, [], 'dashboard');
 
         // Dados adicionais para contexto
         const totalAIHsCompetencia = await get(`
             SELECT COUNT(*) as count 
             FROM aihs 
             WHERE competencia = ?
-        `, [competencia]);
+        `, [competencia], 'dashboard');
 
         // Lista de competências disponíveis
         const competenciasDisponiveis = await all(`
@@ -498,7 +502,7 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
             ORDER BY 
                 CAST(SUBSTR(competencia, 4, 4) AS INTEGER) DESC,
                 CAST(SUBSTR(competencia, 1, 2) AS INTEGER) DESC
-        `);
+        `, [], 'dashboard');
 
         // Estatísticas de valores para a competência
         const valoresGlosasPeriodo = await get(`
@@ -508,7 +512,7 @@ app.get('/api/dashboard', verificarToken, async (req, res) => {
                 AVG(valor_inicial - valor_atual) as media_glosa
             FROM aihs 
             WHERE competencia = ?
-        `, [competencia]);
+        `, [competencia], 'dashboard');
 
         res.json({
             competencia_selecionada: competencia,
@@ -556,16 +560,25 @@ const getCompetenciaAtual = () => {
     return `${mes}/${ano}`;
 };
 
-// Buscar AIH
+// Buscar AIH (incluindo dados arquivados)
 app.get('/api/aih/:numero', verificarToken, async (req, res) => {
     try {
-        const aih = await get(
+        let aih = await get(
             'SELECT * FROM aihs WHERE numero_aih = ?',
             [req.params.numero]
         );
 
+        // Se não encontrar nas tabelas ativas, buscar no arquivo
         if (!aih) {
-            return res.status(404).json({ error: 'AIH não encontrada' });
+            const { searchArchivedData } = require('./archiving');
+            aih = await searchArchivedData(req.params.numero);
+            
+            if (!aih) {
+                return res.status(404).json({ error: 'AIH não encontrada nem no arquivo' });
+            }
+            
+            // Retornar dados arquivados
+            return res.json(aih);
         }
 
         const atendimentos = await all(
@@ -1158,6 +1171,27 @@ app.post('/api/admin/backup', verificarToken, async (req, res) => {
         res.json({ success: true, message: 'Backup criado com sucesso', path: backupPath });
     } catch (err) {
         console.error('Erro ao criar backup:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Arquivamento manual (admin)
+app.post('/api/admin/arquivar', verificarToken, async (req, res) => {
+    try {
+        if (req.usuario.tipo !== 'admin') {
+            return res.status(403).json({ error: 'Acesso negado' });
+        }
+
+        const { archiveOldData } = require('./archiving');
+        const result = await archiveOldData();
+        
+        res.json({ 
+            success: true, 
+            message: 'Arquivamento executado com sucesso', 
+            ...result 
+        });
+    } catch (err) {
+        console.error('Erro ao executar arquivamento:', err);
         res.status(500).json({ error: err.message });
     }
 });
