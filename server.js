@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const XLSX = require('xlsx');
+const compression = require('compression');
 const { initDB, run, get, all, runTransaction, validateAIH, validateMovimentacao, clearCache, getDbStats, createBackup } = require('./database');
 const { verificarToken, login, cadastrarUsuario, loginAdmin, alterarSenhaAdmin, listarUsuarios, excluirUsuario } = require('./auth');
 const { rateLimitMiddleware, validateInput, clearRateLimit, detectSuspiciousActivity, getSecurityLogs } = require('./middleware');
@@ -13,6 +14,21 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' ? false : true,
     credentials: true
+}));
+
+// Compressão HTTP para melhor performance
+app.use(compression({
+    filter: (req, res) => {
+        if (req.headers['x-no-compression']) {
+            return false;
+        }
+        return compression.filter(req, res);
+    },
+    level: 6, // Nível de compressão balanceado
+    threshold: 1024, // Comprimir apenas arquivos > 1KB
+    chunkSize: 16 * 1024, // 16KB chunks
+    windowBits: 15,
+    memLevel: 8
 }));
 
 app.use(express.json({ limit: '50mb' })); // Aumentar limite para uploads maiores
@@ -1038,14 +1054,14 @@ app.post('/api/pesquisar', verificarToken, async (req, res) => {
             }
 
             if (filtros.numero_aih) {
-                sql += ' AND a.numero_aih LIKE ?';
+                sql += ' AND UPPER(a.numero_aih) LIKE UPPER(?)';
                 params.push(`%${filtros.numero_aih}%`);
             }
 
             if (filtros.numero_atendimento) {
                 sql += ` AND a.id IN (
                     SELECT DISTINCT aih_id FROM atendimentos 
-                    WHERE numero_atendimento LIKE ?
+                    WHERE UPPER(numero_atendimento) LIKE UPPER(?)
                 )`;
                 params.push(`%${filtros.numero_atendimento}%`);
             }
