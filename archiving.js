@@ -21,7 +21,8 @@ const archiveOldData = async () => {
         `, [cutoffDate]);
         
         if (oldAihs.length === 0) {
-            console.log('ℹ️ Nenhuma AIH antiga para arquivar');
+            // Log mais discreto quando não há dados para arquivar
+            console.log(`📊 Verificação de arquivamento concluída - 0 AIHs antigas (corte: ${cutoffDate})`);
             return { archived: 0, freed_space: 0 };
         }
         
@@ -207,27 +208,29 @@ const searchArchivedData = async (numeroAih) => {
 
 // Agendar arquivamento automático
 const scheduleArchiving = () => {
-    // Executar arquivamento a cada 30 dias
-    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    // Executar arquivamento a cada 6 meses (mais apropriado)
+    const SIX_MONTHS = 6 * 30 * 24 * 60 * 60 * 1000;
     
     setInterval(async () => {
         try {
+            console.log('🗂️ Iniciando verificação de arquivamento agendado...');
             await archiveOldData();
         } catch (err) {
             console.error('Erro no arquivamento automático:', err);
         }
-    }, THIRTY_DAYS);
+    }, SIX_MONTHS);
     
-    // Executar primeira vez após 1 hora
+    // Executar primeira vez após 24 horas (não após 1 hora)
     setTimeout(async () => {
         try {
+            console.log('🗂️ Executando primeira verificação de arquivamento...');
             await archiveOldData();
         } catch (err) {
             console.error('Erro no arquivamento inicial:', err);
         }
-    }, 60 * 60 * 1000);
+    }, 24 * 60 * 60 * 1000);
     
-    console.log('📅 Arquivamento automático agendado (a cada 30 dias)');
+    console.log('📅 Arquivamento automático agendado (primeira execução em 24h, depois a cada 6 meses)');
 };
 
 module.exports = {
