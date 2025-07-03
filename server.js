@@ -3,6 +3,9 @@ const cors = require('cors');
 const path = require('path');
 const XLSX = require('xlsx');
 const compression = require('compression');
+const config = require('./config');
+const logger = require('./logger');
+const healthMonitor = require('./health-monitor');
 const { initDB, run, get, all, runTransaction, validateAIH, validateMovimentacao, clearCache, getDbStats, createBackup } = require('./database');
 const { verificarToken, login, cadastrarUsuario, loginAdmin, alterarSenhaAdmin, listarUsuarios, excluirUsuario } = require('./auth');
 const { rateLimitMiddleware, validateInput, clearRateLimit, detectSuspiciousActivity, getSecurityLogs } = require('./middleware');
@@ -56,9 +59,44 @@ app.use((req, res, next) => {
 
 app.use(express.static('public'));
 
-// Log de requisições para debug
+// Middleware de métricas e logging
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    const startTime = Date.now();
+    const ip = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
+    
+    logger.debug(`${req.method} ${req.path}`, { 
+        ip, 
+        userAgent: req.headers['user-agent'],
+        timestamp: new Date().toISOString()
+    });
+
+    // Interceptar resposta para calcular tempo
+    const originalEnd = res.end;
+    res.end = function(chunk, encoding) {
+        const responseTime = Date.now() - startTime;
+        const hasError = res.statusCode >= 400;
+        
+        healthMonitor.recordRequest(responseTime, hasError);
+        
+        if (hasError) {
+            logger.warn(`Resposta com erro: ${res.statusCode}`, {
+                method: req.method,
+                path: req.path,
+                ip,
+                responseTime,
+                statusCode: res.statusCode
+            });
+        } else {
+            logger.debug(`Resposta enviada: ${res.statusCode}`, {
+                method: req.method,
+                path: req.path,
+                responseTime
+            });
+        }
+        
+        originalEnd.call(this, chunk, encoding);
+    };
+
     next();
 });
 
@@ -1212,24 +1250,42 @@ app.post('/api/admin/arquivar', verificarToken, async (req, res) => {
     }
 });
 
-// Health check endpoint
+// Health check endpoint avançado
 app.get('/api/health', async (req, res) => {
     try {
+        const healthStatus = healthMonitor.getHealthStatus();
         const stats = await getDbStats();
+        
         const health = {
-            status: 'ok',
+            status: healthStatus.status,
             timestamp: new Date().toISOString(),
             uptime: process.uptime(),
             memory: process.memoryUsage(),
             database: {
                 total_aihs: stats?.total_aihs || 0,
-                db_size: stats?.db_size_mb || 0,
-                connections: stats?.pool_connections || 0
-            }
+                db_size_mb: stats?.db_size_mb || 0,
+                connections: stats?.pool_connections || 0,
+                available_connections: stats?.available_connections || 0
+            },
+            performance: {
+                errorRate: healthMonitor.getErrorRate(),
+                avgResponseTime: healthMonitor.getAverageResponseTime(),
+                cacheHitRate: healthMonitor.getCacheHitRate()
+            },
+            issues: healthStatus.issues,
+            alerts: healthMonitor.alerts.slice(-5) // Últimos 5 alertas
         };
 
-        res.json(health);
+        // Retornar status HTTP apropriado
+        const statusCode = healthStatus.status === 'critical' ? 503 : 
+                          healthStatus.status === 'warning' ? 200 : 200;
+
+        res.status(statusCode).json(health);
+        
+        logger.debug('Health check realizado', { status: healthStatus.status });
+        
     } catch (err) {
+        logger.error('Erro no health check', { error: err.message });
         res.status(500).json({ 
             status: 'error', 
             timestamp: new Date().toISOString(),
