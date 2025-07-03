@@ -1999,13 +1999,13 @@ app.post('/api/relatorios/:tipo', verificarToken, async (req, res) => {
                         AVG(a.valor_inicial) as valor_inicial_medio,
                         AVG(a.valor_atual) as valor_atual_medio,
                         COUNT(DISTINCT g.id) as total_glosas,
-                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs a2 WHERE 1=1 ${filtroWhere.replace('criado_em', 'a2.criado_em')})), 2) as percentual
+                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs)), 2) as percentual
                     FROM aihs a
                     LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
                     WHERE 1=1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                     GROUP BY a.status
                     ORDER BY a.status
-                `, [...params, ...params]);
+                `, params);
                 break;
 
             case 'analise-financeira':
@@ -2354,7 +2354,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                         GROUP_CONCAT(DISTINCT g.profissional) as 'Profissionais Envolvidos'
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere}
+                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                     GROUP BY g.tipo
                     ORDER BY COUNT(*) DESC
                 `, params);
@@ -2622,7 +2622,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                         ROUND(AVG(a.valor_inicial - a.valor_atual), 2) as 'Impacto Financeiro Médio (R$)'
                     FROM glosas g
                     JOIN aihs a ON g.aih_id = a.id
-                    WHERE g.ativa = 1 ${filtroWhere}
+                    WHERE g.ativa = 1 ${filtroWhere.replace('criado_em', 'a.criado_em')}
                     GROUP BY g.tipo, g.linha
                     ORDER BY COUNT(*) DESC, SUM(a.valor_inicial - a.valor_atual) DESC
                 `, params);
