@@ -1,14 +1,32 @@
 
 # 🖥️ Como Criar Atalho na Área de Trabalho
 
-## 📋 Instruções Rápidas
+## 🚀 Método Automático (Recomendado)
 
-### 1. Criar o Atalho
+### 1. Executar o Script Criador de Atalho
+1. **Navegue até a pasta do projeto**:
+   ```
+   C:\Projeto\aih-v3.4-master
+   ```
+
+2. **Execute o script automático**:
+   ```cmd
+   criar-atalho-desktop.bat
+   ```
+
+3. **Siga as instruções na tela**
+   - O script detectará automaticamente os caminhos
+   - Criará o atalho na área de trabalho
+   - Configurará todas as propriedades automaticamente
+
+## 📋 Método Manual (Alternativo)
+
+### 1. Criar o Atalho Manualmente
 1. **Clique com botão direito** na área de trabalho
 2. Selecione **"Novo" > "Atalho"**
-3. **Cole o caminho completo** do arquivo `iniciar-sistema-aih.bat`:
+3. **Cole o caminho completo** do arquivo `executar.bat`:
    ```
-   C:\Projeto\aih-v3.4-master\iniciar-sistema-aih.bat
+   C:\Projeto\aih-v3.4-master\executar.bat
    ```
    *(Ajuste o caminho conforme sua instalação)*
 
@@ -20,7 +38,7 @@
 1. **Clique com botão direito** no atalho criado
 2. Selecione **"Propriedades"**
 3. **Configurações recomendadas:**
-   - **Destino:** `C:\Projeto\aih-v3.4-master\iniciar-sistema-aih.bat`
+   - **Destino:** `C:\Projeto\aih-v3.4-master\executar.bat`
    - **Iniciar em:** `C:\Projeto\aih-v3.4-master`
    - **Executar:** `Janela normal`
    - **Tecla de atalho:** (deixe vazio ou configure como preferir)
@@ -94,8 +112,9 @@
 
 ```
 C:\Projeto\aih-v3.4-master\
-├── iniciar-sistema-aih.bat    # ← Arquivo principal do atalho
-├── server.js                  # Servidor da aplicação
+├── executar.bat              # ← Arquivo principal do atalho
+├── criar-atalho-desktop.bat  # ← Script para criar atalho automaticamente
+├── server.js                 # Servidor da aplicação
 ├── package.json              # Dependências
 └── db\                       # Banco de dados
     └── aih.db
@@ -113,4 +132,7 @@ Após criar o atalho, você terá:
 
 ---
 
-**💡 Lembre-se:** Sempre mantenha o arquivo `iniciar-sistema-aih.bat` na mesma pasta do projeto!
+**💡 Lembre-se:** 
+- Use o script `criar-atalho-desktop.bat` para criação automática
+- Sempre mantenha o arquivo `executar.bat` na mesma pasta do projeto
+- O atalho criado executará automaticamente o `executar.bat`
