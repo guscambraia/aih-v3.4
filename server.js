@@ -103,9 +103,6 @@ app.use((req, res, next) => {
 // Função de inicialização completa do sistema
 const initializeSystem = async () => {
     console.log('🚀 Iniciando Sistema de Controle de AIH...');
-    console.log('🔧 Versão Node.js:', process.version);
-    console.log('🔧 Plataforma:', process.platform);
-    console.log('🔧 Pasta de trabalho:', process.cwd());
     
     try {
         // 1. Inicializar banco de dados
@@ -152,17 +149,8 @@ const initializeSystem = async () => {
         
     } catch (error) {
         console.error('❌ Erro durante inicialização:', error);
-        console.error('❌ Stack trace:', error.stack);
         console.log('🔧 Tentando inicialização de emergência...');
-        
-        try {
-            await emergencyInitialization();
-        } catch (emergencyError) {
-            console.error('💥 Falha na inicialização de emergência:', emergencyError);
-            console.error('💥 Stack trace emergência:', emergencyError.stack);
-            console.log('🚨 Sistema não pode ser iniciado. Verificar logs e dependências.');
-            process.exit(1);
-        }
+        await emergencyInitialization();
     }
 };
 
@@ -3309,31 +3297,5 @@ app.get('*', (req, res) => {
 
 // Iniciar servidor
 const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log('===============================================================');
-    console.log('🎯 SERVIDOR AIH INICIADO COM SUCESSO!');
-    console.log('===============================================================');
-    console.log(`📡 URL Local: http://localhost:${PORT}`);
-    console.log(`📡 URL Rede: http://0.0.0.0:${PORT}`);
-    console.log(`⚙️ Ambiente: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🕐 Horário: ${new Date().toLocaleString('pt-BR')}`);
-    console.log('===============================================================');
-    console.log('📋 CREDENCIAIS PADRÃO:');
-    console.log('   👤 Usuário: admin');
-    console.log('   🔑 Senha: admin123');
-    console.log('===============================================================');
-    console.log('ℹ️ Pressione Ctrl+C para encerrar o servidor de forma segura');
-    console.log('===============================================================');
-});
-
-// Adicionar event listeners para o servidor
-server.on('error', (error) => {
-    console.error('💥 Erro no servidor HTTP:', error);
-    if (error.code === 'EADDRINUSE') {
-        console.error(`❌ Porta ${PORT} já está em uso!`);
-        console.log('🔧 Tente matar processos na porta ou usar outra porta');
-    }
-});
-
-server.on('listening', () => {
-    console.log('✅ Servidor HTTP está escutando requisições...');
+    console.log(`🎯 Servidor AIH iniciado na porta ${PORT}`);
 });
