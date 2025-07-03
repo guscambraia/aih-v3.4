@@ -2182,12 +2182,6 @@ const carregarRelatorios = () => {
                     <p>Glosas identificadas por cada auditor</p>
                 </div>
 
-                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('aihs-profissional')">
-                    <div class="relatorio-icon">🏥</div>
-                    <h4>AIHs por Profissional</h4>
-                    <p>Produtividade geral por auditor</p>
-                </div>
-
                 <div class="relatorio-card" onclick="gerarRelatorioPeriodo('tipos-glosa')">
                     <div class="relatorio-icon">📋</div>
                     <h4>Tipos de Glosa</h4>
@@ -2202,10 +2196,10 @@ const carregarRelatorios = () => {
             </div>
         </div>
 
-        <!-- Relatórios de Produtividade -->
+        <!-- Relatórios Avançados -->
         <div style="margin-bottom: 3rem;">
             <h3 style="color: #374151; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span>👨‍⚕️</span> Relatórios de Produtividade
+                <span>🔬</span> Relatórios Avançados
                 <span style="background: #f59e0b; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Requer período</span>
             </h3>
             <div class="relatorios-grid">
@@ -2232,16 +2226,7 @@ const carregarRelatorios = () => {
                     <h4>Cruzamento Profissional x Glosas</h4>
                     <p>Relação entre auditores e tipos de glosa</p>
                 </div>
-            </div>
-        </div>
 
-        <!-- Relatórios Financeiros -->
-        <div style="margin-bottom: 3rem;">
-            <h3 style="color: #374151; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span>💰</span> Relatórios Financeiros
-                <span style="background: #f59e0b; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Requer período</span>
-            </h3>
-            <div class="relatorios-grid">
                 <div class="relatorio-card" onclick="gerarRelatorioPeriodo('analise-valores-glosas')">
                     <div class="relatorio-icon">💸</div>
                     <h4>Análise de Valores de Glosas</h4>
@@ -2250,35 +2235,20 @@ const carregarRelatorios = () => {
 
                 <div class="relatorio-card" onclick="gerarRelatorioPeriodo('valores-glosas-periodo')">
                     <div class="relatorio-icon">💰</div>
-                    <h4>Valores de Glosas (Detalhado)</h4>
+                    <h4>Valores de Glosas (Período)</h4>
                     <p>Análise financeira detalhada das glosas</p>
                 </div>
 
                 <div class="relatorio-card" onclick="gerarRelatorioPeriodo('analise-financeira')">
                     <div class="relatorio-icon">📊</div>
-                    <h4>Análise Financeira Completa</h4>
+                    <h4>Análise Financeira</h4>
                     <p>Relatório financeiro abrangente do período</p>
                 </div>
-            </div>
-        </div>
 
-        <!-- Relatórios de Performance -->
-        <div style="margin-bottom: 3rem;">
-            <h3 style="color: #374151; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span>🎯</span> Relatórios de Performance
-                <span style="background: #f59e0b; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Requer período</span>
-            </h3>
-            <div class="relatorios-grid">
                 <div class="relatorio-card" onclick="gerarRelatorioPeriodo('estatisticas-periodo')">
                     <div class="relatorio-icon">📈</div>
-                    <h4>Estatísticas Gerais</h4>
+                    <h4>Estatísticas Gerais do Período</h4>
                     <p>Visão geral das estatísticas do período</p>
-                </div>
-
-                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('performance-competencias')">
-                    <div class="relatorio-icon">📅</div>
-                    <h4>Performance por Competências</h4>
-                    <p>Comparativo de performance entre competências</p>
                 </div>
 
                 <div class="relatorio-card" onclick="gerarRelatorioPeriodo('eficiencia-processamento')">
@@ -2292,16 +2262,7 @@ const carregarRelatorios = () => {
                     <h4>Detalhamento por Status</h4>
                     <p>Análise detalhada por status das AIHs</p>
                 </div>
-            </div>
-        </div>
 
-        <!-- Relatórios Avançados -->
-        <div style="margin-bottom: 3rem;">
-            <h3 style="color: #374151; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span>🔬</span> Relatórios Avançados
-                <span style="background: #f59e0b; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Requer período</span>
-            </h3>
-            <div class="relatorios-grid">
                 <div class="relatorio-card" onclick="gerarRelatorioPeriodo('tipos-glosa-periodo')">
                     <div class="relatorio-icon">📊</div>
                     <h4>Tipos de Glosa (Período)</h4>
@@ -2320,31 +2281,10 @@ const carregarRelatorios = () => {
                     <p>Evolução temporal dos cadastros de AIHs</p>
                 </div>
 
-                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('comparativo-auditorias')">
-                    <div class="relatorio-icon">⚖️</div>
-                    <h4>Comparativo entre Auditorias</h4>
-                    <p>Comparação entre auditoria SUS e Hospital</p>
-                </div>
-
                 <div class="relatorio-card" onclick="gerarRelatorioPeriodo('analise-preditiva')">
                     <div class="relatorio-icon">🔮</div>
                     <h4>Análise Preditiva</h4>
                     <p>Tendências e previsões baseadas nos dados</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Relatórios de Logs e Auditoria -->
-        <div style="margin-bottom: 3rem;">
-            <h3 style="color: #374151; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                <span>🔍</span> Logs e Auditoria
-                <span style="background: #6366f1; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">Período opcional</span>
-            </h3>
-            <div class="relatorios-grid">
-                <div class="relatorio-card" onclick="gerarRelatorioPeriodo('logs-exclusao')">
-                    <div class="relatorio-icon">🗑️</div>
-                    <h4>Logs de Exclusão</h4>
-                    <p>Histórico de exclusões realizadas no sistema</p>
                 </div>
             </div>
         </div>
