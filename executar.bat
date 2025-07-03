@@ -65,31 +65,87 @@ echo [INICIO] Iniciando servidor...
 echo ===============================================================
 echo.
 
-:: Iniciar o servidor
+:: Mostrar informações do Node.js
+echo [DEBUG] Versao do Node.js:
+node --version
+echo [DEBUG] Versao do NPM:
+npm --version
+echo.
+
+:: Verificar se o arquivo server.js existe
+if not exist "server.js" (
+    echo [ERRO] Arquivo server.js nao encontrado!
+    echo [INFO] Verifique se voce esta na pasta correta do projeto
+    echo.
+    pause
+    exit /b 1
+)
+
+:: Mostrar conteúdo da pasta atual para debug
+echo [DEBUG] Arquivos na pasta atual:
+dir /b *.js
+echo.
+
+:: Iniciar o servidor com logging melhorado
+echo [DEBUG] Executando: node server.js
+echo [DEBUG] Pasta atual: %CD%
+echo.
 node server.js
+
+:: Capturar o código de saída
+set EXIT_CODE=%errorlevel%
 
 :: Se chegou aqui, o servidor foi encerrado
 echo.
 echo ===============================================================
-echo [FIM] Servidor encerrado
+echo [FIM] Servidor encerrado - Codigo de saida: %EXIT_CODE%
+echo ===============================================================
 echo.
 
 :: Verificar se foi encerramento normal ou erro
-if errorlevel 1 (
-    echo [ERRO] Servidor encerrado com erro (Codigo: %errorlevel%)
-    echo [INFO] Verifique os logs para mais detalhes
+if %EXIT_CODE% neq 0 (
+    echo [ERRO] Servidor encerrado com erro (Codigo: %EXIT_CODE%)
+    echo.
+    echo [DEBUG] Possiveis causas do erro:
+    echo   - Porta 5000 ja esta em uso
+    echo   - Erro no banco de dados
+    echo   - Dependencias corrompidas
+    echo   - Falta de permissoes
+    echo.
+    echo [SOLUCAO] Tente as seguintes acoes:
+    echo   1. Execute: npm install
+    echo   2. Verifique se a porta 5000 esta livre
+    echo   3. Execute como administrador
+    echo.
 ) else (
     echo [OK] Servidor encerrado normalmente
 )
 
 echo.
-echo [INFO] Para verificar o status do banco de dados, execute:
-echo        sqlite3 db/aih.db ".tables"
+echo [INFO] Informacoes do sistema:
+echo   Base de dados: db/aih.db
+echo   Backups: backups/
+echo   Logs: logs/
+echo   URL: http://localhost:5000
+echo   Login: admin / admin123
 echo.
-echo [INFO] Backups automaticos estao em: backups/
-echo [INFO] Logs do sistema estao em: logs/
+
+:: Verificar se existem logs de erro recentes
+if exist "logs\error*.log" (
+    echo [DEBUG] Logs de erro encontrados:
+    dir /b logs\error*.log
+    echo.
+)
+
+:: Verificar se o banco existe
+if exist "db\aih.db" (
+    echo [OK] Banco de dados encontrado: db\aih.db
+) else (
+    echo [AVISO] Banco de dados nao encontrado: db\aih.db
+    echo [INFO] O banco sera criado automaticamente na proxima execucao
+)
+
 echo.
-echo [INFO] Sistema disponivel em: http://localhost:5000
-echo [INFO] Login padrao: admin / admin123
-echo.
-pause
+echo [INFO] Pressione qualquer tecla para continuar...
+echo [INFO] Ou feche esta janela se nao precisar de mais informacoes
+pause >nul
