@@ -2600,7 +2600,7 @@ app.post('/api/relatorios/:tipo/export', verificarToken, async (req, res) => {
                         ROUND(AVG(a.valor_inicial), 2) as 'Valor Inicial Médio (R$)',
                         ROUND(AVG(a.valor_atual), 2) as 'Valor Atual Médio (R$)',
                         COUNT(DISTINCT g.id) as 'Total Glosas',
-                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs WHERE 1=1 ${filtroWhere})), 2) as 'Percentual (%)'
+                        ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM aihs)), 2) as 'Percentual (%)'
                     FROM aihs a
                     LEFT JOIN glosas g ON a.id = g.aih_id AND g.ativa = 1
                     WHERE 1=1 ${filtroWhere}
