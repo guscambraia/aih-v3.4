@@ -42,9 +42,7 @@ const zerarBaseDados = async () => {
             'movimentacoes',
             'atendimentos',
             'aihs',
-            'usuarios',
-            'profissionais',
-            'tipos_glosa'
+            'usuarios'
         ];
 
         for (const nomeTabela of tabelasParaZerar) {
@@ -57,7 +55,7 @@ const zerarBaseDados = async () => {
             }
         }
 
-        // 5. Resetar auto_increment das tabelas
+        // 5. Resetar auto_increment das tabelas zeradas
         console.log('\n🔄 RESETANDO AUTO_INCREMENT...');
         for (const nomeTabela of tabelasParaZerar) {
             try {
@@ -68,18 +66,40 @@ const zerarBaseDados = async () => {
             }
         }
 
-        // 6. Recriar dados essenciais do sistema
-        console.log('\n🏗️ RECRIANDO DADOS ESSENCIAIS...');
+        // 6. Verificar dados preservados
+        console.log('\n📋 VERIFICANDO DADOS PRESERVADOS...');
+        
+        // Verificar profissionais preservados
+        const profissionais = await get(`SELECT COUNT(*) as total FROM profissionais`);
+        console.log(`   📊 Profissionais mantidos: ${profissionais.total}`);
+        
+        // Verificar tipos de glosa preservados
+        const tiposGlosa = await get(`SELECT COUNT(*) as total FROM tipos_glosa`);
+        console.log(`   📊 Tipos de glosa mantidos: ${tiposGlosa.total}`);
 
-        // Recriar administrador padrão
-        const bcrypt = require('bcryptjs');
-        const senhaHash = await bcrypt.hash('admin', 10);
-        await run(`INSERT INTO administradores (usuario, senha_hash) VALUES (?, ?)`, 
-            ['admin', senhaHash]);
-        console.log('   ✅ Administrador padrão recriado (usuário: admin, senha: admin)');
+        // 7. Garantir administrador padrão
+        console.log('\n🏗️ VERIFICANDO ADMINISTRADOR PADRÃO...');
+        
+        const adminExiste = await get(`SELECT id FROM administradores WHERE usuario = ?`, ['admin']);
+        if (!adminExiste) {
+            const bcrypt = require('bcryptjs');
+            const senhaHash = await bcrypt.hash('admin', 10);
+            await run(`INSERT INTO administradores (usuario, senha_hash) VALUES (?, ?)`, 
+                ['admin', senhaHash]);
+            console.log('   ✅ Administrador padrão criado (usuário: admin, senha: admin)');
+        } else {
+            // Resetar senha do admin existente
+            const bcrypt = require('bcryptjs');
+            const senhaHash = await bcrypt.hash('admin', 10);
+            await run(`UPDATE administradores SET senha_hash = ? WHERE usuario = ?`, 
+                [senhaHash, 'admin']);
+            console.log('   ✅ Senha do administrador resetada para: admin');
+        }
 
-        // Recriar tipos de glosa padrão
-        const tiposGlosa = [
+        // 8. Garantir tipos de glosa mínimos (caso não existam)
+        console.log('\n🔧 VERIFICANDO TIPOS DE GLOSA MÍNIMOS...');
+        
+        const tiposGlosaMinimos = [
             'Material não autorizado',
             'Quantidade excedente', 
             'Procedimento não autorizado',
@@ -87,10 +107,14 @@ const zerarBaseDados = async () => {
             'Divergência de valores'
         ];
 
-        for (const tipo of tiposGlosa) {
-            await run(`INSERT INTO tipos_glosa (descricao) VALUES (?)`, [tipo]);
+        for (const tipo of tiposGlosaMinimos) {
+            const existe = await get(`SELECT id FROM tipos_glosa WHERE descricao = ?`, [tipo]);
+            if (!existe) {
+                await run(`INSERT INTO tipos_glosa (descricao) VALUES (?)`, [tipo]);
+                console.log(`   ➕ Tipo de glosa criado: ${tipo}`);
+            }
         }
-        console.log(`   ✅ ${tiposGlosa.length} tipos de glosa padrão recriados`);
+        console.log('   ✅ Tipos de glosa mínimos verificados');
 
         // 7. Reabilitar foreign keys
         await run('PRAGMA foreign_keys = ON');
@@ -134,16 +158,17 @@ const zerarBaseDados = async () => {
 
         console.log('\n🎉 BASE DE DADOS ZERADA COM SUCESSO!');
         console.log('\n📋 RESUMO:');
-        console.log('   • Todas as AIHs, movimentações e glosas foram removidas');
-        console.log('   • Todos os usuários foram removidos');
-        console.log('   • Administrador padrão recriado (admin/admin)');
-        console.log('   • Tipos de glosa padrão recriados');
+        console.log('   • Todas as AIHs, atendimentos, movimentações e glosas foram removidas');
+        console.log('   • Todos os usuários de login foram removidos');
+        console.log('   • Administrador padrão garantido (admin/admin)');
+        console.log('   • Profissionais cadastrados PRESERVADOS');
+        console.log('   • Tipos de glosa cadastrados PRESERVADOS');
         console.log('   • Backup de segurança criado antes da limpeza');
         console.log('   • Banco otimizado e pronto para uso profissional');
         console.log('\n⚠️ IMPORTANTE:');
         console.log('   • Altere a senha do administrador após o primeiro login');
         console.log('   • Crie os usuários necessários para sua equipe');
-        console.log('   • Configure os profissionais do sistema');
+        console.log('   • Os profissionais e tipos de glosa foram mantidos');
         console.log('\n✨ O sistema está pronto para uso profissional!');
 
     } catch (err) {
